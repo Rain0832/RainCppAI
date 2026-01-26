@@ -1,3 +1,5 @@
+// ChatServer.cpp - AI聊天服务器实现文件
+
 #include "../include/handlers/ChatLoginHandler.h"
 #include "../include/handlers/ChatRegisterHandler.h"
 #include "../include/handlers/ChatLogoutHandler.h"
@@ -9,7 +11,6 @@
 #include"../include/handlers/AIUploadHandler.h"
 #include"../include/handlers/ChatHistoryHandler.h"
 
-
 #include"../include/handlers/ChatCreateAndSendHandler.h"
 #include"../include/handlers/ChatSessionsHandler.h"
 #include"../include/handlers/ChatSpeechHandler.h"
@@ -19,10 +20,7 @@
 #include "../../../HttpServer/include/http/HttpResponse.h"
 #include "../../../HttpServer/include/http/HttpServer.h"
 
-
-
 using namespace http;
-
 
 ChatServer::ChatServer(int port,
     const std::string& name,
@@ -34,25 +32,22 @@ ChatServer::ChatServer(int port,
 
 void ChatServer::initialize() {
     std::cout << "ChatServer initialize start  ! " << std::endl;
-	http::MysqlUtil::init("tcp://127.0.0.1:3306", "root", "123456", "ChatHttpServer", 5);
+    
+    // 初始化MySQL数据库连接池
+    http::MysqlUtil::init("tcp://127.0.0.1:3306", "root", "123456", "ChatHttpServer", 5);
 
     initializeSession();
-
     initializeMiddleware();
-
     initializeRouter();
 }
 
 void ChatServer::initChatMessage() {
-
     std::cout << "initChatMessage start ! " << std::endl;
     readDataFromMySQL();
     std::cout << "initChatMessage success ! " << std::endl;
 }
 
 void ChatServer::readDataFromMySQL() {
-
-
     std::string sql = "SELECT id, username,session_id, is_user, content, ts FROM chat_message ORDER BY ts ASC, id ASC";
 
     sql::ResultSet* res;
@@ -64,6 +59,7 @@ void ChatServer::readDataFromMySQL() {
         return;
     }
 
+    // 从数据库加载历史消息并恢复会话状态
     while (res->next()) {
         long long user_id = 0;
         std::string session_id ;  
@@ -91,7 +87,7 @@ void ChatServer::readDataFromMySQL() {
         if (itSession == userSessions.end()) {
             helper = std::make_shared<AIHelper>();
             userSessions[session_id] = helper;
-			sessionsIdsMap[user_id].push_back(session_id);
+            sessionsIdsMap[user_id].push_back(session_id);
         } else {
             helper = itSession->second;
         }
@@ -102,64 +98,48 @@ void ChatServer::readDataFromMySQL() {
     std::cout << "readDataFromMySQL finished" << std::endl;
 }
 
-
-
 void ChatServer::setThreadNum(int numThreads) {
     httpServer_.setThreadNum(numThreads);
 }
-
 
 void ChatServer::start() {
     httpServer_.start();
 }
 
-
 void ChatServer::initializeRouter() {
-
+    // 入口页面路由
     httpServer_.Get("/", std::make_shared<ChatEntryHandler>(this));
     httpServer_.Get("/entry", std::make_shared<ChatEntryHandler>(this));
     
+    // 用户认证路由
     httpServer_.Post("/login", std::make_shared<ChatLoginHandler>(this));
-    
     httpServer_.Post("/register", std::make_shared<ChatRegisterHandler>(this));
-    
     httpServer_.Post("/user/logout", std::make_shared<ChatLogoutHandler>(this));
 
+    // 聊天功能路由
     httpServer_.Get("/chat", std::make_shared<ChatHandler>(this));
-
     httpServer_.Post("/chat/send", std::make_shared<ChatSendHandler>(this));
- 
-    httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
-    
-    httpServer_.Get("/upload", std::make_shared<AIUploadHandler>(this));
-   
-    httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
-    
-    httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
-
-    
     httpServer_.Post("/chat/send-new-session", std::make_shared<ChatCreateAndSendHandler>(this));
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
-
+    httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
+ 
+    // AI功能路由
+    httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
+    httpServer_.Get("/upload", std::make_shared<AIUploadHandler>(this));
+    httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
 }
 
 void ChatServer::initializeSession() {
-
     auto sessionStorage = std::make_unique<http::session::MemorySessionStorage>();
-
     auto sessionManager = std::make_unique<http::session::SessionManager>(std::move(sessionStorage));
-
     setSessionManager(std::move(sessionManager));
 }
 
 void ChatServer::initializeMiddleware() {
-
     auto corsMiddleware = std::make_shared<http::middleware::CorsMiddleware>();
-
     httpServer_.addMiddleware(corsMiddleware);
 }
-
 
 void ChatServer::packageResp(const std::string& version,
     http::HttpResponse::HttpStatusCode statusCode,
@@ -191,7 +171,6 @@ void ChatServer::packageResp(const std::string& version,
     catch (const std::exception& e)
     {
         LOG_ERROR << "Error in packageResp: " << e.what();
-
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
         resp->setStatusMessage("Internal Server Error");
         resp->setCloseConnection(true);
