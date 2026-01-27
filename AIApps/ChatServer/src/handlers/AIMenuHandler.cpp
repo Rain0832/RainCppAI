@@ -1,11 +1,12 @@
 #include "../include/handlers/AIMenuHandler.h"
 
-void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void AIMenuHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
 
     try
     {
 
+        // 通过会话管理器验证登录状态
         auto session = server_->getSessionManager()->getSession(req, resp);
         LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
         if (session->getValue("isLoggedIn") != "true")
@@ -17,15 +18,15 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
             std::string errorBody = errorResp.dump(4);
 
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(),
-                errorBody, resp);
+                                 "Unauthorized", true, "application/json", errorBody.size(),
+                                 errorBody, resp);
             return;
         }
-
 
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
 
+        // 读取菜单页面模板
         std::string reqFile("../AIApps/ChatServer/resource/menu.html");
         FileUtil fileOperater(reqFile);
         if (!fileOperater.isValid())
@@ -38,7 +39,7 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         fileOperater.readFile(buffer); // ļ
         std::string htmlContent(buffer.data(), buffer.size());
 
-
+        // 向页面注入用户ID，便于前端脚本获取
         size_t headEnd = htmlContent.find("</head>");
         if (headEnd != std::string::npos)
         {
@@ -54,9 +55,10 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         resp->setContentLength(htmlContent.size());
         resp->setBody(htmlContent);
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
 
+        // 异常场景返回标准JSON错误响应
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();
