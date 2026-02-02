@@ -1,7 +1,6 @@
 #include "../include/handlers/AIUploadHandler.h"
 
-
-void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void AIUploadHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
     try
     {
@@ -17,8 +16,8 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
             std::string errorBody = errorResp.dump(4);
 
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(),
-                errorBody, resp);
+                                 "Unauthorized", true, "application/json", errorBody.size(),
+                                 errorBody, resp);
             return;
         }
 
@@ -34,9 +33,8 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         }
 
         std::vector<char> buffer(fileOperater.size());
-        fileOperater.readFile(buffer); 
+        fileOperater.readFile(buffer);
         std::string htmlContent(buffer.data(), buffer.size());
-
 
         size_t headEnd = htmlContent.find("</head>");
         if (headEnd != std::string::npos)
@@ -50,7 +48,7 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         resp->setContentLength(htmlContent.size());
         resp->setBody(htmlContent);
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
 
         json failureResp;
@@ -64,6 +62,3 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         resp->setBody(failureBody);
     }
 }
-
-
-
