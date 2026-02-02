@@ -1,7 +1,6 @@
 #include "../include/handlers/AIUploadSendHandler.h"
 
-
-void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
     try
     {
@@ -17,8 +16,8 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
             std::string errorBody = errorResp.dump(4);
 
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(),
-                errorBody, resp);
+                                 "Unauthorized", true, "application/json", errorBody.size(),
+                                 errorBody, resp);
             return;
         }
 
@@ -26,11 +25,12 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         std::shared_ptr<ImageRecognizer> ImageRecognizerPtr;
         {
             std::lock_guard<std::mutex> lock(server_->mutexForImageRecognizerMap);
-            if (server_->ImageRecognizerMap.find(userId) == server_->ImageRecognizerMap.end()) {
+            if (server_->ImageRecognizerMap.find(userId) == server_->ImageRecognizerMap.end())
+            {
 
                 server_->ImageRecognizerMap.emplace(
                     userId,
-                    std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx")  //todo:Remove hard coding
+                    std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx") // todo:Remove hard coding
                 );
             }
             ImageRecognizerPtr = server_->ImageRecognizerMap[userId];
@@ -39,10 +39,13 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         auto body = req.getBody();
         std::string filename;
         std::string imageBase64;
-        if (!body.empty()) {
+        if (!body.empty())
+        {
             auto j = json::parse(body);
-            if (j.contains("filename")) filename = j["filename"];
-            if (j.contains("image")) imageBase64 = j["image"];
+            if (j.contains("filename"))
+                filename = j["filename"];
+            if (j.contains("image"))
+                imageBase64 = j["image"];
         }
         if (imageBase64.empty())
         {
@@ -54,14 +57,12 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
 
         std::string className = ImageRecognizerPtr->PredictFromBuffer(imgData);
 
-
         json successResp;
         successResp["success"] = "ok";
         successResp["filename"] = filename;
         successResp["class_name"] = className;
 
         successResp["confidence"] = 0.95; // todo:Calculating true confidence
-
 
         std::string successBody = successResp.dump(4);
 
@@ -71,9 +72,8 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         resp->setContentLength(successBody.size());
         resp->setBody(successBody);
         return;
-
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
 
         json failureResp;
@@ -87,6 +87,3 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         resp->setBody(failureBody);
     }
 }
-
-
-
