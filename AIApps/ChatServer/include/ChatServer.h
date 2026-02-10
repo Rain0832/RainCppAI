@@ -227,6 +227,6 @@ private:
 	std::unordered_map<int, std::shared_ptr<ImageRecognizer>> ImageRecognizerMap; ///< 图像识别器映射
 	std::mutex mutexForImageRecognizerMap;										  ///< 图像识别器锁
 
-	std::unordered_map<int, std::vector<std::string>> sessionsIdsMap; ///< 用户会话ID列表映射
+	std::unordered_map<int, std::vector<std::string>> sessionsIdsMap; ///< 用户-会话ID列表映射
 	std::mutex mutexForSessionsId;									  ///< 会话ID列表锁
 };
