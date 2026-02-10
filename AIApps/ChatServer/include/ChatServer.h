@@ -228,5 +228,6 @@ private:
 	std::mutex mutexForImageRecognizerMap;										  ///< 图像识别器锁
 
 	std::unordered_map<int, std::vector<std::string>> sessionsIdsMap; ///< 用户-会话ID列表映射
-	std::mutex mutexForSessionsId;									  ///< 会话ID列表锁
+	std::mutex mutexForSessionsId;									  ///< 会话ID列表锁，unordered_map不保证原子性，vector可能也会触发不一致的读取
+	// 现代C++中有concurrent_unordered_map和concurrent_vector等线程安全的数据结构，可以考虑替换以提高性能和安全性
 };
