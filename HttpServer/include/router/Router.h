@@ -31,13 +31,20 @@ namespace http
                 HttpRequest::Method method;
                 std::string path;
 
+                // 比较两个路由键是否相等。
+                //
+                // Args:
+                //   other: 需要比较的另一个路由键。
+                //
+                // Returns:
+                //   如果方法和路径都相同则返回 true，否则返回 false。
                 bool operator==(const RouteKey &other) const
                 {
                     return method == other.method && path == other.path;
                 }
             };
 
-            // 为RouteKey 定义哈希函数
+            // 为 RouteKey 定义哈希函数
             struct RouteKeyHash
             {
                 // size_t operator()(const RouteKey& key) const
@@ -45,6 +52,13 @@ namespace http
                 //     return std::hash<int>{}(static_cast<int>(key.method)) ^
                 //            std::hash<std::string>{}(key.path);
                 // }
+                // 计算路由键的哈希值，用于 unordered_map 索引。
+                //
+                // Args:
+                //   key: 需要计算哈希的路由键。
+                //
+                // Returns:
+                //   结合方法和路径后的哈希值。
                 size_t operator()(const RouteKey &key) const
                 {
                     +size_t methodHash = std::hash<int>{}(static_cast<int>(key.method));
@@ -54,12 +68,27 @@ namespace http
             };
 
             // 注册路由处理器
+            //
+            // Args:
+            //   method: HTTP 请求方法。
+            //   path: 需要精确匹配的路径。
+            //   handler: 处理该路由的处理器对象。
             void registerHandler(HttpRequest::Method method, const std::string &path, HandlerPtr handler);
 
             // 注册回调函数形式的处理器
+            //
+            // Args:
+            //   method: HTTP 请求方法。
+            //   path: 需要精确匹配的路径。
+            //   callback: 处理该路由的回调函数。
             void registerCallback(HttpRequest::Method method, const std::string &path, const HandlerCallback &callback);
 
             // 注册动态路由处理器
+            //
+            // Args:
+            //   method: HTTP 请求方法。
+            //   path: 含路径参数的模式字符串，例如 "/users/:id"。
+            //   handler: 处理该路由的处理器对象。
             void addRegexHandler(HttpRequest::Method method, const std::string &path, HandlerPtr handler)
             {
                 std::regex pathRegex = convertToRegex(path);
@@ -67,6 +96,11 @@ namespace http
             }
 
             // 注册动态路由处理函数
+            //
+            // Args:
+            //   method: HTTP 请求方法。
+            //   path: 含路径参数的模式字符串，例如 "/users/:id"。
+            //   callback: 处理该路由的回调函数。
             void addRegexCallback(HttpRequest::Method method, const std::string &path, const HandlerCallback &callback)
             {
                 std::regex pathRegex = convertToRegex(path);
@@ -74,16 +108,34 @@ namespace http
             }
 
             // 处理请求
+            //
+            // Args:
+            //   req: 输入的 HTTP 请求。
+            //   resp: 输出的 HTTP 响应指针。
+            //
+            // Returns:
+            //   如果找到匹配路由并完成处理则返回 true，否则返回 false。
             bool route(const HttpRequest &req, HttpResponse *resp);
 
         private:
+            // 将路径模式转换为正则表达式，支持匹配路径参数。
+            //
+            // Args:
+            //   pathPattern: 含路径参数的模式字符串。
+            //
+            // Returns:
+            //   用于匹配实际路径的正则表达式。
             std::regex convertToRegex(const std::string &pathPattern)
             { // 将路径模式转换为正则表达式，支持匹配任意路径参数
                 std::string regexPattern = "^" + std::regex_replace(pathPattern, std::regex(R"(/:([^/]+))"), R"(/([^/]+))") + "$";
                 return std::regex(regexPattern);
             }
 
-            // 提取路径参数
+            // 提取路径参数并写入请求对象。
+            //
+            // Args:
+            //   match: 正则匹配结果。
+            //   request: 需要写入参数的请求对象。
             void extractPathParameters(const std::smatch &match, HttpRequest &request)
             {
                 // Assuming the first match is the full path, parameters start from index 1
