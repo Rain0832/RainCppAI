@@ -171,6 +171,7 @@ namespace http
         {
             // 处理请求前的中间件
             HttpRequest mutableReq = req;
+            // 中间件前置
             middlewareChain_.processBefore(mutableReq);
 
             // 路由处理
