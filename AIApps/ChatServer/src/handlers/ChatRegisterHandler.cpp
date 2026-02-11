@@ -1,13 +1,11 @@
 #include "../include/handlers/ChatRegisterHandler.h"
 
-
-void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void ChatRegisterHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
-    
+
     json parsed = json::parse(req.getBody());
     std::string username = parsed["username"];
     std::string password = parsed["password"];
-
 
     int userId = insertUser(username, password);
     if (userId != -1)
@@ -41,7 +39,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
 }
 
-int ChatRegisterHandler::insertUser(const std::string& username, const std::string& password)
+int ChatRegisterHandler::insertUser(const std::string &username, const std::string &password)
 {
 
     if (!isUserExist(username))
@@ -59,7 +57,7 @@ int ChatRegisterHandler::insertUser(const std::string& username, const std::stri
     return -1;
 }
 
-bool ChatRegisterHandler::isUserExist(const std::string& username)
+bool ChatRegisterHandler::isUserExist(const std::string &username)
 {
     std::string sql = "SELECT id FROM users WHERE username = '" + username + "'";
     auto res = mysqlUtil_.executeQuery(sql);
