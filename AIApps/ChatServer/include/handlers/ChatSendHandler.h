@@ -6,12 +6,21 @@
 class ChatSendHandler : public http::router::RouterHandler
 {
 public:
-    explicit ChatSendHandler(ChatServer* server) : server_(server) {}
+    // 构造函数。
+    //
+    // Args:
+    //   server: 业务服务器指针。
+    explicit ChatSendHandler(ChatServer *server) : server_(server) {}
 
-    void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 private:
+    // 处理聊天请求并返回 AI 响应结果。
+    //
+    // Args:
+    //   req: HTTP 请求对象。
+    //   resp: HTTP 响应对象。
+    void handle(const http::HttpRequest &req, http::HttpResponse *resp) override;
 
 private:
-    ChatServer* server_;
-    http::MysqlUtil     mysqlUtil_;
+    ChatServer *server_;
+    http::MysqlUtil mysqlUtil_;
 };
