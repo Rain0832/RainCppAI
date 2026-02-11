@@ -12,6 +12,7 @@ public:
     //   server: 业务服务器指针。
     explicit ChatHandler(ChatServer *server) : server_(server) {}
 
+private:
     // 处理聊天页面请求并返回 HTML 内容。
     //
     // Args:
@@ -19,7 +20,6 @@ public:
     //   resp: HTTP 响应对象。
     void handle(const http::HttpRequest &req, http::HttpResponse *resp) override;
 
-private:
 private:
     ChatServer *server_;
     http::MysqlUtil mysqlUtil_;
