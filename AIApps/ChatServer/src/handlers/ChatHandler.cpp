@@ -1,7 +1,7 @@
 
 #include "../include/handlers/ChatHandler.h"
 
-void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void ChatHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
 
     try
@@ -18,11 +18,10 @@ void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
             std::string errorBody = errorResp.dump(4);
 
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(),
-                errorBody, resp);
+                                 "Unauthorized", true, "application/json", errorBody.size(),
+                                 errorBody, resp);
             return;
         }
-
 
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
@@ -36,9 +35,8 @@ void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
         }
 
         std::vector<char> buffer(fileOperater.size());
-        fileOperater.readFile(buffer); 
+        fileOperater.readFile(buffer);
         std::string htmlContent(buffer.data(), buffer.size());
-
 
         size_t headEnd = htmlContent.find("</head>");
         if (headEnd != std::string::npos)
@@ -55,7 +53,7 @@ void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
         resp->setContentLength(htmlContent.size());
         resp->setBody(htmlContent);
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
 
         json failureResp;
@@ -69,5 +67,3 @@ void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
         resp->setBody(failureBody);
     }
 }
-
-
