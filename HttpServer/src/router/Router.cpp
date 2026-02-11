@@ -31,6 +31,7 @@ namespace http
             auto handlerIt = handlers_.find(key);
             if (handlerIt != handlers_.end())
             {
+                // 执行处理器
                 handlerIt->second->handle(req, resp);
                 return true;
             }
@@ -39,6 +40,7 @@ namespace http
             auto callbackIt = callbacks_.find(key);
             if (callbackIt != callbacks_.end())
             {
+                // 执行回调函数
                 callbackIt->second(req, resp);
                 return true;
             }
@@ -72,7 +74,7 @@ namespace http
                     HttpRequest newReq(req); // 因为这里需要用这一次所以是可以改的
                     extractPathParameters(match, newReq);
 
-                    callback(req, resp);
+                    callback(newReq, resp);
                     return true;
                 }
             }
