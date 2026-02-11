@@ -1,7 +1,6 @@
 #include "../include/handlers/ChatCreateAndSendHandler.h"
 
-
-void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
     try
     {
@@ -17,11 +16,10 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
             std::string errorBody = errorResp.dump(4);
 
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(),
-                errorBody, resp);
+                                 "Unauthorized", true, "application/json", errorBody.size(),
+                                 errorBody, resp);
             return;
         }
-
 
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
@@ -30,43 +28,42 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
         std::string modelType;
 
         auto body = req.getBody();
-        if (!body.empty()) {
+        if (!body.empty())
+        {
             auto j = json::parse(body);
-            if (j.contains("question")) userQuestion = j["question"];
-
+            if (j.contains("question"))
+                userQuestion = j["question"];
 
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
         }
 
         AISessionIdGenerator generator;
         std::string sessionId = generator.generate();
-        std::cout<<"ɵsessionIdΪ "<<sessionId<<std::endl;
-
+        std::cout << "ɵsessionIdΪ " << sessionId << std::endl;
 
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
             std::lock_guard<std::mutex> lock(server_->mutexForChatInformation);
 
-            auto& userSessions = server_->chatInformation[userId];
+            auto &userSessions = server_->chatInformation[userId];
 
-            if (userSessions.find(sessionId) == userSessions.end()) {
+            if (userSessions.find(sessionId) == userSessions.end())
+            {
 
-                userSessions.emplace( 
+                userSessions.emplace(
                     sessionId,
-                    std::make_shared<AIHelper>()
-                );
+                    std::make_shared<AIHelper>());
                 server_->sessionsIdsMap[userId].push_back(sessionId);
             }
-            AIHelperPtr= userSessions[sessionId];
-
+            AIHelperPtr = userSessions[sessionId];
         }
 
-        std::string aiInformation=AIHelperPtr->chat(userId, username,sessionId, userQuestion, modelType);
+        std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion, modelType);
         json successResp;
         successResp["success"] = true;
         successResp["Information"] = aiInformation;
         successResp["sessionId"] = sessionId;
-        
+
         std::string successBody = successResp.dump(4);
 
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
@@ -76,7 +73,7 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
         resp->setBody(successBody);
         return;
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
 
         json failureResp;
@@ -90,12 +87,3 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
         resp->setBody(failureBody);
     }
 }
-
-
-
-
-
-
-
-
-
