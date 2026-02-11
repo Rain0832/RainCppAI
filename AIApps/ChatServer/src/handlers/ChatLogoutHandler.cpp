@@ -1,6 +1,6 @@
 #include "../include/handlers/ChatLogoutHandler.h"
 
-void ChatLogoutHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void ChatLogoutHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
     auto contentType = req.getHeader("Content-Type");
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
@@ -12,7 +12,6 @@ void ChatLogoutHandler::handle(const http::HttpRequest& req, http::HttpResponse*
         resp->setBody("");
         return;
     }
-
 
     try
     {
@@ -27,11 +26,10 @@ void ChatLogoutHandler::handle(const http::HttpRequest& req, http::HttpResponse*
 
         json parsed = json::parse(req.getBody());
 
-        {   
+        {
             std::lock_guard<std::mutex> lock(server_->mutexForOnlineUsers_);
             server_->onlineUsers_.erase(userId);
         }
-
 
         json response;
         response["message"] = "logout successful";
@@ -42,7 +40,7 @@ void ChatLogoutHandler::handle(const http::HttpRequest& req, http::HttpResponse*
         resp->setContentLength(responseBody.size());
         resp->setBody(responseBody);
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
 
         json failureResp;
