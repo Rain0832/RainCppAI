@@ -34,9 +34,11 @@ namespace http
 
     void HttpServer::initialize()
     {
-        // 设置回调函数
+        // 设置回调函数：如果有新连接，调用 onConnection 函数
         server_.setConnectionCallback(
             std::bind(&HttpServer::onConnection, this, std::placeholders::_1));
+
+        // 设置回调函数：如果有新数据，调用 onMessage 函数
         server_.setMessageCallback(
             std::bind(&HttpServer::onMessage, this,
                       std::placeholders::_1,
