@@ -8,12 +8,12 @@ namespace http
 
         void Router::registerHandler(HttpRequest::Method method, const std::string &path, HandlerPtr handler)
         {
+            RouteKey key{method, path};
             if (handlers_.find(key) != handlers_.end())
             {
                 LOG_ERROR << "Router::registerHandler: handler already exists";
                 return;
             }
-            RouteKey key{method, path};
             handlers_[key] = std::move(handler);
         }
 

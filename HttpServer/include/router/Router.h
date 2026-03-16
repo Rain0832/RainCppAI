@@ -61,7 +61,7 @@ namespace http
                 //   结合方法和路径后的哈希值。
                 size_t operator()(const RouteKey &key) const
                 {
-                    +size_t methodHash = std::hash<int>{}(static_cast<int>(key.method));
+                    size_t methodHash = std::hash<int>{}(static_cast<int>(key.method));
                     size_t pathHash = std::hash<std::string>{}(key.path);
                     return methodHash * 31 + pathHash;
                 }
