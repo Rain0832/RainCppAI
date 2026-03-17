@@ -35,7 +35,7 @@ void ChatServer::initialize()
     std::cout << "ChatServer initialize start  ! " << std::endl;
 
     // 初始化MySQL数据库连接池
-    http::MysqlUtil::init("tcp://127.0.0.1:3306", "root", "123456", "ChatHttpServer", 5);
+    http::MysqlUtil::init("127.0.0.1:3307", "chat", "123456", "ChatHttpServer", 5);
 
     initializeSession();
     initializeMiddleware();
