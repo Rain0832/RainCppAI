@@ -147,19 +147,23 @@ namespace http
         bool close = ((connection == "close") ||
                       (req.getVersion() == "HTTP/1.0" && connection != "Keep-Alive"));
         HttpResponse response(close);
+        response.setConnection(conn); // 注入连接指针，异步模式下 Handler 可使用
 
-        // 根据请求报文信息来封装响应报文对象
-        httpCallback_(req, &response); // 执行onHttpCallback函数
+        httpCallback_(req, &response);
 
-        // 可以给response设置一个成员，判断是否请求的是文件，如果是文件设置为true，并且存在文件位置在这里send出去。
+        // 异步模式：Handler 已标记 deferred，由 Handler 自行发送响应
+        if (response.isDeferred())
+        {
+            return;
+        }
+
+        // 同步模式：立即发送响应
         muduo::net::Buffer buf;
         response.appendToBuffer(&buf);
-        // 打印完整的响应内容用于调试
         LOG_INFO << "Sending response:\n"
                  << buf.toStringPiece().as_string();
 
         conn->send(&buf);
-        // 如果是短连接的话，返回响应报文后就断开连接
         if (response.closeConnection())
         {
             conn->shutdown();

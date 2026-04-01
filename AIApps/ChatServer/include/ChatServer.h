@@ -37,6 +37,7 @@
 #include "../../../HttpServer/include/utils/MysqlUtil.h"
 #include "../../../HttpServer/include/utils/FileUtil.h"
 #include "../../../HttpServer/include/utils/JsonUtil.h"
+#include "../../../HttpServer/include/utils/ThreadPool.h"
 #include "AIUtil/AISpeechProcessor.h"
 #include "AIUtil/AIHelper.h"
 #include "AIUtil/ImageRecognizer.h"
@@ -210,6 +211,8 @@ private:
 	}
 
 	http::HttpServer httpServer_; ///< HTTP服务器实例
+
+	http::ThreadPool aiThreadPool_{8}; ///< AI 任务线程池（8线程，处理耗时 AI API 调用）
 
 	http::MysqlUtil mysqlUtil_; ///< MySQL数据库工具实例
 

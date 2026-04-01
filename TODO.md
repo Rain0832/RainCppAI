@@ -1,6 +1,6 @@
 # RainCppAI TODO — 优化路线图
 
-> 当前版本：v1.2.0
+> 当前版本：v1.3.0
 
 ---
 
@@ -25,16 +25,15 @@
 
 ---
 
-### 🔴 优化 1：引入异步/协程处理 AI 调用
+### ✅ 优化 1：引入异步线程池处理 AI 调用（v1.3.0 已完成）
 
-**现状**：`AIHelper::chat()` 中 `curl_easy_perform()` 同步阻塞 muduo IO 线程（~500ms-数秒）。当前 4 个 IO 线程并行处理，最多支持 4 个并发 AI 请求。
-
-**方案（待实施）**：
-- **方案 A**：改造 `HttpServer::onRequest` 支持异步响应——Handler 捕获 `TcpConnectionPtr`，将 AI 调用提交到独立线程池，完成后通过 `conn->send()` 异步回写响应
-- **方案 B**：C++20 协程 + `co_await`
-- **方案 C**：`curl_multi` 异步接口 + EventLoop fd 注册
-
-**评估**：方案 A 最务实，但需改造 HttpServer 的同步响应模型。属于**大改动**。
+**改动**：
+- 新增通用 `ThreadPool` 类（`std::thread` + `std::queue` + `condition_variable`）
+- `HttpResponse` 新增 `deferred` 异步模式 + 持有 `TcpConnectionPtr`
+- `HttpServer::onRequest` 支持异步响应（deferred 模式跳过自动发送）
+- `ChatSendHandler` / `ChatCreateAndSendHandler` AI 调用提交到 8 线程的线程池
+- 线程池任务完成后通过 `runInLoop` 回到 IO 线程发送响应
+- IO 线程完全不阻塞，并发能力从 4 提升到 8+
 
 ---
 
@@ -76,9 +75,9 @@
 
 | 优先级 | 优化项 | 状态 | 难度 |
 |--------|--------|------|------|
+| ✅ 已完成 | 异步线程池 — IO 线程不阻塞 | v1.3.0 | 大 |
 | ✅ 已完成 | 线程安全 — shared_mutex + LRU | v1.2.0 | 中 |
 | ✅ 部分完成 | 配置管理 — 前端 API Key 传递 | v1.1.0 | 小 |
-| 🔴 P0 | 异步 AI 调用（线程池 + 异步回写） | 待实施 | 大 |
-| 🟠 P1 | SSE 流式输出（依赖 P0） | 待实施 | 大 |
-| 🔵 P2 | 标准 MCP Server | 待实施 | 大 |
-| ⚪ P3 | 可观测性 | 待实施 | 中 |
+| 🟠 P0 | SSE 流式输出（依赖异步框架 ✅） | 待实施 | 大 |
+| 🔵 P1 | 标准 MCP Server | 待实施 | 大 |
+| ⚪ P2 | 可观测性 | 待实施 | 中 |
