@@ -1,238 +1,301 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>欢迎来到AI助手界面</title>
-    <style>
-        
-        body {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Microsoft YaHei", Arial, sans-serif;
-            color: #fff;
-            overflow: hidden;
-            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rain AI — 主页</title>
+<style>
+:root {
+    --bg: #f8f9fb; --card: #ffffff; --border: #e5e7eb; --text: #1a1a2e;
+    --text2: #6b7280; --accent: #4f46e5; --accent-hover: #4338ca;
+    --shadow: rgba(0,0,0,0.06); --card-hover: #fafbff;
+}
+[data-theme="dark"] {
+    --bg: #0f0f1a; --card: #1a1a2e; --border: #2d2d44; --text: #e5e5ef;
+    --text2: #9ca3af; --accent: #818cf8; --accent-hover: #6366f1;
+    --shadow: rgba(0,0,0,0.3); --card-hover: #1e1e36;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 60px 20px; transition: background .3s, color .3s;
+}
+.theme-toggle {
+    position: fixed; top: 20px; right: 20px; width: 40px; height: 40px;
+    border-radius: 12px; border: 1px solid var(--border); background: var(--card);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: all .2s; z-index: 100;
+}
+.theme-toggle:hover { border-color: var(--accent); transform: scale(1.05); }
+.header { text-align: center; margin-bottom: 48px; }
+.header h1 {
+    font-size: 32px; font-weight: 700; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.header p { color: var(--text2); font-size: 15px; margin-top: 8px; }
+.grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px; width: 100%; max-width: 720px;
+}
+.card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 28px; cursor: pointer; transition: all .25s;
+    box-shadow: 0 1px 3px var(--shadow); position: relative; overflow: hidden;
+}
+.card:hover {
+    border-color: var(--accent); transform: translateY(-3px);
+    box-shadow: 0 8px 24px var(--shadow); background: var(--card-hover);
+}
+.card-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 16px;
+}
+.card-icon.chat { background: rgba(79,70,229,0.1); }
+.card-icon.image { background: rgba(6,182,212,0.1); }
+.card-icon.profile { background: rgba(245,158,11,0.1); }
+.card-icon.logout { background: rgba(239,68,68,0.1); }
+.card h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.card p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.card .arrow {
+    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+    color: var(--text2); font-size: 18px; transition: all .2s;
+}
+.card:hover .arrow { color: var(--accent); transform: translateY(-50%) translateX(3px); }
 
-        
-        .stars {
-            width: 2px;
-            height: 2px;
-            background: white;
-            border-radius: 50%;
-            position: absolute;
-            animation: twinkling 3s infinite ease-in-out;
-        }
-
-        @keyframes twinkling {
-            0%, 100% { opacity: 0.2; }
-            50% { opacity: 1; }
-        }
-
-        
-        #loading-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-        }
-
-        
-        #loading-title {
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            color: #00c3ff;
-            text-shadow: 0 0 10px #00c3ff, 0 0 20px #008bff, 0 0 30px #00e1ff;
-            letter-spacing: 3px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { text-shadow: 0 0 10px #00c3ff, 0 0 20px #008bff; }
-            50% { text-shadow: 0 0 20px #00e1ff, 0 0 40px #00ffff; }
-        }
-
-        
-        .progress-bar {
-            width: 320px;
-            height: 22px;
-            background: #222;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 15px #00c3ff;
-        }
-
-        .progress-bar-inner {
-            height: 100%;
-            background: linear-gradient(90deg, #00c3ff, #00e1ff, #00fff7);
-            width: 0;
-            transition: width 0.3s ease;
-        }
-
-        
-        #loading-text {
-            margin-top: 20px;
-            font-size: 1.2em;
-            color: #ccc;
-        }
-
-        
-        #menu-container {
-            display: none;
-            text-align: center;
-            padding: 60px 20px;
-            animation: fadeIn 1s ease forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h1 {
-            font-size: 2.8em;
-            margin-bottom: 30px;
-            color: #00e1ff;
-            text-shadow: 0 0 15px #00c3ff, 0 0 30px #008bff;
-        }
-
-        .menu-option {
-            margin: 15px 0;
-            font-size: 1.6em;
-            padding: 12px 25px;
-            border-radius: 10px;
-            display: inline-block;
-            background: rgba(0, 195, 255, 0.1);
-            border: 1px solid #00c3ff;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 8px #00c3ff;
-        }
-
-        .menu-option:hover {
-            background: rgba(0, 225, 255, 0.2);
-            color: #00ffff;
-            text-shadow: 0 0 10px #00e1ff;
-            transform: scale(1.05);
-            box-shadow: 0 0 15px #00e1ff;
-        }
-
-        .menu-border {
-            margin: 20px auto;
-            width: 85%;
-            height: 2px;
-            background: #00c3ff;
-            box-shadow: 0 0 10px #00c3ff;
-        }
-    </style>
+/* Profile modal */
+.modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px); z-index: 200;
+    justify-content: center; align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 32px; width: 90%; max-width: 480px; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: modalIn .25s ease;
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+}
+.modal-header h2 { font-size: 20px; font-weight: 600; }
+.modal-close {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; cursor: pointer; font-size: 16px; color: var(--text2);
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+}
+.modal-close:hover { border-color: var(--accent); color: var(--accent); }
+.key-section { margin-bottom: 20px; }
+.key-section label {
+    display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 6px;
+}
+.key-section .key-row { display: flex; gap: 8px; }
+.key-section input {
+    flex: 1; padding: 10px 12px; font-size: 13px; font-family: 'SF Mono', monospace;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+    color: var(--text); outline: none; transition: all .2s;
+}
+.key-section input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.key-save {
+    padding: 10px 16px; border: none; border-radius: 8px;
+    background: var(--accent); color: #fff; font-size: 13px; font-weight: 500;
+    cursor: pointer; white-space: nowrap; transition: all .2s;
+}
+.key-save:hover { background: var(--accent-hover); }
+.key-hint { font-size: 12px; color: var(--text2); margin-top: 6px; }
+.key-status {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px;
+    margin-left: 8px; font-weight: 500;
+}
+.key-status.set { background: rgba(34,197,94,0.1); color: #16a34a; }
+.key-status.unset { background: rgba(239,68,68,0.1); color: #dc2626; }
+.toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: var(--accent); color: #fff; padding: 10px 24px;
+    border-radius: 10px; font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+    opacity: 0; transition: all .3s; pointer-events: none; z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
 </head>
-
 <body>
-    
-    <script>
-        for (let i = 0; i < 80; i++) {
-            let star = document.createElement("div");
-            star.className = "stars";
-            star.style.top = Math.random() * window.innerHeight + "px";
-            star.style.left = Math.random() * window.innerWidth + "px";
-            star.style.animationDuration = 2 + Math.random() * 3 + "s";
-            document.body.appendChild(star);
-        }
-    </script>
+<button class="theme-toggle" id="themeToggle">☀️</button>
+<div class="toast" id="toast"></div>
 
-    
-    <div id="loading-container">
-        <div id="loading-title">AI 助手 启动中...</div>
-        <div class="progress-bar">
-            <div class="progress-bar-inner"></div>
+<div class="header">
+    <h1>Rain AI</h1>
+    <p>选择一个服务开始使用</p>
+</div>
+
+<div class="grid">
+    <div class="card" id="chat-service">
+        <div class="card-icon chat">💬</div>
+        <h3>AI 聊天助手</h3>
+        <p>与多种大模型对话，支持多会话、MCP 工具调用</p>
+        <span class="arrow">→</span>
+    </div>
+    <div class="card" id="image-service">
+        <div class="card-icon image">🖼</div>
+        <h3>AI 图像识别</h3>
+        <p>基于 ONNX Runtime 的图像分类与识别</p>
+        <span class="arrow">→</span>
+    </div>
+    <div class="card" id="profile-btn">
+        <div class="card-icon profile">⚙️</div>
+        <h3>个人中心</h3>
+        <p>管理 API Key、模型配置与账户设置</p>
+        <span class="arrow">→</span>
+    </div>
+    <div class="card" id="logout">
+        <div class="card-icon logout">🚪</div>
+        <h3>退出登录</h3>
+        <p>安全退出当前账户</p>
+        <span class="arrow">→</span>
+    </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="modal-overlay" id="profileModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>个人中心</h2>
+            <button class="modal-close" id="modalClose">✕</button>
         </div>
-        <div id="loading-text">系统正在初始化，请稍候...</div>
+        <div class="key-section">
+            <label>阿里百炼 API Key <span class="key-status" id="status-dashscope"></span></label>
+            <div class="key-row">
+                <input type="password" id="key-dashscope" placeholder="sk-xxxx...">
+                <button class="key-save" onclick="saveKey('dashscope')">保存</button>
+            </div>
+            <div class="key-hint">用于阿里百炼、百炼RAG、百炼MCP 模型</div>
+        </div>
+        <div class="key-section">
+            <label>豆包 API Key <span class="key-status" id="status-doubao"></span></label>
+            <div class="key-row">
+                <input type="password" id="key-doubao" placeholder="sk-xxxx...">
+                <button class="key-save" onclick="saveKey('doubao')">保存</button>
+            </div>
+            <div class="key-hint">用于豆包（火山引擎）模型</div>
+        </div>
+        <div class="key-section">
+            <label>百度语音 Client ID <span class="key-status" id="status-baidu-id"></span></label>
+            <div class="key-row">
+                <input type="password" id="key-baidu-id" placeholder="Client ID">
+                <button class="key-save" onclick="saveKey('baidu-id')">保存</button>
+            </div>
+        </div>
+        <div class="key-section">
+            <label>百度语音 Client Secret <span class="key-status" id="status-baidu-secret"></span></label>
+            <div class="key-row">
+                <input type="password" id="key-baidu-secret" placeholder="Client Secret">
+                <button class="key-save" onclick="saveKey('baidu-secret')">保存</button>
+            </div>
+            <div class="key-hint">用于语音合成 (TTS) 功能</div>
+        </div>
     </div>
+</div>
 
-    
-    <div id="menu-container">
-        <h1>✨ 欢迎来到 AI 助手 ✨</h1>
-        <div class="menu-border"></div>
-        <div class="menu-option" id="chat-service">[1] 进入 AI 聊天助手</div>
-        <div class="menu-option" id="image-service">[2] 进入 AI 图像识别助手</div>
-        <div class="menu-option" id="logout">[0] 退出登录</div>
-    </div>
+<script>
+const $ = s => document.querySelector(s);
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const progressBar = document.querySelector('.progress-bar-inner');
-            const loadingContainer = document.getElementById('loading-container');
-            const menuContainer = document.getElementById('menu-container');
+// Theme
+function initTheme() {
+    const t = localStorage.getItem('rain-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    $('#themeToggle').textContent = t === 'dark' ? '🌙' : '☀️';
+}
+$('#themeToggle').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('rain-theme', next);
+    $('#themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+});
+initTheme();
 
-            
-            let percent = 0;
-            let interval = setInterval(() => {
-                percent += 10;
-                progressBar.style.width = percent + "%";
-                if (percent >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        loadingContainer.style.display = 'none';
-                        menuContainer.style.display = 'block';
-                    }, 300);
-                }
-            }, 200);
-        });
+// Toast
+function showToast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
 
-        // 进入AI服务
-        function loadService(path, errorMsg) {
-            fetch(path, { method: 'GET', headers: { 'Accept': 'text/html' } })
-                .then(res => res.text())
-                .then(html => { document.open(); document.write(html); document.close(); })
-                .catch(() => alert(errorMsg));
-        }
+// Navigation
+function loadService(path, msg) {
+    fetch(path, { method: 'GET', headers: { 'Accept': 'text/html' } })
+        .then(r => r.text())
+        .then(html => { document.open(); document.write(html); document.close(); })
+        .catch(() => showToast(msg));
+}
 
-        document.getElementById('chat-service').addEventListener('click', () => loadService('/chat', '进入AI聊天服务异常！'));
-        document.getElementById('image-service').addEventListener('click', () => loadService('/upload', '进入AI图像识别服务异常！'));
-        document.getElementById('logout').addEventListener('click', () => {
-            const userId = sessionStorage.getItem('userId');
-            fetch('/user/logout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: userId, type: 'manual', gameType: 0 })
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error('Logout failed');
-                    return fetch('/', { method: 'GET', headers: { 'Accept': 'text/html' } });
-                })
-                .then(res => res.text())
-                .then(html => {
-                    sessionStorage.clear();
-                    document.open();
-                    document.write(html);
-                    document.close();
-                })
-                .catch(() => alert('退出登录失败！'));
-        });
+$('#chat-service').addEventListener('click', () => loadService('/chat', '进入聊天服务异常'));
+$('#image-service').addEventListener('click', () => loadService('/upload', '进入图像识别异常'));
+$('#logout').addEventListener('click', () => {
+    const userId = sessionStorage.getItem('userId');
+    fetch('/user/logout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, type: 'manual', gameType: 0 })
+    }).then(r => {
+        if (!r.ok) throw new Error();
+        return fetch('/', { method: 'GET', headers: { 'Accept': 'text/html' } });
+    }).then(r => r.text()).then(html => {
+        sessionStorage.clear(); document.open(); document.write(html); document.close();
+    }).catch(() => showToast('退出失败'));
+});
 
-        // 页面刷新/关闭时自动登出
-        window.addEventListener('beforeunload', function () {
-            const userId = sessionStorage.getItem('userId');
-            if (userId) {
-                const data = new Blob([JSON.stringify({ userId: userId, type: 'refresh', gameType: 0 })],
-                    { type: 'application/json' });
-                navigator.sendBeacon('/user/logout', data);
-            }
-        });
+// Profile modal
+$('#profile-btn').addEventListener('click', () => {
+    $('#profileModal').classList.add('show');
+    updateKeyStatus();
+});
+$('#modalClose').addEventListener('click', () => $('#profileModal').classList.remove('show'));
+$('#profileModal').addEventListener('click', e => {
+    if (e.target === $('#profileModal')) $('#profileModal').classList.remove('show');
+});
 
-        // 页面加载时用户检查
-        window.addEventListener('load', function () {
-            const userId = sessionStorage.getItem('userId');
-            if (!userId) {
-                window.location.href = '/entry';
-            }
-        });
-    </script>
+// API Key management (localStorage)
+const KEY_MAP = {
+    'dashscope': 'rain-key-dashscope',
+    'doubao': 'rain-key-doubao',
+    'baidu-id': 'rain-key-baidu-id',
+    'baidu-secret': 'rain-key-baidu-secret'
+};
+function saveKey(name) {
+    const val = $(`#key-${name}`).value.trim();
+    if (!val) { showToast('请输入有效的 Key'); return; }
+    localStorage.setItem(KEY_MAP[name], val);
+    $(`#key-${name}`).value = '';
+    showToast('已保存');
+    updateKeyStatus();
+}
+function updateKeyStatus() {
+    Object.keys(KEY_MAP).forEach(name => {
+        const el = $(`#status-${name}`);
+        const set = !!localStorage.getItem(KEY_MAP[name]);
+        el.textContent = set ? '已配置' : '未配置';
+        el.className = 'key-status ' + (set ? 'set' : 'unset');
+    });
+}
+
+// Auth check
+window.addEventListener('load', () => {
+    if (!sessionStorage.getItem('userId')) window.location.href = '/entry';
+});
+window.addEventListener('beforeunload', () => {
+    const userId = sessionStorage.getItem('userId');
+    if (userId) {
+        navigator.sendBeacon('/user/logout',
+            new Blob([JSON.stringify({ userId, type: 'refresh', gameType: 0 })],
+            { type: 'application/json' }));
+    }
+});
+</script>
 </body>
 </html>
