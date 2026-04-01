@@ -39,7 +39,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         {
             json s;
             s["sessionId"] = sid;
-            s["name"] = "Ự " + sid;
+            s["name"] = "Session " + sid;
             sessionArray.push_back(s);
         }
         successResp["sessions"] = sessionArray;
