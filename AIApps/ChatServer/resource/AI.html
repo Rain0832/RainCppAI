@@ -175,7 +175,7 @@ body {
             <small>Enter 发送 · Shift+Enter 换行</small>
         </div>
     </div>
-    <form class="input-area" id="chatForm">
+    <form class="input-area" id="chatForm" style="display:none">
         <textarea id="question" placeholder="输入消息..." rows="1"></textarea>
         <button type="submit" class="send-btn" id="sendBtn">发送</button>
     </form>
@@ -239,6 +239,7 @@ function clearChat() { $('#chatArea').innerHTML = ''; }
 
 async function switchSession(id) {
     currentSessionId = String(id); tempSession = false; clearChat();
+    $('#chatForm').style.display = 'flex';
     if (!sessions[id].messages?.length) {
         try {
             const r = await fetch('/chat/history', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -269,6 +270,7 @@ async function playTTS(text) {
 
 $('#newChatBtn').onclick = () => {
     currentSessionId = 'temp'; tempSession = true; clearChat();
+    $('#chatForm').style.display = 'flex';
     const hint = document.createElement('div');
     hint.className = 'welcome-hint';
     hint.innerHTML = '<span class="emoji">✨</span>输入你的第一条消息';
@@ -281,10 +283,18 @@ const ta = $('#question');
 ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; };
 ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#chatForm').dispatchEvent(new Event('submit')); } };
 
+// 根据模型类型获取对应的 API Key
+function getApiKey(modelType) {
+    const map = { '1': 'rain-key-dashscope', '2': 'rain-key-doubao', '3': 'rain-key-dashscope', '4': 'rain-key-dashscope' };
+    return localStorage.getItem(map[modelType] || '') || '';
+}
+
 $('#chatForm').onsubmit = async e => {
     e.preventDefault();
     const q = ta.value.trim(); if (!q) return;
     if (!currentSessionId && !tempSession) { showToast('请先新建对话或选择会话'); return; }
+    const mt = $('#modelType').value;
+    const ak = getApiKey(mt);
 
     appendMsg('user', q);
     ta.value = ''; ta.style.height = 'auto';
@@ -293,7 +303,7 @@ $('#chatForm').onsubmit = async e => {
     try {
         if (tempSession) {
             const r = await fetch('/chat/send-new-session', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, modelType: $('#modelType').value }) });
+                body: JSON.stringify({ question: q, modelType: mt, apiKey: ak }) });
             const d = await r.json();
             if (d.success) {
                 const sid = String(d.sessionId);
@@ -306,7 +316,7 @@ $('#chatForm').onsubmit = async e => {
             if (!sessions[currentSessionId]) { showToast('请先选择或创建会话'); $('#sendBtn').disabled = false; return; }
             sessions[currentSessionId].messages.push({ role: 'user', content: q });
             const r = await fetch('/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, modelType: $('#modelType').value, sessionId: currentSessionId }) });
+                body: JSON.stringify({ question: q, modelType: mt, sessionId: currentSessionId, apiKey: ak }) });
             const d = await r.json();
             if (d.success) { appendMsg('assistant', d.Information);
                 sessions[currentSessionId].messages.push({ role: 'assistant', content: d.Information });

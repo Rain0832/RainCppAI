@@ -37,11 +37,21 @@ void AIHelper::restoreMessage(const std::string &userInput, long long ms)
 }
 
 // 发送聊天消息
-std::string AIHelper::chat(int userId, std::string userName, std::string sessionId, std::string userQuestion, std::string modelType)
+std::string AIHelper::chat(int userId, std::string userName, std::string sessionId, std::string userQuestion, std::string modelType, std::string apiKey)
 {
 
     // 设置策略
     setStrategy(StrategyFactory::instance().create(modelType));
+
+    // 如果前端传了 apiKey，优先使用
+    if (!apiKey.empty()) {
+        strategy->setApiKey(apiKey);
+    }
+
+    // 检查 apiKey 是否可用
+    if (strategy->getApiKey().empty()) {
+        return "[错误] 未配置 API Key，请在个人中心设置对应模型的 API Key";
+    }
 
     if (false == strategy->isMCPModel)
     {

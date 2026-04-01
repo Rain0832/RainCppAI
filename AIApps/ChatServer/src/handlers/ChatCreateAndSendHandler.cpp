@@ -26,6 +26,7 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
 
         std::string userQuestion;
         std::string modelType;
+        std::string apiKey;
 
         auto body = req.getBody();
         if (!body.empty())
@@ -33,6 +34,8 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
             auto j = json::parse(body);
             if (j.contains("question"))
                 userQuestion = j["question"];
+            if (j.contains("apiKey"))
+                apiKey = j["apiKey"];
 
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
         }
@@ -58,7 +61,7 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
             AIHelperPtr = userSessions[sessionId];
         }
 
-        std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion, modelType);
+        std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion, modelType, apiKey);
         json successResp;
         successResp["success"] = true;
         successResp["Information"] = aiInformation;

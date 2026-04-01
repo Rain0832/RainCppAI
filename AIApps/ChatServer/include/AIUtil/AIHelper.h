@@ -56,7 +56,7 @@ public:
      * @param modelType 模型类型。
      * @return AI的响应内容。
      */
-    std::string chat(int userId, std::string userName, std::string sessionId, std::string userQuestion, std::string modelType);
+    std::string chat(int userId, std::string userName, std::string sessionId, std::string userQuestion, std::string modelType, std::string apiKey = "");
 
     /**
      * @brief 发送自定义请求体。
