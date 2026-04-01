@@ -192,3 +192,38 @@ void ChatServer::packageResp(const std::string &version,
         resp->setCloseConnection(true);
     }
 }
+
+void ChatServer::touchSession(int userId, const std::string& sessionId)
+{
+    std::string key = std::to_string(userId) + ":" + sessionId;
+    auto it = lruMap_.find(key);
+    if (it != lruMap_.end()) {
+        lruList_.erase(it->second);
+    }
+    lruList_.push_front(key);
+    lruMap_[key] = lruList_.begin();
+}
+
+void ChatServer::evictIfNeeded()
+{
+    while (lruList_.size() > MAX_SESSIONS) {
+        std::string oldest = lruList_.back();
+        lruList_.pop_back();
+        lruMap_.erase(oldest);
+
+        // 解析 "userId:sessionId"
+        auto pos = oldest.find(':');
+        if (pos != std::string::npos) {
+            int uid = std::stoi(oldest.substr(0, pos));
+            std::string sid = oldest.substr(pos + 1);
+            auto uit = chatInformation.find(uid);
+            if (uit != chatInformation.end()) {
+                uit->second.erase(sid);
+                if (uit->second.empty()) {
+                    chatInformation.erase(uit);
+                }
+            }
+            LOG_INFO << "LRU evicted session: userId=" << uid << " sessionId=" << sid;
+        }
+    }
+}

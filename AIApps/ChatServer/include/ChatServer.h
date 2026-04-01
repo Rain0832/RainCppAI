@@ -25,6 +25,8 @@
 #include <tuple>
 #include <unordered_map>
 #include <mutex>
+#include <shared_mutex>
+#include <list>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
@@ -212,7 +214,7 @@ private:
 	http::MysqlUtil mysqlUtil_; ///< MySQL数据库工具实例
 
 	std::unordered_map<int, bool> onlineUsers_; ///< 在线用户状态映射
-	std::mutex mutexForOnlineUsers_;			///< 在线用户状态锁
+	mutable std::shared_mutex rwMutexForOnlineUsers_; ///< 在线用户读写锁
 
 	/**
 	 * @brief 聊天信息存储结构
@@ -222,12 +224,20 @@ private:
 	 * 值：AI助手实例
 	 */
 	std::unordered_map<int, std::unordered_map<std::string, std::shared_ptr<AIHelper>>> chatInformation;
-	std::mutex mutexForChatInformation; ///< 聊天信息锁
+	mutable std::shared_mutex rwMutexForChatInfo; ///< 读写锁（替代原 mutex）
 
 	std::unordered_map<int, std::shared_ptr<ImageRecognizer>> ImageRecognizerMap; ///< 图像识别器映射
-	std::mutex mutexForImageRecognizerMap;										  ///< 图像识别器锁
+	mutable std::shared_mutex rwMutexForImageRecognizer; ///< 图像识别器读写锁
 
 	std::unordered_map<int, std::vector<std::string>> sessionsIdsMap; ///< 用户-会话ID列表映射
-	std::mutex mutexForSessionsId;									  ///< 会话ID列表锁，unordered_map不保证原子性，vector可能也会触发不一致的读取
-	// 现代C++中有concurrent_unordered_map和concurrent_vector等线程安全的数据结构，可以考虑替换以提高性能和安全性
+	mutable std::shared_mutex rwMutexForSessionsId; ///< 会话ID列表读写锁
+
+	/// LRU 淘汰：记录会话访问顺序，key = "userId:sessionId"
+	std::list<std::string> lruList_;
+	std::unordered_map<std::string, std::list<std::string>::iterator> lruMap_;
+	static constexpr size_t MAX_SESSIONS = 500; ///< 内存中最大会话数
+
+	/// LRU 辅助方法（调用方需持有写锁）
+	void touchSession(int userId, const std::string& sessionId);
+	void evictIfNeeded();
 };

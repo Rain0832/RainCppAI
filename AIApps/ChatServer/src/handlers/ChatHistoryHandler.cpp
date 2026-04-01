@@ -36,19 +36,26 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
 
         {
             std::shared_ptr<AIHelper> AIHelperPtr;
-            std::lock_guard<std::mutex> lock(server_->mutexForChatInformation);
-
-            auto& userSessions = server_->chatInformation[userId];
-
-            if (userSessions.find(sessionId) == userSessions.end()) {
-
-                userSessions.emplace( 
-                    sessionId,
-                    std::make_shared<AIHelper>()
-                );
+            // 先读锁查找
+            std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForChatInfo);
+            auto uit = server_->chatInformation.find(userId);
+            if (uit != server_->chatInformation.end()) {
+                auto sit = uit->second.find(sessionId);
+                if (sit != uit->second.end()) {
+                    AIHelperPtr = sit->second;
+                }
             }
-            AIHelperPtr= userSessions[sessionId];
-            messages= AIHelperPtr->GetMessages();
+            rlock.unlock();
+
+            if (!AIHelperPtr) {
+                std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
+                auto& userSessions = server_->chatInformation[userId];
+                if (userSessions.find(sessionId) == userSessions.end()) {
+                    userSessions.emplace(sessionId, std::make_shared<AIHelper>());
+                }
+                AIHelperPtr = userSessions[sessionId];
+            }
+            messages = AIHelperPtr->GetMessages();
         }
 
 

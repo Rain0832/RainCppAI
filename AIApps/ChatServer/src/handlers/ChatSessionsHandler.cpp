@@ -27,7 +27,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         std::vector<std::string> sessions;
 
         {
-            std::lock_guard<std::mutex> lock(server_->mutexForSessionsId);
+            std::shared_lock<std::shared_mutex> lock(server_->rwMutexForSessionsId);
             sessions = server_->sessionsIdsMap[userId];
         }
 

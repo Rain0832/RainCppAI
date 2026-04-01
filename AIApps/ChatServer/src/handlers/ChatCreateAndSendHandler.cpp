@@ -46,19 +46,21 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
 
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
-            std::lock_guard<std::mutex> lock(server_->mutexForChatInformation);
+            std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
 
             auto &userSessions = server_->chatInformation[userId];
 
             if (userSessions.find(sessionId) == userSessions.end())
             {
-
-                userSessions.emplace(
-                    sessionId,
-                    std::make_shared<AIHelper>());
-                server_->sessionsIdsMap[userId].push_back(sessionId);
+                userSessions.emplace(sessionId, std::make_shared<AIHelper>());
+                {
+                    std::unique_lock<std::shared_mutex> slock(server_->rwMutexForSessionsId);
+                    server_->sessionsIdsMap[userId].push_back(sessionId);
+                }
             }
             AIHelperPtr = userSessions[sessionId];
+            server_->touchSession(userId, sessionId);
+            server_->evictIfNeeded();
         }
 
         std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion, modelType, apiKey);
