@@ -17,6 +17,11 @@ find_package(OpenCV REQUIRED)
 # MySQL Connector
 find_library(MYSQLCPPCONN_LIBRARY
     NAMES mysqlcppconn mysqlcppconn8
+    PATHS
+        /usr/local/lib64
+        /usr/local/lib
+        /usr/lib64
+        /usr/lib
 )
 
 # ONNX Runtime
@@ -31,6 +36,36 @@ find_library(ONNXRUNTIME_LIBRARY
 if(NOT ONNXRUNTIME_LIBRARY)
     message(FATAL_ERROR "ONNX Runtime library not found")
 endif()
+
+# SimpleAmqpClient
+find_library(SIMPLEAMQPCLIENT_LIBRARY
+    NAMES SimpleAmqpClient
+    PATHS
+        /usr/local/lib64
+        /usr/local/lib
+        /usr/lib64
+        /usr/lib
+)
+
+# rabbitmq-c
+find_library(RABBITMQ_LIBRARY
+    NAMES rabbitmq
+    PATHS
+        /usr/local/lib64
+        /usr/local/lib
+        /usr/lib64
+        /usr/lib
+)
+
+# mysqlclient
+find_library(MYSQLCLIENT_LIBRARY
+    NAMES mysqlclient
+    PATHS
+        /usr/lib64/mysql
+        /usr/lib64
+        /usr/local/lib64
+        /usr/local/lib
+)
 
 # -----------------------------
 # 源文件
@@ -72,6 +107,7 @@ target_include_directories(http_server
         /usr/include/mysql-cppconn-8
         /usr/include/mysql
         /usr/local/include
+        /usr/local/include/jdbc
         /usr/local/onnxruntime/include
 )
 
@@ -86,7 +122,7 @@ target_link_libraries(http_server
         muduo_base
 
         ${MYSQLCPPCONN_LIBRARY}
-        mysqlclient
+        ${MYSQLCLIENT_LIBRARY}
 
         OpenSSL::SSL
         OpenSSL::Crypto
@@ -96,8 +132,8 @@ target_link_libraries(http_server
 
         ${ONNXRUNTIME_LIBRARY}
 
-        SimpleAmqpClient
-        rabbitmq
+        ${SIMPLEAMQPCLIENT_LIBRARY}
+        ${RABBITMQ_LIBRARY}
 )
 
 # -----------------------------
