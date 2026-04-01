@@ -241,7 +241,10 @@ function renderSessions() {
     }
 }
 
-function hideWelcome() { const h = $('#welcomeHint'); if (h) h.remove(); }
+function hideWelcome() {
+    const h = $('#welcomeHint'); if (h) h.remove();
+    document.querySelectorAll('.welcome-hint').forEach(e => e.remove());
+}
 
 // --- 消息渲染 ---
 function appendMsg(role, content, modelName, idx) {
