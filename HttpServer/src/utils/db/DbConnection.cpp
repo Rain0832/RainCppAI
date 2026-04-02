@@ -101,6 +101,9 @@ void DbConnection::reconnect()
             conn_.reset(driver->connect(host_, user_, password_));
             conn_->setSchema(database_);
         }
+        // 重连后必须重新设置字符集，否则非 ASCII 内容会插入失败
+        std::unique_ptr<sql::Statement> stmt(conn_->createStatement());
+        stmt->execute("SET NAMES utf8mb4");
     } 
     catch (const sql::SQLException& e) 
     {

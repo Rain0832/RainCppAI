@@ -54,7 +54,10 @@ std::string DouBaoStrategy::getApiKey()const {
 
 
 std::string DouBaoStrategy::getModel() const {
-    return "doubao-seed-1-6-thinking-250715";
+    // doubao-lite-4k 是通用对话模型，响应格式标准
+    // 若需要 thinking 模型，可改为 doubao-seed-1-6-thinking-250715
+    // 注意: 使用 thinking 模型时 content 字段可能为 null
+    return "doubao-lite-4k";
 }
 
 
@@ -81,7 +84,16 @@ json DouBaoStrategy::buildRequest(const std::vector<std::pair<std::string, long 
 
 std::string DouBaoStrategy::parseResponse(const json& response) const {
     if (response.contains("choices") && !response["choices"].empty()) {
-        return response["choices"][0]["message"]["content"];
+        const auto& msg = response["choices"][0]["message"];
+        // thinking 模型（doubao-seed-*-thinking-*）的 content 可能为 null
+        // 真正的回答在 reasoning_content 或 content（两者都可能出现）
+        if (msg.contains("content") && !msg["content"].is_null()) {
+            return msg["content"].get<std::string>();
+        }
+        // 兜底：尝试 reasoning_content
+        if (msg.contains("reasoning_content") && msg["reasoning_content"].is_string()) {
+            return msg["reasoning_content"].get<std::string>();
+        }
     }
     return {};
 }
