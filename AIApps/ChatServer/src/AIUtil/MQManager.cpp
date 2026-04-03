@@ -50,11 +50,9 @@ void RabbitMQThreadPool::worker(int id)
     {
         // Each thread has its own independent channel
         auto channel = AmqpClient::Channel::Create(rabbitmq_host_, 5672, "guest", "guest", "/");
-        // set exclusive
-        channel->DeclareQueue(queue_name_, false, true, false, false);
-        // Prevent channel error: 403: AMQP_BASIC_CONSUME_METHOD caused: ACCESS_REFUSED - queue
-        // 'sql_queue' in vhost '/' in exclusive use
-        // std::string consumer_tag = channel->BasicConsume(queue_name_, "");
+        // durable=false, exclusive=false（允许多消费线程共用），
+        // autoDelete=false, noWait=false
+        channel->DeclareQueue(queue_name_, false, false, false, false);
         std::string consumer_tag = channel->BasicConsume(queue_name_, "", true, false, false);
 
         channel->BasicQos(consumer_tag, 1);

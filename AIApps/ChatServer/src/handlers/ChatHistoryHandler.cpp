@@ -4,26 +4,19 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
 {
     try
     {
-
         auto session = server_->getSessionManager()->getSession(req, resp);
-        LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
         if (session->getValue("isLoggedIn") != "true")
         {
-
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
             std::string errorBody = errorResp.dump(4);
-
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(),
-                errorBody, resp);
+                "Unauthorized", true, "application/json", errorBody.size(), errorBody, resp);
             return;
         }
 
-
         int userId = std::stoi(session->getValue("userId"));
-        std::string username = session->getValue("username");
 
         std::string sessionId;
         auto body = req.getBody();
@@ -32,11 +25,9 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             if (j.contains("sessionId")) sessionId = j["sessionId"];
         }
 
-        std::vector<std::pair<std::string, long long>> messages;
-
+        // ★ 先取到 AIHelperPtr（最小化锁范围），再在锁外调用 GetMessages()
+        std::shared_ptr<AIHelper> AIHelperPtr;
         {
-            std::shared_ptr<AIHelper> AIHelperPtr;
-            // 先读锁查找
             std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForChatInfo);
             auto uit = server_->chatInformation.find(userId);
             if (uit != server_->chatInformation.end()) {
@@ -45,43 +36,41 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     AIHelperPtr = sit->second;
                 }
             }
-            rlock.unlock();
+        } // 读锁释放
 
-            if (!AIHelperPtr) {
-                std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
-                auto& userSessions = server_->chatInformation[userId];
-                if (userSessions.find(sessionId) == userSessions.end()) {
-                    userSessions.emplace(sessionId, std::make_shared<AIHelper>());
-                }
-                AIHelperPtr = userSessions[sessionId];
+        if (!AIHelperPtr) {
+            std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
+            auto& userSessions = server_->chatInformation[userId];
+            if (userSessions.find(sessionId) == userSessions.end()) {
+                userSessions.emplace(sessionId, std::make_shared<AIHelper>());
             }
-            messages = AIHelperPtr->GetMessages();
-        }
+            AIHelperPtr = userSessions[sessionId];
+        } // 写锁释放
 
+        // ★ 在 chatInformation 锁完全释放后，通过 AIHelper 自身的 msgMutex_ 安全读取
+        std::vector<Message> messages = AIHelperPtr->GetMessages();
 
         json successResp;
         successResp["success"] = true;
         successResp["history"] = json::array();
 
-        for (size_t i = 0; i < messages.size(); ++i) {
+        for (const auto& msg : messages) {
             json msgJson;
-            msgJson["is_user"] = (i % 2 == 0);
-            msgJson["content"] = messages[i].first;
+            // ★ 直接用 role 字段，彻底消除奇偶依赖
+            msgJson["is_user"] = (msg.role == "user");
+            msgJson["content"] = msg.content;
             successResp["history"].push_back(msgJson);
         }
 
         std::string successBody = successResp.dump(4);
-
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
         resp->setCloseConnection(false);
         resp->setContentType("application/json");
         resp->setContentLength(successBody.size());
         resp->setBody(successBody);
-        return;
     }
     catch (const std::exception& e)
     {
-
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();
@@ -93,12 +82,3 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         resp->setBody(failureBody);
     }
 }
-
-
-
-
-
-
-
-
-

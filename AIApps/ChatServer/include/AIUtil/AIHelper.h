@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <mutex>
+#include <atomic>
 #include <curl/curl.h>
 #include <iostream>
 #include <sstream>
@@ -14,103 +16,77 @@
 #include "AIToolRegistry.h"
 
 /**
- * @brief AI助手类，封装curl访问阿里云等模型的接口。
+ * @brief 消息条目，显式携带 role 字段（不再依赖奇偶下标推断角色）
+ */
+struct Message {
+    std::string role;     ///< "user" 或 "assistant"
+    std::string content;
+    long long   ts;       ///< 毫秒时间戳
+};
+
+/**
+ * @brief AI助手类，封装curl访问各模型的接口。
+ *
+ * 线程安全说明：
+ * - msgMutex_ 保护 messages_ 向量的所有读写
+ * - processing_ 原子标志保证同一 session 同一时刻只有一个 chat() 在执行，
+ *   防止用户连发两条消息导致消息顺序错乱
  */
 class AIHelper
 {
 public:
-    /**
-     * @brief 构造函数，初始化API Key。
-     */
     AIHelper();
 
-    /**
-     * @brief 设置AI策略。
-     * @param strat AI策略的共享指针。
-     */
     void setStrategy(std::shared_ptr<AIStrategy> strat);
 
     /**
-     * @brief 添加一条消息到对话历史。
-     * @param userId 用户ID。
-     * @param userName 用户名。
-     * @param is_user 是否为用户消息。
-     * @param userInput 消息内容。
-     * @param sessionId 会话ID。
+     * @brief 添加一条消息到对话历史（线程安全）
      */
-    void addMessage(int userId, const std::string &userName, bool is_user, const std::string &userInput, std::string sessionId);
+    void addMessage(int userId, const std::string &userName, bool is_user,
+                    const std::string &userInput, std::string sessionId);
 
     /**
-     * @brief 恢复一条历史消息。
-     * @param userInput 消息内容。
-     * @param ms 时间戳（毫秒）。
+     * @brief 从数据库恢复历史消息（线程安全，启动阶段调用）
      */
-    void restoreMessage(const std::string &userInput, long long ms);
+    void restoreMessage(const std::string &content, long long ms, const std::string &role);
 
     /**
      * @brief 发送聊天消息，返回AI的响应内容。
-     * @param userId 用户ID。
-     * @param userName 用户名。
-     * @param sessionId 会话ID。
-     * @param userQuestion 用户问题。
-     * @param modelType 模型类型。
-     * @return AI的响应内容。
+     *
+     * 若该 session 正在处理另一条消息，立即返回错误提示（非阻塞，保护消息顺序）。
      */
-    std::string chat(int userId, std::string userName, std::string sessionId, std::string userQuestion, std::string modelType, std::string apiKey = "");
+    std::string chat(int userId, std::string userName, std::string sessionId,
+                     std::string userQuestion, std::string modelType, std::string apiKey = "");
 
-    /**
-     * @brief 发送自定义请求体。
-     * @param payload 请求载荷。
-     * @return 响应的JSON对象。
-     */
     json request(const json &payload);
 
     /**
-     * @brief 获取消息历史。
-     * @return 消息历史的向量，包含消息内容和时间戳。
+     * @brief 获取消息历史副本（线程安全）
      */
-    std::vector<std::pair<std::string, long long>> GetMessages();
+    std::vector<Message> GetMessages() const;
+
+    /**
+     * @brief 当前 session 是否正在处理消息
+     */
+    bool isProcessing() const { return processing_.load(); }
 
 private:
-    /**
-     * @brief 转义字符串中的特殊字符。
-     * @param input 输入字符串。
-     * @return 转义后的字符串。
-     */
     std::string escapeString(const std::string &input);
-
-    /**
-     * @brief 将消息推送到MySQL数据库（通过消息队列异步执行）。
-     * @param userId 用户ID。
-     * @param userName 用户名。
-     * @param is_user 是否为用户消息。
-     * @param userInput 消息内容。
-     * @param ms 时间戳（毫秒）。
-     * @param sessionId 会话ID。
-     */
-    void pushMessageToMysql(int userId, const std::string &userName, bool is_user, const std::string &userInput, long long ms, std::string sessionId);
-
-    /**
-     * @brief 执行curl请求，返回原始JSON。
-     * @param payload 请求载荷。
-     * @return 响应的JSON对象。
-     */
+    void pushMessageToMysql(int userId, const std::string &userName, bool is_user,
+                            const std::string &userInput, long long ms, std::string sessionId);
     json executeCurl(const json &payload);
+    static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
     /**
-     * @brief curl回调函数，将返回的数据写入字符串缓冲区。
-     * @param contents 数据内容。
-     * @param size 数据块大小。
-     * @param nmemb 数据块数量。
-     * @param userp 用户指针。
-     * @return 写入的字节数。
+     * @brief 将 messages_ 转为 LLM 需要的格式（持有锁外调用，需自行加锁后传入 snapshot）
      */
-    static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
+    json buildMessagesPayload(const std::vector<Message> &msgs) const;
 
 private:
     std::shared_ptr<AIStrategy> strategy;
 
-    // 用户历史对话，偶数下标代表用户信息，奇数下标是AI返回内容
-    // 后者代表时间戳
-    std::vector<std::pair<std::string, long long>> messages;
+    mutable std::mutex      msgMutex_;   ///< 保护 messages_ 的读写锁
+    std::vector<Message>    messages_;   ///< 显式 role 字段，不再用奇偶判断
+
+    std::atomic<bool>       processing_; ///< 同一 session 并发保护标志
 };

@@ -103,7 +103,7 @@ void ChatServer::readDataFromMySQL()
             helper = itSession->second;
         }
 
-        helper->restoreMessage(content, ts);
+        helper->restoreMessage(content, ts, is_user ? "user" : "assistant");
     }
 
     std::cout << "readDataFromMySQL finished" << std::endl;

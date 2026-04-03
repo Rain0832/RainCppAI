@@ -203,6 +203,15 @@ CREATE TABLE chat_message (
 
 ## 📋 Changelog
 
+### v1.4.0 (2026-04-03)
+**Phase 1 — Concurrency Bug Fixes (6 items)**
+- `AIHelper::messages_` now protected by `msgMutex_` (was completely unprotected)
+- `Message` struct with explicit `role` field (`"user"` / `"assistant"`) — eliminates the fragile even/odd index heuristic for role detection
+- `atomic<bool> processing_` prevents concurrent requests to the same session from corrupting message order; second request returns an instant error instead of racing
+- `ChatHistoryHandler`: `GetMessages()` called after `chatInfo` lock is released, using AIHelper's own `msgMutex_` — fixes data race between history reads and thread-pool writes
+- RabbitMQ consumer: `DeclareQueue exclusive=false` — both consumer threads can now share the queue without `ACCESS_REFUSED`
+- DB connection pool: `cv_.wait_for(3s)` replaces infinite `cv_.wait` — threads now fail fast under high load instead of hanging indefinitely
+
 ### v1.3.0 (2026-04-02)
 **Async AI Thread Pool — IO threads never blocked**
 - New `ThreadPool` class (std::thread + queue + condition_variable + future)
@@ -232,14 +241,14 @@ Self-developed HTTP framework + multi-model AI chat + RAG + MCP + image recognit
 
 ## 🗺 Roadmap
 
-### v1.4.0 — SSE Streaming Output
+### v1.5.0 — SSE Streaming Output
 - `HttpResponse` supports `Transfer-Encoding: chunked`
 - `AIHelper::chat()` uses curl `WRITEFUNCTION` callback for token-by-token forwarding
 - Frontend `EventSource` replaces typewriter simulation with real streaming
 
-### v2.0.0 — Standard MCP Server + Observability
+### v2.0.0 — DB Schema Redesign + Standard MCP + Observability
+- New table schema: `sessions` table, `messages` table with explicit `role` column, `user_api_keys` table
 - Standard MCP Server (JSON-RPC 2.0 / stdio transport)
-- Support `tools/list`, `tools/call` standard methods
 - Structured logging (JSON format + request ID)
 - Prometheus metrics (QPS, latency, pool utilization)
 

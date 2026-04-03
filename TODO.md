@@ -1,6 +1,31 @@
 # RainCppAI TODO — 优化路线图
 
-> 当前版本：v1.3.0
+> 当前版本：v1.4.0
+
+---
+
+### ✅ Phase 1：并发 Bug 修复（v1.4.0 已完成）
+
+**改动**：
+
+1. **AIHelper::messages 无锁** → 引入 `msgMutex_`，所有对 `messages_` 的读写均加锁
+2. **奇偶下标判断角色** → 新增 `Message` 结构体（`role` / `content` / `ts`），`ChatHistoryHandler` 直接读 `role` 字段，彻底消除奇偶依赖
+3. **同一 session 并发请求** → 引入 `atomic<bool> processing_`，同一 session 同时只能处理一条消息，后续请求立即返回提示（非阻塞串行化）
+4. **GetMessages() 在 chatInfo 锁外调用竞争** → 分离锁范围：chatInfo 锁只保护 map 查找，AIHelper 自身的 msgMutex_ 保护消息内容
+5. **MQ 独占队列 bug** → `DeclareQueue` 的 `exclusive` 从 `true` 改为 `false`，多消费线程可共用同一队列
+6. **DB 连接池等待无超时** → `cv_.wait_for(3s)`，超时后抛出异常，防止线程池全阻塞
+
+---
+
+### ✅ 优化 1：引入异步线程池处理 AI 调用（v1.3.0 已完成）
+
+**改动**：
+- 新增通用 `ThreadPool` 类（`std::thread` + `std::queue` + `condition_variable`）
+- `HttpResponse` 新增 `deferred` 异步模式 + 持有 `TcpConnectionPtr`
+- `HttpServer::onRequest` 支持异步响应（deferred 模式跳过自动发送）
+- `ChatSendHandler` / `ChatCreateAndSendHandler` AI 调用提交到 8 线程的线程池
+- 线程池任务完成后通过 `runInLoop` 回到 IO 线程发送响应
+- IO 线程完全不阻塞，并发能力从 4 提升到 8+
 
 ---
 
@@ -22,18 +47,6 @@
 - 敏感信息不入代码仓库
 
 **未完成**：YAML/TOML 配置文件、运行时热更新
-
----
-
-### ✅ 优化 1：引入异步线程池处理 AI 调用（v1.3.0 已完成）
-
-**改动**：
-- 新增通用 `ThreadPool` 类（`std::thread` + `std::queue` + `condition_variable`）
-- `HttpResponse` 新增 `deferred` 异步模式 + 持有 `TcpConnectionPtr`
-- `HttpServer::onRequest` 支持异步响应（deferred 模式跳过自动发送）
-- `ChatSendHandler` / `ChatCreateAndSendHandler` AI 调用提交到 8 线程的线程池
-- 线程池任务完成后通过 `runInLoop` 回到 IO 线程发送响应
-- IO 线程完全不阻塞，并发能力从 4 提升到 8+
 
 ---
 
@@ -71,13 +84,15 @@
 
 ---
 
-## 优先级评估（更新后）
+## 优先级评估
 
 | 优先级 | 优化项 | 状态 | 难度 |
 |--------|--------|------|------|
+| ✅ 已完成 | Phase 1 并发 Bug 修复（6项） | v1.4.0 | 中 |
 | ✅ 已完成 | 异步线程池 — IO 线程不阻塞 | v1.3.0 | 大 |
 | ✅ 已完成 | 线程安全 — shared_mutex + LRU | v1.2.0 | 中 |
 | ✅ 部分完成 | 配置管理 — 前端 API Key 传递 | v1.1.0 | 小 |
 | 🟠 P0 | SSE 流式输出（依赖异步框架 ✅） | 待实施 | 大 |
 | 🔵 P1 | 标准 MCP Server | 待实施 | 大 |
-| ⚪ P2 | 可观测性 | 待实施 | 中 |
+| 🔵 P2 | Phase 2 — 表结构重设计（role字段/sessions表/user_api_keys表） | 待实施 | 中 |
+| ⚪ P3 | 可观测性 | 待实施 | 中 |
