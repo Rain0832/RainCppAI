@@ -228,6 +228,14 @@ CREATE TABLE user_api_keys (
 
 ## 📋 Changelog
 
+### v1.6.0 (2026-04-03)
+**SSE Streaming + Standard MCP Server**
+- `AIHelper::chatStream()`: curl `WRITEFUNCTION` callback forwards tokens in real-time; `StreamWriteCallback` parses OpenAI-compatible SSE format
+- New `ChatSseHandler` at `POST /chat/send-stream`: sends SSE handshake headers, streams tokens via `runInLoop`
+- New `McpServer` class: standard JSON-RPC 2.0 MCP Server implementing `tools/list` + `tools/call`; reuses `AIToolRegistry`, supports dynamic tool registration
+- New `McpHandler` at `POST /mcp`: compatible with Claude Desktop, Cursor and any MCP-aware client
+- Frontend: existing-session sends now use `fetch().body.getReader()` for real streaming (no more typewriter simulation)
+
 ### v1.5.0 (2026-04-03)
 **Phase 2 — Database Schema Redesign**
 - New `sessions` table: persists session metadata with `title`, `model_type`, soft-delete (`deleted_at`), ms-precision timestamps

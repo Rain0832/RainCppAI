@@ -14,6 +14,8 @@
 #include "../include/handlers/ChatCreateAndSendHandler.h"
 #include "../include/handlers/ChatSessionsHandler.h"
 #include "../include/handlers/ChatSpeechHandler.h"
+#include "../include/handlers/ChatSseHandler.h"
+#include "../include/handlers/McpHandler.h"
 
 #include "../include/ChatServer.h"
 #include "../../../HttpServer/include/http/HttpRequest.h"
@@ -137,6 +139,7 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/chat", std::make_shared<ChatHandler>(this));
     httpServer_.Post("/chat/send", std::make_shared<ChatSendHandler>(this));
     httpServer_.Post("/chat/send-new-session", std::make_shared<ChatCreateAndSendHandler>(this));
+    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this));  // SSE 流式
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
@@ -145,6 +148,9 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
     httpServer_.Get("/upload", std::make_shared<AIUploadHandler>(this));
     httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
+
+    // MCP Server 路由（标准 JSON-RPC 2.0）
+    httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));
 }
 
 void ChatServer::initializeSession()

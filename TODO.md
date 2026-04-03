@@ -1,10 +1,24 @@
 # RainCppAI TODO — 优化路线图
 
-> 当前版本：v1.5.0
+> 当前版本：v1.6.0
 
 ---
 
-### ✅ Phase 2：数据库表结构重设计（v1.5.0 已完成）
+### ✅ 优化 2+5：SSE 流式输出 + 标准 MCP Server（v1.6.0 已完成）
+
+**SSE 改动**：
+- `AIHelper::chatStream()` — curl WRITEFUNCTION 回调逐 token 转发
+- `ChatSseHandler` — 路由 `POST /chat/send-stream`，SSE 握手 + 流式回写
+- 前端已有会话改用 fetch streaming 读取 SSE，逐 token 渲染
+
+**MCP 改动**：
+- `McpServer` — 标准 JSON-RPC 2.0，`tools/list` + `tools/call`，复用 `AIToolRegistry`
+- `McpHandler` — 路由 `POST /mcp`
+- 可被 Claude Desktop、Cursor 等 MCP 兼容客户端直接接入
+
+---
+
+
 
 **改动**：
 1. **新增 `sessions` 表**：持久化会话元数据（`user_id` / `title` / `model_type` / `deleted_at` 软删除 / 毫秒精度时间戳）

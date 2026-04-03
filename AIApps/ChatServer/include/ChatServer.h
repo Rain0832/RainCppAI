@@ -59,6 +59,7 @@ class AIUploadSendHandler;
 class ChatCreateAndSendHandler;
 class ChatSessionsHandler;
 class ChatSpeechHandler;
+class ChatSseHandler;
 
 /**
  * @brief AI聊天服务器核心类
@@ -120,6 +121,7 @@ private:
 	friend class ChatCreateAndSendHandler;
 	friend class ChatSessionsHandler;
 	friend class ChatSpeechHandler;
+	friend class ChatSseHandler;
 
 private:
 	/**

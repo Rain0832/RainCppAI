@@ -4,6 +4,7 @@
 #include <utility>
 #include <mutex>
 #include <atomic>
+#include <functional>
 #include <curl/curl.h>
 #include <iostream>
 #include <sstream>
@@ -29,45 +30,42 @@ struct Message {
  *
  * 线程安全说明：
  * - msgMutex_ 保护 messages_ 向量的所有读写
- * - processing_ 原子标志保证同一 session 同一时刻只有一个 chat() 在执行，
- *   防止用户连发两条消息导致消息顺序错乱
+ * - processing_ 原子标志保证同一 session 同一时刻只有一个 chat() 在执行
  */
 class AIHelper
 {
 public:
+    /// SSE 流式回调类型：每收到一个数据块调用一次，返回 false 表示中止
+    using StreamCallback = std::function<bool(const std::string& chunk)>;
+
     AIHelper();
 
     void setStrategy(std::shared_ptr<AIStrategy> strat);
 
-    /**
-     * @brief 添加一条消息到对话历史（线程安全）
-     */
     void addMessage(int userId, const std::string &userName, bool is_user,
                     const std::string &userInput, std::string sessionId);
 
-    /**
-     * @brief 从数据库恢复历史消息（线程安全，启动阶段调用）
-     */
     void restoreMessage(const std::string &content, long long ms, const std::string &role);
 
     /**
-     * @brief 发送聊天消息，返回AI的响应内容。
-     *
-     * 若该 session 正在处理另一条消息，立即返回错误提示（非阻塞，保护消息顺序）。
+     * @brief 同步聊天（非 SSE）：等待完整响应后返回
      */
     std::string chat(int userId, std::string userName, std::string sessionId,
                      std::string userQuestion, std::string modelType, std::string apiKey = "");
 
+    /**
+     * @brief 流式聊天（SSE）：每收到 token 块立即回调
+     * @param onChunk 每个 chunk 的回调，返回 false 终止流
+     * @return 完整的 AI 回复内容（用于持久化）
+     */
+    std::string chatStream(int userId, std::string userName, std::string sessionId,
+                           std::string userQuestion, std::string modelType,
+                           std::string apiKey, StreamCallback onChunk);
+
     json request(const json &payload);
 
-    /**
-     * @brief 获取消息历史副本（线程安全）
-     */
     std::vector<Message> GetMessages() const;
 
-    /**
-     * @brief 当前 session 是否正在处理消息
-     */
     bool isProcessing() const { return processing_.load(); }
 
 private:
@@ -75,18 +73,29 @@ private:
     void pushMessageToMysql(int userId, const std::string &userName, bool is_user,
                             const std::string &userInput, long long ms, std::string sessionId);
     json executeCurl(const json &payload);
-    static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
     /**
-     * @brief 将 messages_ 转为 LLM 需要的格式（持有锁外调用，需自行加锁后传入 snapshot）
+     * @brief 流式 curl 请求，每收到数据块调用 onChunk
+     * @return 完整响应字符串
      */
+    std::string executeCurlStream(const json &payload, StreamCallback onChunk);
+
+    static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
+
+    /// SSE 流式回调的 userdata 结构
+    struct StreamContext {
+        std::string    buffer;      ///< 未处理的数据缓冲
+        std::string    fullContent; ///< 累积的完整内容（用于最终持久化）
+        StreamCallback callback;
+        bool           aborted = false;
+    };
+    static size_t StreamWriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
+
     json buildMessagesPayload(const std::vector<Message> &msgs) const;
 
 private:
     std::shared_ptr<AIStrategy> strategy;
-
-    mutable std::mutex      msgMutex_;   ///< 保护 messages_ 的读写锁
-    std::vector<Message>    messages_;   ///< 显式 role 字段，不再用奇偶判断
-
-    std::atomic<bool>       processing_; ///< 同一 session 并发保护标志
+    mutable std::mutex      msgMutex_;
+    std::vector<Message>    messages_;
+    std::atomic<bool>       processing_;
 };

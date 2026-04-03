@@ -431,6 +431,7 @@ $('#chatForm').onsubmit = async e => {
 
     try {
         if (tempSession) {
+            // 新建会话：先用普通接口拿到 sessionId，再改用 SSE
             const r = await fetch('/chat/send-new-session', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question: q, modelType: mt, apiKey: ak }) });
             const d = await r.json();
@@ -441,23 +442,90 @@ $('#chatForm').onsubmit = async e => {
                 currentSessionId = sid; tempSession = false;
                 renderSessions();
                 await typewriterMsg(d.Information, mn);
-                // 异步请求 AI 总结标题
                 summarizeTitle(sid, q, d.Information);
             } else { const tk = $('#thinkingMsg'); if (tk) tk.remove(); appendMsg('assistant', '错误: ' + (d.message || '未知错误'), mn); }
         } else {
-            if (!sessions[currentSessionId]) { const tk = $('#thinkingMsg'); if (tk) tk.remove(); showToast('请先选择或创建会话'); $('#sendBtn').disabled = false; return; }
+            // 已有会话：使用 SSE 流式接口
+            if (!sessions[currentSessionId]) {
+                const tk = $('#thinkingMsg'); if (tk) tk.remove();
+                showToast('请先选择或创建会话'); $('#sendBtn').disabled = false; return;
+            }
             sessions[currentSessionId].messages.push({ role: 'user', content: q });
-            const r = await fetch('/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, modelType: mt, sessionId: currentSessionId, apiKey: ak }) });
-            const d = await r.json();
-            if (d.success) {
-                await typewriterMsg(d.Information, mn);
-                sessions[currentSessionId].messages.push({ role: 'assistant', content: d.Information });
-            } else { const tk = $('#thinkingMsg'); if (tk) tk.remove(); appendMsg('assistant', '错误: ' + (d.message || '未知错误'), mn); }
+            await sendWithSSE(q, mt, ak, mn, currentSessionId);
         }
     } catch (err) { const tk = $('#thinkingMsg'); if (tk) tk.remove(); appendMsg('assistant', '无法连接到服务器', mn); }
     $('#sendBtn').disabled = false;
 };
+
+// ─── SSE 流式发送 ─────────────────────────────────────────────────
+async function sendWithSSE(question, modelType, apiKey, modelName, sessionId) {
+    // 移除 thinking 占位，换成流式消息气泡
+    const tk = $('#thinkingMsg'); if (tk) tk.remove();
+
+    const d = document.createElement('div');
+    d.className = 'msg assistant';
+    if (modelName) d.innerHTML = `<div class="model-tag">${modelName}</div>`;
+    d.innerHTML += '<div class="msg-content"><span id="sseContent"></span></div>';
+    $('#chatArea').appendChild(d);
+    const span = d.querySelector('#sseContent');
+    span.id = ''; // 移除 id 防止多消息冲突
+
+    let fullContent = '';
+
+    try {
+        const response = await fetch('/chat/send-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, modelType, sessionId, apiKey })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+
+            // 按 SSE 行分割
+            const lines = buf.split('\n');
+            buf = lines.pop(); // 最后未完成的行保留
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed === 'data: [DONE]') continue;
+                if (trimmed.startsWith('data: ')) {
+                    try {
+                        const payload = JSON.parse(trimmed.slice(6));
+                        if (payload.token) {
+                            fullContent += payload.token;
+                            span.innerHTML = DOMPurify.sanitize(marked.parse(fullContent));
+                            $('#chatArea').scrollTop = $('#chatArea').scrollHeight;
+                        }
+                        if (payload.error) {
+                            span.textContent = '错误: ' + payload.error;
+                        }
+                    } catch (_) {}
+                }
+            }
+        }
+    } catch (err) {
+        span.textContent = '无法连接到服务器';
+    }
+
+    // 追加操作按钮
+    const esc = fullContent.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    const acts = document.createElement('div'); acts.className = 'msg-actions';
+    acts.innerHTML = `<button class="action-btn" onclick="playTTS(\`${esc}\`)">🔊 朗读</button>`
+        + `<button class="action-btn" onclick="regenerate()">🔄 重新生成</button>`
+        + `<button class="del-btn" onclick="deleteMsg(this)">✕ 删除</button>`;
+    d.appendChild(acts);
+
+    if (sessions[sessionId]) {
+        sessions[sessionId].messages.push({ role: 'assistant', content: fullContent });
+    }
+}
 
 $('#syncBtn').onclick = async () => {
     if (!currentSessionId || tempSession) { showToast('请选择已有会话'); return; }

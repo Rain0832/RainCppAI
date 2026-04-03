@@ -152,6 +152,138 @@ json AIHelper::request(const json &payload)
     return executeCurl(payload);
 }
 
+// ─── 流式聊天（SSE）────────────────────────────────────────────────
+std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId,
+                                  std::string userQuestion, std::string modelType,
+                                  std::string apiKey, StreamCallback onChunk)
+{
+    bool expected = false;
+    if (!processing_.compare_exchange_strong(expected, true)) {
+        onChunk("[提示] 当前会话正在处理上一条消息，请稍后再试");
+        return "";
+    }
+    struct Guard { std::atomic<bool>& f; ~Guard() { f = false; } } guard{processing_};
+
+    setStrategy(StrategyFactory::instance().create(modelType));
+    if (!apiKey.empty()) strategy->setApiKey(apiKey);
+    if (strategy->getApiKey().empty()) {
+        onChunk("[错误] 未配置 API Key");
+        return "";
+    }
+
+    // 记录用户消息到内存（不调用 addMessage，避免重复 push_back；后面统一处理）
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        messages_.push_back({"user", userQuestion, ms});
+    }
+    pushMessageToMysql(userId, userName, true, userQuestion, ms, sessionId);
+
+    // 构建请求 payload，加 stream=true
+    std::vector<std::pair<std::string, long long>> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        for (auto& m : messages_) snapshot.push_back({m.content, m.ts});
+    }
+    json payload = strategy->buildRequest(snapshot);
+    payload["stream"] = true;   // 启用 OpenAI 兼容流式接口
+
+    std::string fullAnswer = executeCurlStream(payload, onChunk);
+
+    // 将完整回复加入历史
+    auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        messages_.push_back({"assistant", fullAnswer, ms2});
+    }
+    pushMessageToMysql(userId, userName, false, fullAnswer, ms2, sessionId);
+
+    return fullAnswer;
+}
+
+// ─── 流式 curl 请求 ────────────────────────────────────────────────
+std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onChunk)
+{
+    CURL *curl = curl_easy_init();
+    if (!curl) throw std::runtime_error("Failed to initialize curl");
+
+    StreamContext ctx;
+    ctx.callback = std::move(onChunk);
+
+    struct curl_slist *headers = nullptr;
+    std::string authHeader = "Authorization: Bearer " + strategy->getApiKey();
+    headers = curl_slist_append(headers, authHeader.c_str());
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    std::string payloadStr = payload.dump();
+    curl_easy_setopt(curl, CURLOPT_URL, strategy->getApiUrl().c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ctx);
+
+    curl_easy_perform(curl);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    return ctx.fullContent;
+}
+
+// ─── SSE 流式回调 ────────────────────────────────────────────────────
+size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t total = size * nmemb;
+    auto *ctx = static_cast<StreamContext*>(userp);
+    if (ctx->aborted) return 0; // 返回 0 让 curl 中止
+
+    ctx->buffer.append(static_cast<char*>(contents), total);
+
+    // 按行处理 SSE 格式：data: {...}\n\n
+    std::string& buf = ctx->buffer;
+    size_t pos = 0;
+    while (true) {
+        size_t nl = buf.find('\n', pos);
+        if (nl == std::string::npos) break;
+
+        std::string line = buf.substr(pos, nl - pos);
+        pos = nl + 1;
+
+        // 去掉 \r
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+
+        // 跳过空行和 [DONE]
+        if (line.empty() || line == "data: [DONE]") continue;
+
+        // 解析 "data: {...}"
+        if (line.substr(0, 6) == "data: ") {
+            std::string jsonStr = line.substr(6);
+            try {
+                json chunk = json::parse(jsonStr);
+                std::string token;
+                // OpenAI 兼容格式
+                if (chunk.contains("choices") && !chunk["choices"].empty()) {
+                    auto& delta = chunk["choices"][0]["delta"];
+                    if (delta.contains("content") && !delta["content"].is_null()) {
+                        token = delta["content"].get<std::string>();
+                    }
+                }
+                if (!token.empty()) {
+                    ctx->fullContent += token;
+                    if (!ctx->callback(token)) {
+                        ctx->aborted = true;
+                        buf = buf.substr(pos);
+                        return 0;
+                    }
+                }
+            } catch (...) { /* 忽略解析失败的 chunk */ }
+        }
+    }
+    buf = buf.substr(pos); // 保留未处理的数据
+    return total;
+}
+
 // ─── curl 请求 ────────────────────────────────────────────────────
 json AIHelper::executeCurl(const json &payload)
 {
