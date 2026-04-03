@@ -229,6 +229,9 @@ function getApiKey(mt) {
     const m = { '1':'rain-key-dashscope','2':'rain-key-doubao','3':'rain-key-dashscope','4':'rain-key-dashscope' };
     return localStorage.getItem(m[mt] || '') || '';
 }
+function getRagId() {
+    return localStorage.getItem('rain-key-rag-id') || '';
+}
 
 function renderSessions() {
     const el = $('#sessionList'); el.innerHTML = '';
@@ -351,20 +354,21 @@ async function regenerate() {
     $('#sendBtn').disabled = false;
 }
 
-// --- AI 总结会话标题 ---
-async function summarizeTitle(sid, question, answer) {
-    const mt = $('#modelType').value, ak = getApiKey(mt);
-    if (!ak) { sessions[sid].name = question.slice(0, 18) + (question.length > 18 ? '...' : ''); renderSessions(); return; }
-    try {
-        const prompt = `请用5-10个字总结以下对话的主题，只输出标题文字，不要标点符号和引号。\n用户: ${question}\nAI: ${answer.slice(0, 200)}`;
-        const r = await fetch('/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: prompt, modelType: mt, sessionId: sid, apiKey: ak }) });
-        const d = await r.json();
-        if (d.success && d.Information) {
-            const title = d.Information.replace(/["""''「」\n]/g, '').trim().slice(0, 20);
-            if (title) { sessions[sid].name = title; renderSessions(); }
-        }
-    } catch (e) { /* 静默失败 */ }
+// --- 会话标题：截取用户首句（不调 AI，避免污染历史） ---
+function summarizeTitle(sid, question) {
+    // 取第一句（句号/问号/感叹号截断），最多 18 字
+    const firstSentence = question.split(/[。？！?!.\n]/)[0].trim();
+    const title = firstSentence.slice(0, 18) + (firstSentence.length > 18 ? '...' : '');
+    sessions[sid].name = title || `会话 ${sid.slice(0, 8)}`;
+    renderSessions();
+    // 同步更新 sessions 表的 title（异步，不阻塞）
+    const ak = getApiKey($('#modelType').value);
+    if (ak) {
+        fetch('/chat/update-session-title', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: sid, title: sessions[sid].name })
+        }).catch(() => {});
+    }
 }
 
 function clearChat() { $('#chatArea').innerHTML = ''; }
@@ -422,6 +426,7 @@ $('#chatForm').onsubmit = async e => {
     const q = ta.value.trim(); if (!q) return;
     if (!currentSessionId && !tempSession) { showToast('请先新建对话或选择会话'); return; }
     const mt = $('#modelType').value, ak = getApiKey(mt), mn = getModelName();
+    const ragId = getRagId();
     lastUserQuestion = q;
 
     appendMsg('user', q);
@@ -433,7 +438,7 @@ $('#chatForm').onsubmit = async e => {
         if (tempSession) {
             // 新建会话：先用普通接口拿到 sessionId，再改用 SSE
             const r = await fetch('/chat/send-new-session', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, modelType: mt, apiKey: ak }) });
+                body: JSON.stringify({ question: q, modelType: mt, apiKey: ak, ragId }) });
             const d = await r.json();
             if (d.success) {
                 const sid = String(d.sessionId);
@@ -442,7 +447,7 @@ $('#chatForm').onsubmit = async e => {
                 currentSessionId = sid; tempSession = false;
                 renderSessions();
                 await typewriterMsg(d.Information, mn);
-                summarizeTitle(sid, q, d.Information);
+                summarizeTitle(sid, q);
             } else { const tk = $('#thinkingMsg'); if (tk) tk.remove(); appendMsg('assistant', '错误: ' + (d.message || '未知错误'), mn); }
         } else {
             // 已有会话：使用 SSE 流式接口
@@ -451,14 +456,14 @@ $('#chatForm').onsubmit = async e => {
                 showToast('请先选择或创建会话'); $('#sendBtn').disabled = false; return;
             }
             sessions[currentSessionId].messages.push({ role: 'user', content: q });
-            await sendWithSSE(q, mt, ak, mn, currentSessionId);
+            await sendWithSSE(q, mt, ak, mn, currentSessionId, ragId);
         }
     } catch (err) { const tk = $('#thinkingMsg'); if (tk) tk.remove(); appendMsg('assistant', '无法连接到服务器', mn); }
     $('#sendBtn').disabled = false;
 };
 
 // ─── SSE 流式发送 ─────────────────────────────────────────────────
-async function sendWithSSE(question, modelType, apiKey, modelName, sessionId) {
+async function sendWithSSE(question, modelType, apiKey, modelName, sessionId, ragId = '') {
     // 移除 thinking 占位，换成流式消息气泡
     const tk = $('#thinkingMsg'); if (tk) tk.remove();
 
@@ -476,7 +481,7 @@ async function sendWithSSE(question, modelType, apiKey, modelName, sessionId) {
         const response = await fetch('/chat/send-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, modelType, sessionId, apiKey })
+            body: JSON.stringify({ question, modelType, sessionId, apiKey, ragId })
         });
 
         const reader = response.body.getReader();

@@ -23,6 +23,10 @@ public:
     // 运行时覆盖 API Key（前端传入）
     virtual void setApiKey(const std::string& key) = 0;
 
+    // RAG 知识库 ID（仅 AliyunRAGStrategy 使用）
+    virtual void setRagId(const std::string& id) { (void)id; }
+    virtual std::string getRagId() const { return ""; }
+
     virtual std::string getModel() const = 0;
 
 
@@ -82,12 +86,16 @@ public:
     AliyunRAGStrategy() {
         const char* key = std::getenv("DASHSCOPE_API_KEY");
         if (key) apiKey_ = key;
+        const char* rid = std::getenv("Knowledge_Base_ID");
+        if (rid) ragId_ = rid;
         isMCPModel = false;
     }
 
     std::string getApiUrl() const override;
     std::string getApiKey() const override;
     void setApiKey(const std::string& key) override { apiKey_ = key; }
+    void setRagId(const std::string& id) override { ragId_ = id; }
+    std::string getRagId() const override { return ragId_; }
     std::string getModel() const override;
 
     json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const override;
@@ -95,6 +103,7 @@ public:
 
 private:
     std::string apiKey_;
+    std::string ragId_;
 };
 
 class AliyunMcpStrategy : public AIStrategy {

@@ -44,7 +44,8 @@ std::vector<Message> AIHelper::GetMessages() const
 
 // ─── 核心聊天方法 ────────────────────────────────────────────────────
 std::string AIHelper::chat(int userId, std::string userName, std::string sessionId,
-                           std::string userQuestion, std::string modelType, std::string apiKey)
+                           std::string userQuestion, std::string modelType,
+                           std::string apiKey, std::string ragId)
 {
     // ★ 同一 session 并发保护：若上一条消息还在处理，立即拒绝
     bool expected = false;
@@ -59,9 +60,8 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
 
     // 设置策略
     setStrategy(StrategyFactory::instance().create(modelType));
-    if (!apiKey.empty()) {
-        strategy->setApiKey(apiKey);
-    }
+    if (!apiKey.empty()) strategy->setApiKey(apiKey);
+    if (!ragId.empty())  strategy->setRagId(ragId);
     if (strategy->getApiKey().empty()) {
         return "[错误] 未配置 API Key，请在个人中心设置对应模型的 API Key";
     }
@@ -155,7 +155,7 @@ json AIHelper::request(const json &payload)
 // ─── 流式聊天（SSE）────────────────────────────────────────────────
 std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId,
                                   std::string userQuestion, std::string modelType,
-                                  std::string apiKey, StreamCallback onChunk)
+                                  std::string apiKey, std::string ragId, StreamCallback onChunk)
 {
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true)) {
@@ -166,6 +166,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
 
     setStrategy(StrategyFactory::instance().create(modelType));
     if (!apiKey.empty()) strategy->setApiKey(apiKey);
+    if (!ragId.empty())  strategy->setRagId(ragId);
     if (strategy->getApiKey().empty()) {
         onChunk("[错误] 未配置 API Key");
         return "";

@@ -51,7 +51,8 @@ public:
      * @brief 同步聊天（非 SSE）：等待完整响应后返回
      */
     std::string chat(int userId, std::string userName, std::string sessionId,
-                     std::string userQuestion, std::string modelType, std::string apiKey = "");
+                     std::string userQuestion, std::string modelType,
+                     std::string apiKey = "", std::string ragId = "");
 
     /**
      * @brief 流式聊天（SSE）：每收到 token 块立即回调
@@ -60,7 +61,7 @@ public:
      */
     std::string chatStream(int userId, std::string userName, std::string sessionId,
                            std::string userQuestion, std::string modelType,
-                           std::string apiKey, StreamCallback onChunk);
+                           std::string apiKey, std::string ragId, StreamCallback onChunk);
 
     json request(const json &payload);
 

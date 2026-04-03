@@ -100,11 +100,8 @@ std::string DouBaoStrategy::parseResponse(const json& response) const {
 
 
 std::string AliyunRAGStrategy::getApiUrl() const {
-    const char* key = std::getenv("Knowledge_Base_ID");
-    if (!key) throw std::runtime_error("Knowledge_Base_ID not found!");
-    std::string id(key);
-    //϶Ӧ֪ʶID
-    return "https://dashscope.aliyuncs.com/api/v1/apps/"+id+"/completion";
+    if (ragId_.empty()) throw std::runtime_error("百炼 RAG 知识库 ID 未配置，请在个人中心填写知识库 ID");
+    return "https://dashscope.aliyuncs.com/api/v1/apps/" + ragId_ + "/completion";
 }
 
 std::string AliyunRAGStrategy::getApiKey()const {

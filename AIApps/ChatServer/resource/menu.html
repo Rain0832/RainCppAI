@@ -194,6 +194,12 @@ body::before {
             <div class="key-hint">用于阿里百炼 / 百炼RAG / 百炼MCP 模型</div>
         </div>
         <div class="key-section">
+            <label>百炼 RAG 知识库 ID <span class="key-status" id="st-rag-id"></span></label>
+            <div class="key-row"><input type="text" id="key-rag-id" placeholder="9262z3h3py...">
+                <button class="key-save" onclick="saveKey('rag-id')">保存</button></div>
+            <div class="key-hint">在阿里云百炼控制台「知识库」页面获取 App ID</div>
+        </div>
+        <div class="key-section">
             <label>豆包 API Key <span class="key-status" id="st-doubao"></span></label>
             <div class="key-row"><input type="password" id="key-doubao" placeholder="sk-xxxx...">
                 <button class="key-save" onclick="saveKey('doubao')">保存</button></div>
@@ -281,7 +287,13 @@ $$('.modal-tab').forEach(tab => tab.onclick = () => {
 });
 
 // API Key
-const KM = { dashscope:'rain-key-dashscope', doubao:'rain-key-doubao', 'baidu-id':'rain-key-baidu-id', 'baidu-secret':'rain-key-baidu-secret' };
+const KM = {
+    dashscope:'rain-key-dashscope',
+    'rag-id':'rain-key-rag-id',
+    doubao:'rain-key-doubao',
+    'baidu-id':'rain-key-baidu-id',
+    'baidu-secret':'rain-key-baidu-secret'
+};
 function saveKey(n) {
     const v = $(`#key-${n}`).value.trim();
     if (!v) { showToast('请输入有效的 Key'); return; }
