@@ -51,7 +51,13 @@ void ChatServer::initChatMessage()
 
 void ChatServer::readDataFromMySQL()
 {
-    std::string sql = "SELECT id, username,session_id, is_user, content, ts FROM chat_message ORDER BY ts ASC, id ASC";
+    // Phase 2: 从新的 messages 表读取，JOIN sessions 获取用户 ID
+    // 通过 sessions.user_id 关联，按 created_at 排序保证消息顺序
+    std::string sql = "SELECT m.session_id, m.user_id, m.role, m.content, "
+                      "UNIX_TIMESTAMP(m.created_at) * 1000 AS ts_ms "
+                      "FROM messages m "
+                      "INNER JOIN sessions s ON m.session_id = s.id "
+                      "ORDER BY m.created_at ASC, m.id ASC";
 
     sql::ResultSet *res;
     try
@@ -64,23 +70,20 @@ void ChatServer::readDataFromMySQL()
         return;
     }
 
-    // 从数据库加载历史消息并恢复会话状态
     while (res->next())
     {
         long long user_id = 0;
         std::string session_id;
-        std::string username, content;
-        long long ts = 0;
-        int is_user = 1;
+        std::string role, content;
+        long long ts_ms = 0;
 
         try
         {
-            user_id = res->getInt64("id");
+            user_id    = res->getInt64("user_id");
             session_id = res->getString("session_id");
-            username = res->getString("username");
-            content = res->getString("content");
-            ts = res->getInt64("ts");
-            is_user = res->getInt("is_user");
+            role       = res->getString("role");
+            content    = res->getString("content");
+            ts_ms      = res->getInt64("ts_ms");
         }
         catch (const std::exception &e)
         {
@@ -103,7 +106,7 @@ void ChatServer::readDataFromMySQL()
             helper = itSession->second;
         }
 
-        helper->restoreMessage(content, ts, is_user ? "user" : "assistant");
+        helper->restoreMessage(content, ts_ms, role);
     }
 
     std::cout << "readDataFromMySQL finished" << std::endl;

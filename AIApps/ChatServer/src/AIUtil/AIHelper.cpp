@@ -215,14 +215,21 @@ std::string AIHelper::escapeString(const std::string &input)
 void AIHelper::pushMessageToMysql(int userId, const std::string &userName, bool is_user,
                                    const std::string &userInput, long long ms, std::string sessionId)
 {
-    std::string safeUserName  = escapeString(userName);
     std::string safeUserInput = escapeString(userInput);
-    std::string sql = "INSERT INTO chat_message (id, username, session_id, is_user, content, ts) VALUES ("
+    std::string role = is_user ? "user" : "assistant";
+
+    // Phase 2: 写入新的 messages 表
+    // 同时 INSERT IGNORE sessions（首条消息时创建会话记录）
+    std::string sqlSession = "INSERT IGNORE INTO sessions (id, user_id) VALUES ('"
+        + sessionId + "', " + std::to_string(userId) + ")";
+
+    std::string sqlMsg = "INSERT INTO messages (session_id, user_id, role, content) VALUES ('"
+        + sessionId + "', "
         + std::to_string(userId) + ", '"
-        + safeUserName + "', "
-        + sessionId + ", "
-        + std::to_string(is_user ? 1 : 0) + ", '"
-        + safeUserInput + "', "
-        + std::to_string(ms) + ")";
-    MQManager::instance().publish("sql_queue", sql);
+        + role + "', '"
+        + safeUserInput + "')";
+
+    // 两条 SQL 通过 MQ 异步执行
+    MQManager::instance().publish("sql_queue", sqlSession);
+    MQManager::instance().publish("sql_queue", sqlMsg);
 }

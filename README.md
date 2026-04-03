@@ -182,26 +182,61 @@ After login, go to **Personal Center → API Key** tab to configure keys per mod
 ```sql
 -- Users
 CREATE TABLE users (
-  id       INT AUTO_INCREMENT PRIMARY KEY,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL
 ) CHARSET=utf8mb4;
 
--- Chat messages (ordered by ts ASC for replay)
-CREATE TABLE chat_message (
-  id         INT NOT NULL,          -- user_id (from users.id)
-  username   VARCHAR(255) NOT NULL,
-  session_id VARCHAR(255) NOT NULL DEFAULT '',
-  is_user    TINYINT NOT NULL DEFAULT 1,  -- 1=user, 0=AI
-  content    TEXT NOT NULL,
-  ts         BIGINT NOT NULL DEFAULT 0,   -- millisecond timestamp
-  KEY idx_ts (ts)
+-- Sessions (v1.5.0+)
+CREATE TABLE sessions (
+  id         VARCHAR(64) NOT NULL PRIMARY KEY,
+  user_id    BIGINT UNSIGNED NOT NULL,
+  title      VARCHAR(128) DEFAULT NULL,
+  model_type VARCHAR(32) DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  deleted_at DATETIME DEFAULT NULL,
+  INDEX idx_user_id (user_id)
+) CHARSET=utf8mb4;
+
+-- Messages (v1.5.0+, replaces chat_message)
+CREATE TABLE messages (
+  id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  session_id VARCHAR(64) NOT NULL,
+  user_id    BIGINT UNSIGNED NOT NULL,
+  role       ENUM('user','assistant','system') NOT NULL,
+  content    MEDIUMTEXT NOT NULL,
+  model      VARCHAR(64) DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_session_created (session_id, created_at),
+  INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+-- User API Keys (v1.5.0+)
+CREATE TABLE user_api_keys (
+  id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id  BIGINT UNSIGNED NOT NULL,
+  provider VARCHAR(32) NOT NULL,
+  api_key  VARCHAR(512) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_provider (user_id, provider)
 ) CHARSET=utf8mb4;
 ```
 
 ---
 
 ## 📋 Changelog
+
+### v1.5.0 (2026-04-03)
+**Phase 2 — Database Schema Redesign**
+- New `sessions` table: persists session metadata with `title`, `model_type`, soft-delete (`deleted_at`), ms-precision timestamps
+- New `messages` table: `AUTO_INCREMENT` primary key + explicit `role ENUM('user','assistant','system')` — eliminates all even/odd index logic
+- New `user_api_keys` table: per-user, per-provider key storage with `UNIQUE KEY (user_id, provider)`, ready for server-side key retrieval
+- Migrated existing data from `chat_message` → `messages` + `sessions` (old table retained as backup)
+- `readDataFromMySQL` reads from new `messages` table with JOIN to `sessions`
+- `pushMessageToMysql` writes to new tables with idempotent `INSERT IGNORE` for sessions
+- `ChatSessionsHandler` reads `title` from DB, falls back to truncated session ID
 
 ### v1.4.0 (2026-04-03)
 **Phase 1 — Concurrency Bug Fixes (6 items)**

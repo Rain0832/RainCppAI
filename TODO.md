@@ -1,10 +1,21 @@
 # RainCppAI TODO — 优化路线图
 
-> 当前版本：v1.4.0
+> 当前版本：v1.5.0
 
 ---
 
-### ✅ Phase 1：并发 Bug 修复（v1.4.0 已完成）
+### ✅ Phase 2：数据库表结构重设计（v1.5.0 已完成）
+
+**改动**：
+1. **新增 `sessions` 表**：持久化会话元数据（`user_id` / `title` / `model_type` / `deleted_at` 软删除 / 毫秒精度时间戳）
+2. **新增 `messages` 表**：自增主键 `id`，显式 `role` ENUM（user/assistant/system），彻底替代奇偶判断
+3. **新增 `user_api_keys` 表**：API Key 按 `(user_id, provider)` 唯一存储，为后续服务端读取 Key 预留
+4. **迁移旧数据**：旧 `chat_message` → 新 `messages` + `sessions`，旧表保留作备份
+5. **后端适配**：`readDataFromMySQL` 改为读新表，`pushMessageToMysql` 写新表，`ChatSessionsHandler` 从 DB 读取会话 title
+
+---
+
+
 
 **改动**：
 
