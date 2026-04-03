@@ -38,8 +38,12 @@ json AliyunStrategy::buildRequest(const std::vector<std::pair<std::string, long 
 
 std::string AliyunStrategy::parseResponse(const json& response) const {
     if (response.contains("choices") && !response["choices"].empty()) {
-        return response["choices"][0]["message"]["content"];
+        const auto& msg = response["choices"][0]["message"];
+        if (msg.contains("content") && !msg["content"].is_null())
+            return msg["content"].get<std::string>();
     }
+    if (response.contains("message"))
+        return "[API 错误] " + response["message"].get<std::string>();
     return {};
 }
 
@@ -119,6 +123,8 @@ json AliyunRAGStrategy::buildRequest(const std::vector<std::pair<std::string, lo
     json msgArray = json::array();
     for (size_t i = 0; i < messages.size(); ++i) {
         json msg;
+        // messages 里 pair.second 存的是时间戳，role 信息已通过奇偶约定传入
+        // 但更规范地，偶数下标 = user，奇数下标 = assistant
         msg["role"] = (i % 2 == 0 ? "user" : "assistant");
         msg["content"] = messages[i].first;
         msgArray.push_back(msg);
@@ -130,8 +136,16 @@ json AliyunRAGStrategy::buildRequest(const std::vector<std::pair<std::string, lo
 
 
 std::string AliyunRAGStrategy::parseResponse(const json& response) const {
+    // 正常响应
     if (response.contains("output") && response["output"].contains("text")) {
         return response["output"]["text"];
+    }
+    // API 错误（如 InvalidApiKey、App not found 等）
+    if (response.contains("message")) {
+        return "[RAG 错误] " + response["message"].get<std::string>();
+    }
+    if (response.contains("code")) {
+        return "[RAG 错误] code=" + response["code"].get<std::string>();
     }
     return {};
 }
