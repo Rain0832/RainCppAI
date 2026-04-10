@@ -1,337 +1,254 @@
 # RainCppAI
 
-> A production-grade C++ AI application platform built on a self-developed HTTP framework, supporting multi-model LLM chat, RAG knowledge base, MCP tool calling, image recognition, and speech synthesis.
+**[English](README_EN.md)** | 中文
+
+> 基于自研 C++17 HTTP 框架的 AI 应用服务平台，支持多模型对话、RAG 知识库、MCP 工具调用、SSE 流式输出、图像识别与语音合成。
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![License](https://img.shields.io/badge/License-Apache2.0-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.3.0-orange.svg)](CHANGELOG)
+[![Version](https://img.shields.io/badge/Version-1.6.0-orange.svg)](TODO.md)
 
 ---
 
-## ✨ Features
+## ✨ 功能特性
 
-- **Multi-Model LLM** — Strategy + Factory pattern, hot-swap between Aliyun Qwen, Doubao, RAG, and MCP models
-- **MCP Tool Calling** — Two-stage inference (intent detection → tool execution → answer), aligning with Model Context Protocol
-- **RAG Knowledge Base** — Aliyun Bailian knowledge base integration with citation-based answers
-- **Image Recognition** — ONNX Runtime + MobileNetV2 on-device inference via OpenCV
-- **Speech Synthesis / ASR** — Baidu TTS with token caching and fast polling (sub-second response)
-- **Async Architecture** — AI API calls offloaded to a dedicated thread pool (8 threads), IO threads never blocked
-- **Thread-Safe Session Store** — `shared_mutex` read-write lock + LRU eviction (MAX 500 sessions in memory)
-- **Async DB Writes** — RabbitMQ decouples chat persistence from the request path
-- **Self-Developed HTTP Framework** — Reactor model (muduo), state-machine HTTP parser, middleware chain, regex router, session manager, SSL/TLS
+- **多模型 LLM 对话** — 策略模式 + 工厂模式，热切换通义千问、豆包、百炼 RAG、百炼 MCP
+- **SSE 流式输出** — curl 回调逐 token 推送，前端实时渲染，告别等待
+- **标准 MCP Server** — JSON-RPC 2.0 实现 `tools/list` + `tools/call`，可被 Claude Desktop / Cursor 直接接入
+- **RAG 知识库** — 对接阿里百炼知识库，检索增强生成
+- **图像识别** — ONNX Runtime + MobileNetV2 端侧推理
+- **语音合成 / 识别** — 百度 TTS（token 缓存 + 快速轮询）
+- **异步架构** — AI 调用卸载到独立线程池（8 线程），IO 线程零阻塞
+- **并发安全** — `shared_mutex` 读写锁 + LRU 淘汰（最大 500 会话）+ `atomic` CAS 串行化
+- **异步入库** — RabbitMQ 解耦聊天记录持久化
+- **自研 HTTP 框架** — Reactor 模型（muduo）、状态机解析、中间件洋葱模型、双匹配路由、会话管理、SSL/TLS
 
 ---
 
-## 🏗 Architecture
+## 🏗 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   Client (Browser / curl)                   │
+│                    客户端 (浏览器 / curl)                     │
 └────────────────────────────┬────────────────────────────────┘
                              │ HTTP / HTTPS
 ┌────────────────────────────▼────────────────────────────────┐
-│  ① Network     muduo TcpServer — Reactor, epoll, 4 threads  │
+│  ① 网络层     muduo TcpServer — Reactor, epoll, 4 线程       │
 ├─────────────────────────────────────────────────────────────┤
-│  ② Protocol    HttpContext state machine                    │
+│  ② 协议层     HttpContext 状态机解析                          │
 ├─────────────────────────────────────────────────────────────┤
-│  ③ Middleware  MiddlewareChain (CORS, ...)                   │
+│  ③ 中间件层   MiddlewareChain (CORS 等)                      │
 ├─────────────────────────────────────────────────────────────┤
-│  ④ Router      unordered_map O(1) + regex O(n)              │
+│  ④ 路由层     精确匹配 O(1) + 正则匹配 O(n)                  │
 ├─────────────────────────────────────────────────────────────┤
-│  ⑤ Business    ChatServer (13 Handlers)                     │
-│    ├── AIHelper ──► ThreadPool(8) ──► LLM API (curl)        │
-│    │   ├── AIStrategy (Aliyun / Doubao / RAG / MCP)         │
-│    │   ├── AIConfig + AIToolRegistry (MCP tools)            │
-│    │   └── MQManager ──► RabbitMQ ──► MySQL                 │
-│    ├── ImageRecognizer (ONNX Runtime + OpenCV)               │
-│    ├── AISpeechProcessor (Baidu TTS/ASR, token cache)        │
-│    └── SessionManager (Cookie + memory store)                │
+│  ⑤ 业务层     ChatServer (15 个 Handler)                     │
+│    ├── AIHelper ──► 线程池(8) ──► LLM API (curl)             │
+│    │   ├── AIStrategy (通义千问 / 豆包 / RAG / MCP)           │
+│    │   ├── McpServer (JSON-RPC 2.0 标准 MCP)                 │
+│    │   └── MQManager ──► RabbitMQ ──► MySQL                  │
+│    ├── ImageRecognizer (ONNX Runtime + OpenCV)                │
+│    └── AISpeechProcessor (百度 TTS/ASR)                      │
 └─────────────────────────────────────────────────────────────┘
-        │ async write          │ sync read
+        │ 异步写入           │ 同步读取
    ┌────▼─────┐          ┌─────▼────┐
    │ RabbitMQ │          │  MySQL   │
-   │ (MQ Pool)│          │ (DB Pool)│
    └──────────┘          └──────────┘
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Prerequisites
+### 依赖项
 
-| Dependency | Version | Notes |
-|-----------|---------|-------|
-| GCC | ≥ 12 | C++17 required |
+| 依赖 | 版本 | 说明 |
+|-----|------|------|
+| GCC | ≥ 12 | 需要 C++17 |
 | CMake | ≥ 3.16 | |
-| muduo | latest | Build from source |
+| muduo | 最新 | 需源码编译 |
 | OpenSSL | ≥ 1.1 | |
 | libcurl | ≥ 7.x | |
 | OpenCV | ≥ 4.x | |
-| ONNX Runtime | 1.17.1 | Pre-built binary |
-| MySQL C++ Connector | 8.0 | JDBC header path `/usr/local/include/jdbc` |
-| SimpleAmqpClient | latest | rabbitmq-c dependency |
+| ONNX Runtime | 1.17.1 | 预编译包 |
+| MySQL C++ Connector | 8.0 | JDBC 头文件路径 `/usr/local/include/jdbc` |
+| SimpleAmqpClient | 最新 | 依赖 rabbitmq-c |
 | nlohmann/json | 3.11+ | Header-only |
 
-### Linux (TencentOS / Ubuntu / Debian)
+### Linux (TencentOS / Ubuntu / CentOS)
 
 ```bash
-# 1. Clone
+# 1. 克隆
 git clone git@github.com:Rain0832/RainCppAI.git && cd RainCppAI
 
-# 2. Install dependencies (TencentOS / CentOS)
+# 2. 安装依赖
 sudo yum install -y cmake make openssl-devel libcurl-devel mysql-devel opencv-devel boost-devel git
+# muduo、ONNX Runtime、MySQL C++ Connector、nlohmann/json 的安装详见 README_EN.md
 
-# Install muduo (build from source)
-git clone https://github.com/chenshuo/muduo.git /tmp/muduo
-cd /tmp/muduo && mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DMUDUO_BUILD_EXAMPLES=OFF
-make -j$(nproc) && sudo make install
-
-# Install ONNX Runtime
-curl -L https://github.com/microsoft/onnxruntime/releases/download/v1.17.1/onnxruntime-linux-x64-1.17.1.tgz \
-  | tar xz -C /tmp
-sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/include/* /usr/local/include/
-sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/lib/* /usr/local/lib/
-
-# Install MySQL C++ Connector
-curl -L https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-8.0.33-linux-glibc2.28-x86-64bit.tar.gz \
-  | tar xz -C /tmp
-sudo cp -r /tmp/mysql-connector-c++-8.0.33-*/include/* /usr/local/include/
-sudo cp -r /tmp/mysql-connector-c++-8.0.33-*/lib64/* /usr/local/lib64/
-
-# Install nlohmann/json
-sudo mkdir -p /usr/local/include/nlohmann
-sudo curl -sL https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp \
-  -o /usr/local/include/nlohmann/json.hpp
-
-sudo ldconfig
-
-# 3. Set up MySQL
+# 3. 配置 MySQL
 mysqladmin -u root --port=3307 create ChatHttpServer
-mysql -u root --port=3307 ChatHttpServer <<'SQL'
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(255) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL
-) CHARSET=utf8mb4;
+mysql -u root --port=3307 ChatHttpServer < schema.sql  # 或手动执行建表 SQL
 
-CREATE TABLE chat_message (
-  id INT NOT NULL,
-  username VARCHAR(255) NOT NULL,
-  session_id VARCHAR(255) NOT NULL DEFAULT '',
-  is_user TINYINT NOT NULL DEFAULT 1,
-  content TEXT NOT NULL,
-  ts BIGINT NOT NULL DEFAULT 0,
-  KEY idx_ts (ts)
-) CHARSET=utf8mb4;
-
-CREATE USER IF NOT EXISTS 'chat'@'%' IDENTIFIED BY '123456';
-GRANT ALL PRIVILEGES ON ChatHttpServer.* TO 'chat'@'%';
-FLUSH PRIVILEGES;
-SQL
-
-# 4. Start RabbitMQ
+# 4. 启动 RabbitMQ
 sudo rabbitmq-server -detached
 
-# 5. Configure API Keys (in browser UI after startup, or via env for server-side fallback)
-export DASHSCOPE_API_KEY=sk-xxxx      # Aliyun Qwen / RAG / MCP
-export DOUBAO_API_KEY=xxxx            # Doubao (Volcengine)
-export BAIDU_CLIENT_ID=xxxx           # Baidu TTS/ASR
-export BAIDU_CLIENT_SECRET=xxxx
+# 5. 配置 API Key（可在启动后通过浏览器 UI 配置）
+export DASHSCOPE_API_KEY=sk-xxxx      # 阿里百炼
+export DOUBAO_API_KEY=xxxx            # 豆包
 
-# 6. Build
+# 6. 编译
 mkdir -p build && cd build
 cmake .. && make -j$(nproc)
 
-# 7. Run (default port 80, use -p to specify)
+# 7. 运行
 export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 ./http_server -p 8088
 ```
 
-Open `http://localhost:8088` in your browser.
+浏览器打开 `http://localhost:8088` 即可使用。
 
-### API Keys via Web UI
+### API Key 配置
 
-After login, go to **Personal Center → API Key** tab to configure keys per model. Keys are stored in browser `localStorage` and sent with each request — no server restart required.
-
----
-
-## 📚 API Reference
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/` or `/entry` | ✗ | Login / Register page |
-| POST | `/login` | ✗ | Login, returns `userId` |
-| POST | `/register` | ✗ | Register new user |
-| POST | `/user/logout` | ✓ | Logout |
-| GET | `/menu` | ✓ | Main menu page |
-| GET | `/chat` | ✓ | Chat page |
-| POST | `/chat/send` | ✓ | Send message (async AI call) |
-| POST | `/chat/send-new-session` | ✓ | Create new session and send |
-| GET | `/chat/sessions` | ✓ | List user sessions |
-| POST | `/chat/history` | ✓ | Get session history |
-| POST | `/chat/tts` | ✓ | Text-to-speech |
-| GET | `/upload` | ✓ | Image recognition page |
-| POST | `/upload/send` | ✓ | Submit image for recognition |
+登录后进入 **个人中心 → API Key** 标签页，填入对应模型的密钥即可。密钥存储在浏览器本地，随请求发送，无需重启服务。
 
 ---
 
-## 🗃 Database Schema
+## 📚 API 接口
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| GET | `/` 或 `/entry` | ✗ | 登录 / 注册页 |
+| POST | `/login` | ✗ | 登录，返回 `userId` |
+| POST | `/register` | ✗ | 注册 |
+| POST | `/user/logout` | ✓ | 退出登录 |
+| GET | `/menu` | ✓ | 主菜单 |
+| GET | `/chat` | ✓ | 聊天页面 |
+| POST | `/chat/send` | ✓ | 发送消息（异步 AI） |
+| POST | `/chat/send-stream` | ✓ | SSE 流式发送 |
+| POST | `/chat/send-new-session` | ✓ | 新建会话并发送 |
+| GET | `/chat/sessions` | ✓ | 会话列表 |
+| POST | `/chat/history` | ✓ | 会话历史 |
+| POST | `/chat/tts` | ✓ | 语音合成 |
+| GET | `/upload` | ✓ | 图像识别页 |
+| POST | `/upload/send` | ✓ | 提交图像识别 |
+| POST | `/mcp` | ✗ | MCP Server (JSON-RPC 2.0) |
+
+---
+
+## 🗃 数据库表结构
 
 ```sql
--- Users
+-- 用户表
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL
 ) CHARSET=utf8mb4;
 
--- Sessions (v1.5.0+)
+-- 会话表 (v1.5.0+)
 CREATE TABLE sessions (
-  id         VARCHAR(64) NOT NULL PRIMARY KEY,
-  user_id    BIGINT UNSIGNED NOT NULL,
-  title      VARCHAR(128) DEFAULT NULL,
+  id VARCHAR(64) NOT NULL PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(128) DEFAULT NULL,
   model_type VARCHAR(32) DEFAULT NULL,
-  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   deleted_at DATETIME DEFAULT NULL,
   INDEX idx_user_id (user_id)
 ) CHARSET=utf8mb4;
 
--- Messages (v1.5.0+, replaces chat_message)
+-- 消息表 (v1.5.0+)
 CREATE TABLE messages (
-  id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   session_id VARCHAR(64) NOT NULL,
-  user_id    BIGINT UNSIGNED NOT NULL,
-  role       ENUM('user','assistant','system') NOT NULL,
-  content    MEDIUMTEXT NOT NULL,
-  model      VARCHAR(64) DEFAULT NULL,
-  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  INDEX idx_session_created (session_id, created_at),
-  INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+  user_id BIGINT UNSIGNED NOT NULL,
+  role ENUM('user','assistant','system') NOT NULL,
+  content MEDIUMTEXT NOT NULL,
+  model VARCHAR(64) DEFAULT NULL,
+  created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_session_created (session_id, created_at)
+) ENGINE=InnoDB CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
 
--- User API Keys (v1.5.0+)
+-- API Key 表 (v1.5.0+)
 CREATE TABLE user_api_keys (
-  id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id  BIGINT UNSIGNED NOT NULL,
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
   provider VARCHAR(32) NOT NULL,
-  api_key  VARCHAR(512) NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  api_key VARCHAR(512) NOT NULL,
   UNIQUE KEY uk_user_provider (user_id, provider)
 ) CHARSET=utf8mb4;
 ```
 
 ---
 
-## 📋 Changelog
+## 📋 更新日志
 
 ### v1.6.0 (2026-04-03)
-**SSE Streaming + Standard MCP Server**
-- `AIHelper::chatStream()`: curl `WRITEFUNCTION` callback forwards tokens in real-time; `StreamWriteCallback` parses OpenAI-compatible SSE format
-- New `ChatSseHandler` at `POST /chat/send-stream`: sends SSE handshake headers, streams tokens via `runInLoop`
-- New `McpServer` class: standard JSON-RPC 2.0 MCP Server implementing `tools/list` + `tools/call`; reuses `AIToolRegistry`, supports dynamic tool registration
-- New `McpHandler` at `POST /mcp`: compatible with Claude Desktop, Cursor and any MCP-aware client
-- Frontend: existing-session sends now use `fetch().body.getReader()` for real streaming (no more typewriter simulation)
+**SSE 流式输出 + 标准 MCP Server**
+- `chatStream()` + curl `WRITEFUNCTION` 逐 token 回调推送
+- `ChatSseHandler` — SSE 握手 + `runInLoop` 流式回写
+- `McpServer` — JSON-RPC 2.0 标准实现，可被 Claude Desktop / Cursor 直接接入
+- 前端改用 `fetch().body.getReader()` 实时渲染
 
 ### v1.5.0 (2026-04-03)
-**Phase 2 — Database Schema Redesign**
-- New `sessions` table: persists session metadata with `title`, `model_type`, soft-delete (`deleted_at`), ms-precision timestamps
-- New `messages` table: `AUTO_INCREMENT` primary key + explicit `role ENUM('user','assistant','system')` — eliminates all even/odd index logic
-- New `user_api_keys` table: per-user, per-provider key storage with `UNIQUE KEY (user_id, provider)`, ready for server-side key retrieval
-- Migrated existing data from `chat_message` → `messages` + `sessions` (old table retained as backup)
-- `readDataFromMySQL` reads from new `messages` table with JOIN to `sessions`
-- `pushMessageToMysql` writes to new tables with idempotent `INSERT IGNORE` for sessions
-- `ChatSessionsHandler` reads `title` from DB, falls back to truncated session ID
+**数据库表结构重设计** — sessions / messages / user_api_keys 三高表
 
 ### v1.4.0 (2026-04-03)
-**Phase 1 — Concurrency Bug Fixes (6 items)**
-- `AIHelper::messages_` now protected by `msgMutex_` (was completely unprotected)
-- `Message` struct with explicit `role` field (`"user"` / `"assistant"`) — eliminates the fragile even/odd index heuristic for role detection
-- `atomic<bool> processing_` prevents concurrent requests to the same session from corrupting message order; second request returns an instant error instead of racing
-- `ChatHistoryHandler`: `GetMessages()` called after `chatInfo` lock is released, using AIHelper's own `msgMutex_` — fixes data race between history reads and thread-pool writes
-- RabbitMQ consumer: `DeclareQueue exclusive=false` — both consumer threads can now share the queue without `ACCESS_REFUSED`
-- DB connection pool: `cv_.wait_for(3s)` replaces infinite `cv_.wait` — threads now fail fast under high load instead of hanging indefinitely
+**并发 Bug 修复（6 项）** — msgMutex_ / Message.role / CAS 串行化 / exclusive=false / wait_for
 
 ### v1.3.0 (2026-04-02)
-**Async AI Thread Pool — IO threads never blocked**
-- New `ThreadPool` class (std::thread + queue + condition_variable + future)
-- `HttpResponse` supports deferred (async) mode with `TcpConnectionPtr` injection
-- `HttpServer::onRequest` conditionally skips auto-send for async handlers
-- `ChatSendHandler` and `ChatCreateAndSendHandler` submit AI calls to thread pool
-- AI concurrent capacity: 4 (IO threads) → **8** (thread pool), IO threads unblocked
+**异步线程池** — deferred 响应 + ThreadPool + runInLoop，IO 零阻塞
 
 ### v1.2.0 (2026-04-01)
-**Thread Safety — `shared_mutex` + LRU eviction**
-- All `std::mutex` → `std::shared_mutex` (C++17 read-write lock)
-- Read ops use `shared_lock`, write ops use `unique_lock`
-- LRU eviction: `std::list` + `unordered_map`, O(1) touch/evict, MAX_SESSIONS=500
-- Covers: `chatInformation`, `onlineUsers`, `sessionsIdsMap`, `ImageRecognizerMap`
+**读写锁 + LRU** — shared_mutex + list+map O(1) 淘汰
 
 ### v1.1.0 (2026-04-01)
-**Dynamic API Key + Frontend Rebuild**
-- `AIStrategy::setApiKey()` allows runtime key override (no env var required)
-- Frontend passes API key from `localStorage` with each request
-- Full frontend rebuild: light/dark theme, typewriter effect, personal center, session management
+**动态 API Key + 前端重构**
 
 ### v1.0.0 (2026-04-01)
-Initial deployment on Linux (TencentOS 4.4).  
-Self-developed HTTP framework + multi-model AI chat + RAG + MCP + image recognition + speech.
+初始部署
 
 ---
 
-## 🗺 Roadmap
+## 🗺 路线图
 
-### v1.5.0 — SSE Streaming Output
-- `HttpResponse` supports `Transfer-Encoding: chunked`
-- `AIHelper::chat()` uses curl `WRITEFUNCTION` callback for token-by-token forwarding
-- Frontend `EventSource` replaces typewriter simulation with real streaming
-
-### v2.0.0 — DB Schema Redesign + Standard MCP + Observability
-- New table schema: `sessions` table, `messages` table with explicit `role` column, `user_api_keys` table
-- Standard MCP Server (JSON-RPC 2.0 / stdio transport)
-- Structured logging (JSON format + request ID)
-- Prometheus metrics (QPS, latency, pool utilization)
+### v2.0.0
+- 可观测性（结构化日志 + Prometheus Metrics）
+- Nginx 反向代理 + Redis Session 共享
+- C++20 协程探索
 
 ---
 
-## 📁 Project Structure
+## 📁 项目结构
 
 ```
 RainCppAI/
-├── HttpServer/          # Self-developed HTTP framework
+├── HttpServer/          # 自研 HTTP 框架
 │   ├── include/
 │   │   ├── http/        # HttpServer, HttpRequest, HttpResponse
-│   │   ├── router/      # Router (exact + regex)
-│   │   ├── middleware/  # MiddlewareChain, CorsMiddleware
+│   │   ├── router/      # Router (精确 + 正则)
+│   │   ├── middleware/   # MiddlewareChain, CorsMiddleware
 │   │   ├── session/     # SessionManager, SessionStorage
 │   │   ├── ssl/         # SslContext, SslConnection
 │   │   └── utils/       # MysqlUtil, ThreadPool, DbConnectionPool
 │   └── src/
-├── AIApps/ChatServer/   # AI chat application
+├── AIApps/ChatServer/   # AI 聊天应用
 │   ├── include/
 │   │   ├── ChatServer.h
-│   │   ├── AIUtil/      # AIHelper, AIStrategy, AIFactory, MQManager...
-│   │   └── handlers/    # 13 HTTP handlers
-│   ├── resource/        # HTML frontend (entry, menu, AI, upload)
+│   │   ├── AIUtil/      # AIHelper, AIStrategy, McpServer, MQManager...
+│   │   └── handlers/    # 15 个 HTTP Handler
+│   ├── resource/        # 前端 HTML (entry, menu, AI, upload)
 │   └── src/
-├── Internview/          # Interview knowledge base
-│   ├── 00-项目详解/
-│   ├── 01-AI-Agent基础/
-│   ├── 02-网络基础/
-│   ├── 03-Cpp基础/
-│   └── 04-操作系统基础/
+├── Internview/          # 面试知识库
 ├── CMakeLists.txt
-└── TODO.md
+├── TODO.md
+└── README_EN.md         # English version
 ```
 
 ---
 
-## 📖 References
+## 📖 参考资料
 
 - [muduo — Linux 多线程服务端编程](https://github.com/chenshuo/muduo)
 - [ONNX Runtime C++ API](https://onnxruntime.ai/docs/api/c/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Aliyun Bailian API](https://help.aliyun.com/product/610100.html)
+- [阿里云百炼 API](https://help.aliyun.com/product/610100.html)
