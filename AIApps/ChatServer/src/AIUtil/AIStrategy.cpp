@@ -58,10 +58,11 @@ std::string DouBaoStrategy::getApiKey()const {
 
 
 std::string DouBaoStrategy::getModel() const {
-    // doubao-lite-4k 是通用对话模型，响应格式标准
-    // 若需要 thinking 模型，可改为 doubao-seed-1-6-thinking-250715
-    // 注意: 使用 thinking 模型时 content 字段可能为 null
-    return "doubao-lite-4k";
+    if (endpointId_.empty()) {
+        // 未配置 Endpoint ID 时使用默认模型名（可能不支持）
+        return "doubao-lite-4k";
+    }
+    return endpointId_;  // 火山方舟需要 ep-xxxxx 格式
 }
 
 

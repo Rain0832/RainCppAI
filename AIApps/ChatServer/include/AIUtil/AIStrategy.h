@@ -27,6 +27,9 @@ public:
     virtual void setRagId(const std::string& id) { (void)id; }
     virtual std::string getRagId() const { return ""; }
 
+    // 豆包 Endpoint ID（仅 DouBaoStrategy 使用）
+    virtual void setEndpointId(const std::string& id) { (void)id; }
+
     virtual std::string getModel() const = 0;
 
 
@@ -66,11 +69,14 @@ public:
     DouBaoStrategy() {
         const char* key = std::getenv("DOUBAO_API_KEY");
         if (key) apiKey_ = key;
+        const char* ep = std::getenv("DOUBAO_ENDPOINT_ID");
+        if (ep) endpointId_ = ep;
         isMCPModel = false;
     }
     std::string getApiUrl() const override;
     std::string getApiKey() const override;
     void setApiKey(const std::string& key) override { apiKey_ = key; }
+    void setEndpointId(const std::string& id) { endpointId_ = id; }
     std::string getModel() const override;
 
     json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const override;
@@ -78,6 +84,7 @@ public:
 
 private:
     std::string apiKey_;
+    std::string endpointId_;  ///< 火山方舟 Endpoint ID（ep-xxxxx）
 };
 
 class AliyunRAGStrategy : public AIStrategy {

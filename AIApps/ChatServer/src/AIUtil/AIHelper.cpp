@@ -45,7 +45,7 @@ std::vector<Message> AIHelper::GetMessages() const
 // ─── 核心聊天方法 ────────────────────────────────────────────────────
 std::string AIHelper::chat(int userId, std::string userName, std::string sessionId,
                            std::string userQuestion, std::string modelType,
-                           std::string apiKey, std::string ragId)
+                           std::string apiKey, std::string ragId, std::string endpointId)
 {
     // ★ 同一 session 并发保护：若上一条消息还在处理，立即拒绝
     bool expected = false;
@@ -62,6 +62,7 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     setStrategy(StrategyFactory::instance().create(modelType));
     if (!apiKey.empty()) strategy->setApiKey(apiKey);
     if (!ragId.empty())  strategy->setRagId(ragId);
+    if (!endpointId.empty()) strategy->setEndpointId(endpointId);
     if (strategy->getApiKey().empty()) {
         return "[错误] 未配置 API Key，请在个人中心设置对应模型的 API Key";
     }
@@ -155,7 +156,8 @@ json AIHelper::request(const json &payload)
 // ─── 流式聊天（SSE）────────────────────────────────────────────────
 std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId,
                                   std::string userQuestion, std::string modelType,
-                                  std::string apiKey, std::string ragId, StreamCallback onChunk)
+                                  std::string apiKey, std::string ragId,
+                                  std::string endpointId, StreamCallback onChunk)
 {
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true)) {
@@ -167,12 +169,70 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
     setStrategy(StrategyFactory::instance().create(modelType));
     if (!apiKey.empty()) strategy->setApiKey(apiKey);
     if (!ragId.empty())  strategy->setRagId(ragId);
+    if (!endpointId.empty()) strategy->setEndpointId(endpointId);
     if (strategy->getApiKey().empty()) {
         onChunk("[错误] 未配置 API Key");
         return "";
     }
 
-    // 记录用户消息到内存（不调用 addMessage，避免重复 push_back；后面统一处理）
+    // ★ MCP 模式：工具调用无法流式，走非流式两段式再逐字回调
+    if (strategy->isMCPModel) {
+        // 借用 chat() 的 MCP 逻辑（但 processing_ 已被占用，需要临时释放后调用）
+        // 直接内联 MCP 逻辑避免递归
+        AIConfig config;
+        config.loadFromFile("../AIApps/ChatServer/resource/config.json");
+        std::string tempPrompt = config.buildPrompt(userQuestion);
+
+        std::vector<std::pair<std::string, long long>> firstMsgs;
+        {
+            std::lock_guard<std::mutex> lock(msgMutex_);
+            for (auto& m : messages_) firstMsgs.push_back({m.content, m.ts});
+        }
+        firstMsgs.push_back({tempPrompt, 0});
+
+        json firstResp = executeCurl(strategy->buildRequest(firstMsgs));
+        std::string aiResult = strategy->parseResponse(firstResp);
+        AIToolCall call = config.parseAIResponse(aiResult);
+
+        std::string finalAnswer;
+        if (!call.isToolCall) {
+            finalAnswer = aiResult;
+        } else {
+            AIToolRegistry registry;
+            json toolResult;
+            try {
+                toolResult = registry.invoke(call.toolName, call.args);
+            } catch (const std::exception &e) {
+                finalAnswer = "[工具调用失败] " + std::string(e.what());
+                addMessage(userId, userName, true, userQuestion, sessionId);
+                addMessage(userId, userName, false, finalAnswer, sessionId);
+                onChunk(finalAnswer);
+                return finalAnswer;
+            }
+            std::string secondPrompt = config.buildToolResultPrompt(userQuestion, call.toolName, call.args, toolResult);
+            std::vector<std::pair<std::string, long long>> secondMsgs;
+            {
+                std::lock_guard<std::mutex> lock(msgMutex_);
+                for (auto& m : messages_) secondMsgs.push_back({m.content, m.ts});
+            }
+            secondMsgs.push_back({secondPrompt, 0});
+            json secondResp = executeCurl(strategy->buildRequest(secondMsgs));
+            finalAnswer = strategy->parseResponse(secondResp);
+        }
+
+        addMessage(userId, userName, true, userQuestion, sessionId);
+        addMessage(userId, userName, false, finalAnswer, sessionId);
+
+        // 模拟流式：逐段回调
+        const size_t chunkSize = 4;
+        for (size_t i = 0; i < finalAnswer.size(); i += chunkSize) {
+            std::string chunk = finalAnswer.substr(i, chunkSize);
+            if (!onChunk(chunk)) break;
+        }
+        return finalAnswer;
+    }
+
+    // ─── 非 MCP：正常流式 ─────────────────────────────
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     {
@@ -181,18 +241,16 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
     }
     pushMessageToMysql(userId, userName, true, userQuestion, ms, sessionId);
 
-    // 构建请求 payload，加 stream=true
     std::vector<std::pair<std::string, long long>> snapshot;
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
         for (auto& m : messages_) snapshot.push_back({m.content, m.ts});
     }
     json payload = strategy->buildRequest(snapshot);
-    payload["stream"] = true;   // 启用 OpenAI 兼容流式接口
+    payload["stream"] = true;
 
     std::string fullAnswer = executeCurlStream(payload, onChunk);
 
-    // 将完整回复加入历史
     auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     {

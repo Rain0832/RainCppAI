@@ -52,7 +52,8 @@ public:
      */
     std::string chat(int userId, std::string userName, std::string sessionId,
                      std::string userQuestion, std::string modelType,
-                     std::string apiKey = "", std::string ragId = "");
+                     std::string apiKey = "", std::string ragId = "",
+                     std::string endpointId = "");
 
     /**
      * @brief 流式聊天（SSE）：每收到 token 块立即回调
@@ -61,7 +62,8 @@ public:
      */
     std::string chatStream(int userId, std::string userName, std::string sessionId,
                            std::string userQuestion, std::string modelType,
-                           std::string apiKey, std::string ragId, StreamCallback onChunk);
+                           std::string apiKey, std::string ragId,
+                           std::string endpointId, StreamCallback onChunk);
 
     json request(const json &payload);
 

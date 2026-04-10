@@ -20,11 +20,11 @@
 
 ### v2.0.0 改造计划（参考 Claude Code 架构）
 
-#### Phase A：修复紧急 Bug（小改动）
-1. **chatStream 支持 MCP** — 在 `chatStream()` 中加 `isMCPModel` 判断
-2. **豆包 API 修复** — model 改为用户配置的 Endpoint ID（个人中心新增输入框）
-3. **历史消息从 DB 恢复** — `ChatHistoryHandler` 内存 miss 时 fallback 到 MySQL
-4. **天气工具替换** — `wttr.in` 改为国内 API（如和风天气 / 心知天气）
+#### Phase A：修复紧急 Bug（v1.6.1 ✅ 已完成）
+1. ✅ **chatStream 支持 MCP** — MCP 模式走非流式两段式推理后逐字回调
+2. ✅ **豆包 API 修复** — 支持用户配置 Endpoint ID（`ep-xxxxx`），个人中心新增输入框
+3. ✅ **历史消息 DB fallback** — `ChatHistoryHandler` 内存 miss 时从 MySQL `messages` 表恢复
+4. ✅ **天气工具优化** — 增加超时 8s、User-Agent、网络失败时返回降级回答而非崩溃
 
 #### Phase B：Agent Loop 重构（大改动，参考 Claude Code）
 ```

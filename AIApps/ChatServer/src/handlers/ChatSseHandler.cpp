@@ -34,7 +34,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
 
-        std::string userQuestion, modelType, sessionId, apiKey, ragId;
+        std::string userQuestion, modelType, sessionId, apiKey, ragId, endpointId;
         auto body = req.getBody();
         if (!body.empty()) {
             auto j = json::parse(body);
@@ -42,6 +42,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
             if (j.contains("sessionId")) sessionId    = j["sessionId"];
             if (j.contains("apiKey"))    apiKey       = j["apiKey"];
             if (j.contains("ragId"))     ragId        = j["ragId"];
+            if (j.contains("endpointId")) endpointId = j["endpointId"];
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
         }
 
@@ -83,10 +84,10 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
 
         // 提交流式 AI 调用到线程池
         server_->aiThreadPool_.submit([conn, AIHelperPtr, userId, username, sessionId,
-                                       userQuestion, modelType, apiKey, ragId]() {
+                                       userQuestion, modelType, apiKey, ragId, endpointId]() {
             try {
                 AIHelperPtr->chatStream(
-                    userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
+                    userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId,
                     [&conn](const std::string& token) -> bool {
                         if (!conn->connected()) return false;
                         // 将 token 包装为 JSON 发送

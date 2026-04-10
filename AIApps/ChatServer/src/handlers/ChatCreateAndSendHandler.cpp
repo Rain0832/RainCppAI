@@ -39,6 +39,7 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
         std::string userQuestion;
         std::string modelType;
         std::string apiKey;
+        std::string endpointId;
         std::string ragId;
 
         auto body = req.getBody();
@@ -48,6 +49,7 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
             if (j.contains("question")) userQuestion = j["question"];
             if (j.contains("apiKey"))   apiKey       = j["apiKey"];
             if (j.contains("ragId"))    ragId        = j["ragId"];
+            if (j.contains("endpointId")) endpointId = j["endpointId"];
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
         }
 
@@ -75,9 +77,9 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest &req, http::HttpRe
         resp->setDeferred(true);
         auto conn = resp->getConnection();
 
-        server_->aiThreadPool_.submit([conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId]() {
+        server_->aiThreadPool_.submit([conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]() {
             try {
-                std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion, modelType, apiKey, ragId);
+                std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId);
                 json successResp;
                 successResp["success"] = true;
                 successResp["Information"] = aiInformation;

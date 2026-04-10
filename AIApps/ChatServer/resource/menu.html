@@ -203,7 +203,13 @@ body::before {
             <label>豆包 API Key <span class="key-status" id="st-doubao"></span></label>
             <div class="key-row"><input type="password" id="key-doubao" placeholder="sk-xxxx...">
                 <button class="key-save" onclick="saveKey('doubao')">保存</button></div>
-            <div class="key-hint">用于豆包（火山引擎）模型</div>
+            <div class="key-hint">用于豆包（火山引擎）模型鉴权</div>
+        </div>
+        <div class="key-section">
+            <label>豆包 Endpoint ID <span class="key-status" id="st-doubao-ep"></span></label>
+            <div class="key-row"><input type="text" id="key-doubao-ep" placeholder="ep-xxxxx...">
+                <button class="key-save" onclick="saveKey('doubao-ep')">保存</button></div>
+            <div class="key-hint">在火山方舟控制台创建接入点后获取 ep-xxxxx</div>
         </div>
         <div class="key-section">
             <label>百度语音 Client ID <span class="key-status" id="st-baidu-id"></span></label>
@@ -291,6 +297,7 @@ const KM = {
     dashscope:'rain-key-dashscope',
     'rag-id':'rain-key-rag-id',
     doubao:'rain-key-doubao',
+    'doubao-ep':'rain-key-doubao-ep',
     'baidu-id':'rain-key-baidu-id',
     'baidu-secret':'rain-key-baidu-secret'
 };
