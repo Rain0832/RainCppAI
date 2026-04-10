@@ -4,6 +4,58 @@
 
 ---
 
+## 🔴 v2.0.0 — Agent 架构重构（待实施）
+
+### 已发现的架构缺陷
+
+| 缺陷 | 影响 | 严重度 |
+|------|------|--------|
+| `chatStream()` 没有 MCP 分支 | SSE 流式模式下 MCP 工具调用被完全跳过 | 🔴 高 |
+| `get_weather` 调用 `wttr.in`（境外） | 国内环境超时/被墙，工具调用必然失败 | 🔴 高 |
+| 豆包 model 名用 `doubao-lite-4k` 而非 Endpoint ID | 火山方舟 API 需要 `ep-xxxxx` 格式 | 🔴 高 |
+| `ChatHistoryHandler` 不从 DB 读取 | 服务重启/LRU淘汰后历史丢失 | 🔴 高 |
+| MCP 靠 Prompt 注入 + 解析自由文本 | LLM 不按格式输出时调用失败 | 🟡 中 |
+| 两段式推理只有 2 步 | 无法处理多步工具调用（如先查天气再查航班） | 🟡 中 |
+| `buildRequest()` 中 role 还用奇偶判断 | `Message.role` 字段未传递到 Strategy | 🟡 中 |
+
+### v2.0.0 改造计划（参考 Claude Code 架构）
+
+#### Phase A：修复紧急 Bug（小改动）
+1. **chatStream 支持 MCP** — 在 `chatStream()` 中加 `isMCPModel` 判断
+2. **豆包 API 修复** — model 改为用户配置的 Endpoint ID（个人中心新增输入框）
+3. **历史消息从 DB 恢复** — `ChatHistoryHandler` 内存 miss 时 fallback 到 MySQL
+4. **天气工具替换** — `wttr.in` 改为国内 API（如和风天气 / 心知天气）
+
+#### Phase B：Agent Loop 重构（大改动，参考 Claude Code）
+```
+当前两段式：
+  user → LLM(意图) → 工具 → LLM(综合) → answer  （固定2步）
+
+目标 Agent Loop：
+  user → LLM → [tool_use?]
+                ├─ yes → execute tool → 结果回注 → LLM → [tool_use?] → ...循环
+                └─ no  → answer（退出循环）
+  支持 N 步推理，直到 LLM 不再调工具
+```
+
+核心改动：
+- **`AIHelper::agentLoop()`** — 替代 `chat()` 的两段式，支持 N 步循环
+- **改用原生 Function Calling** — `buildRequest()` 中声明 `tools[]` 参数（OpenAI 兼容格式），解析响应中 `tool_calls` 结构化字段，而非 Prompt 注入
+- **`buildRequest()` 传递 role** — 从 `Message.role` 读取，而非奇偶判断
+- **流式 Agent Loop** — `chatStream()` 中也支持 tool_use → execute → 继续流式
+
+#### Phase C：工具生态（中改动）
+- **外部 MCP Server 对接** — 不仅是本地 `AIToolRegistry`，还能连接外部 MCP Server（通过 HTTP/stdio）
+- **工具声明配置化** — `config.json` → 标准 MCP `tools/list` 格式，支持动态加载
+- **用户自定义工具** — 通过 Web UI 注册自定义 HTTP API 作为工具
+
+#### Phase D：可靠性 & 可观测性
+- **历史消息完整性** — `ChatHistoryHandler` DB fallback + Redis 缓存
+- **结构化日志** — JSON 格式 + 请求 ID + Agent Loop 步骤追踪
+- **Prometheus Metrics** — QPS、AI 延迟、工具调用成功率
+
+---
+
 ### ✅ 优化 2+5：SSE 流式输出 + 标准 MCP Server（v1.6.0 已完成）
 
 **SSE 改动**：
