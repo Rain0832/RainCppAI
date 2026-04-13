@@ -16,6 +16,7 @@
 #include "../include/handlers/ChatSpeechHandler.h"
 #include "../include/handlers/ChatSseHandler.h"
 #include "../include/handlers/McpHandler.h"
+#include "../include/handlers/ChatUpdateTitleHandler.h"
 
 #include "../include/ChatServer.h"
 #include "../../../HttpServer/include/http/HttpRequest.h"
@@ -143,6 +144,7 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
+    httpServer_.Post("/chat/update-session-title", std::make_shared<ChatUpdateTitleHandler>(this));
 
     // AI功能路由
     httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "../../../../HttpServer/include/utils/JsonUtil.h"
+#include "Message.h"
 
 
 
@@ -33,7 +34,8 @@ public:
     virtual std::string getModel() const = 0;
 
 
-    virtual json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const = 0;
+    virtual json buildRequest(const std::vector<Message>& messages,
+                              const json& tools = json()) const = 0;
 
 
     virtual std::string parseResponse(const json& response) const = 0;
@@ -56,7 +58,7 @@ public:
     void setApiKey(const std::string& key) override { apiKey_ = key; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
@@ -79,7 +81,7 @@ public:
     void setEndpointId(const std::string& id) { endpointId_ = id; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
@@ -105,7 +107,7 @@ public:
     std::string getRagId() const override { return ragId_; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
@@ -127,7 +129,7 @@ public:
     void setApiKey(const std::string& key) override { apiKey_ = key; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:

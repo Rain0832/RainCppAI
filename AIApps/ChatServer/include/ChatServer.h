@@ -60,6 +60,7 @@ class ChatCreateAndSendHandler;
 class ChatSessionsHandler;
 class ChatSpeechHandler;
 class ChatSseHandler;
+class ChatUpdateTitleHandler;
 
 /**
  * @brief AI聊天服务器核心类
@@ -122,6 +123,7 @@ private:
 	friend class ChatSessionsHandler;
 	friend class ChatSpeechHandler;
 	friend class ChatSseHandler;
+	friend class ChatUpdateTitleHandler;
 
 private:
 	/**

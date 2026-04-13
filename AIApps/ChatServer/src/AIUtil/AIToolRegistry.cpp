@@ -26,6 +26,39 @@ bool AIToolRegistry::hasTool(const std::string& name) const {
     return tools_.count(name) > 0;
 }
 
+json AIToolRegistry::getToolsSchema() const {
+    json tools = json::array();
+    // get_weather
+    tools.push_back({
+        {"type", "function"},
+        {"function", {
+            {"name", "get_weather"},
+            {"description", "获取指定城市的实时天气信息"},
+            {"parameters", {
+                {"type", "object"},
+                {"properties", {
+                    {"city", {{"type", "string"}, {"description", "城市名称，如北京、上海、广州"}}}
+                }},
+                {"required", json::array({"city"})}
+            }}
+        }}
+    });
+    // get_time
+    tools.push_back({
+        {"type", "function"},
+        {"function", {
+            {"name", "get_time"},
+            {"description", "获取当前服务器时间"},
+            {"parameters", {
+                {"type", "object"},
+                {"properties", json::object()},
+                {"required", json::array()}
+            }}
+        }}
+    });
+    return tools;
+}
+
 
 size_t AIToolRegistry::WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
     size_t totalSize = size * nmemb;
