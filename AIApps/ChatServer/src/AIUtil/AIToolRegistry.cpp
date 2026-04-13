@@ -73,27 +73,28 @@ json AIToolRegistry::getWeather(const json& args) {
     }
 
     std::string city = args["city"].get<std::string>();
-    std::string encodedCity;
 
-    char* encoded = curl_easy_escape(nullptr, city.c_str(), city.length());
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        return json{ {"error", "Failed to init CURL"} };
+    }
+
+    // 使用 curl handle 进行 URL 编码（curl_easy_escape 第一个参数需要有效 handle）
+    char* encoded = curl_easy_escape(curl, city.c_str(), static_cast<int>(city.length()));
+    std::string encodedCity;
     if (encoded) {
         encodedCity = encoded;
         curl_free(encoded);
     } else {
+        curl_easy_cleanup(curl);
         return json{ {"error", "URL encode failed"} };
     }
 
-    // 使用 wttr.in 备用 + 国内 API 主选
-    // 主选：wttr.in（简单免费，UTF-8 友好）
-    // 如果需要更可靠的国内 API，可替换为和风天气（需 API Key）
+    // wttr.in 免费 API，国内可能超时（已设 8s 超时 + fallback）
+    // 如需更可靠，可替换为和风天气等国内 API
     std::string url = "https://wttr.in/" + encodedCity + "?format=%l:+%C+%t+%w&lang=zh";
 
-    CURL* curl = curl_easy_init();
     std::string response;
-
-    if (!curl) {
-        return json{ {"error", "Failed to init CURL"} };
-    }
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
