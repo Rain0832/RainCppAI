@@ -190,8 +190,13 @@ json AliyunMcpStrategy::buildRequest(const std::vector<std::pair<std::string, lo
 
 std::string AliyunMcpStrategy::parseResponse(const json& response) const {
     if (response.contains("choices") && !response["choices"].empty()) {
-        return response["choices"][0]["message"]["content"];
+        const auto& msg = response["choices"][0]["message"];
+        if (msg.contains("content") && !msg["content"].is_null()) {
+            return msg["content"].get<std::string>();
+        }
     }
+    if (response.contains("message"))
+        return "[MCP 错误] " + response["message"].get<std::string>();
     return {};
 }
 

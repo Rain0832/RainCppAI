@@ -282,6 +282,8 @@ std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onCh
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ctx);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);          // 流式 60 秒总超时
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
     curl_easy_perform(curl);
     curl_slist_free_all(headers);
@@ -363,6 +365,8 @@ json AIHelper::executeCurl(const json &payload)
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);          // 30 秒总超时
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);   // 10 秒连接超时
 
     CURLcode res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
