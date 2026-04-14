@@ -1,175 +1,107 @@
 # RainCppAI TODO — 优化路线图
 
-> 当前版本：v1.6.0
+> 当前版本：v2.0.0（Phase B 已完成）
 
 ---
 
-## 🔴 v2.0.0 — Agent 架构重构（待实施）
+## ✅ v2.0.0 — Agent 架构重构（已完成）
 
-### 已发现的架构缺陷
-
-| 缺陷 | 影响 | 严重度 |
-|------|------|--------|
-| `chatStream()` 没有 MCP 分支 | SSE 流式模式下 MCP 工具调用被完全跳过 | 🔴 高 |
-| `get_weather` 调用 `wttr.in`（境外） | 国内环境超时/被墙，工具调用必然失败 | 🔴 高 |
-| 豆包 model 名用 `doubao-lite-4k` 而非 Endpoint ID | 火山方舟 API 需要 `ep-xxxxx` 格式 | 🔴 高 |
-| `ChatHistoryHandler` 不从 DB 读取 | 服务重启/LRU淘汰后历史丢失 | 🔴 高 |
-| MCP 靠 Prompt 注入 + 解析自由文本 | LLM 不按格式输出时调用失败 | 🟡 中 |
-| 两段式推理只有 2 步 | 无法处理多步工具调用（如先查天气再查航班） | 🟡 中 |
-| `buildRequest()` 中 role 还用奇偶判断 | `Message.role` 字段未传递到 Strategy | 🟡 中 |
-
-### v2.0.0 改造计划（参考 Claude Code 架构）
-
-#### Phase A：修复紧急 Bug（v1.6.1 ✅ 已完成）
+### Phase A：修复紧急 Bug（v1.6.1 ✅ 已完成）
 1. ✅ **chatStream 支持 MCP** — MCP 模式走非流式两段式推理后逐字回调
 2. ✅ **豆包 API 修复** — 支持用户配置 Endpoint ID（`ep-xxxxx`），个人中心新增输入框
 3. ✅ **历史消息 DB fallback** — `ChatHistoryHandler` 内存 miss 时从 MySQL `messages` 表恢复
 4. ✅ **天气工具优化** — 增加超时 8s、User-Agent、网络失败时返回降级回答而非崩溃
 
-#### Phase B：Agent Loop 重构（大改动，参考 Claude Code）
-```
-当前两段式：
-  user → LLM(意图) → 工具 → LLM(综合) → answer  （固定2步）
+### Phase B：Agent Loop 重构（✅ 已完成）
+- ✅ **`AIHelper::agentLoop()`** — N 步 Function Calling 循环，最多 5 步防死循环
+- ✅ **原生 Function Calling** — `buildRequest()` 声明 `tools[]`，解析 `tool_calls` 结构化字段
+- ✅ **`buildRequest()` 传递 role** — 从 `Message.role` 读取
+- ✅ **流式 Agent Loop** — `chatStream()` 中 MCP 模式走 Agent Loop 后逐字 UTF-8 安全回调
 
-目标 Agent Loop：
-  user → LLM → [tool_use?]
-                ├─ yes → execute tool → 结果回注 → LLM → [tool_use?] → ...循环
-                └─ no  → answer（退出循环）
-  支持 N 步推理，直到 LLM 不再调工具
-```
+---
 
-核心改动：
-- **`AIHelper::agentLoop()`** — 替代 `chat()` 的两段式，支持 N 步循环
-- **改用原生 Function Calling** — `buildRequest()` 中声明 `tools[]` 参数（OpenAI 兼容格式），解析响应中 `tool_calls` 结构化字段，而非 Prompt 注入
-- **`buildRequest()` 传递 role** — 从 `Message.role` 读取，而非奇偶判断
-- **流式 Agent Loop** — `chatStream()` 中也支持 tool_use → execute → 继续流式
+## 🔴 v2.1.0 — 安全 & 性能优化（待实施）
 
-#### Phase C：工具生态（中改动）
-- **外部 MCP Server 对接** — 不仅是本地 `AIToolRegistry`，还能连接外部 MCP Server（通过 HTTP/stdio）
+### 已发现的架构缺陷
+
+| 缺陷 | 影响 | 严重度 |
+|------|------|--------|
+| `pushMessageToMysql` SQL 拼接 | 注入风险，手工 `escapeString` 不可靠 | 🔴 高 |
+| Agent Loop tool 角色消息不持久化 | 服务重启后工具调用上下文丢失 | 🔴 高 |
+| `AliyunMcpStrategy` 与 `AliyunStrategy` 代码重复 | 违反 DRY，维护成本翻倍 | 🟡 中 |
+| `chatInformation` 全局读写锁 | 不同用户间互斥，高并发下成为瓶颈 | 🟡 中 |
+| `get_weather` 仍调 `wttr.in`（境外） | 国内超时，虽有 fallback 但根本问题未解 | 🟡 中 |
+| 连接池 `detach()` 线程 | 无法优雅关闭，程序退出可能中断 ping | 🟡 中 |
+
+---
+
+## 🟠 v3.0.0 — 生态 & 可靠性升级（规划中）
+
+> 以下优化项无优先级顺序，可并行推进
+
+### 1. 压测系统 + Redis 评估
+- 先建压测系统（wrk/wrk2 + 自定义 Lua 脚本），评估当前负载能力
+- 根据压测结果决定是否引入 Redis：Session 共享 / 历史消息缓存 / 热点用户 chatInfo 缓存
+- 当前用户量不大，过早引入 Redis 可能增加复杂度而无收益
+
+### 2. SQL 注入修复
+- `pushMessageToMysql` 改用 MySQL Prepared Statement（参数化查询）
+- 消除 `escapeString` 手工转义，彻底防注入
+
+### 3. Phase C：工具生态
+- **外部 MCP Server 对接** — 连接外部 MCP Server（通过 HTTP/stdio），不仅用本地 `AIToolRegistry`
 - **工具声明配置化** — `config.json` → 标准 MCP `tools/list` 格式，支持动态加载
 - **用户自定义工具** — 通过 Web UI 注册自定义 HTTP API 作为工具
 
-#### Phase D：可靠性 & 可观测性
-- **历史消息完整性** — `ChatHistoryHandler` DB fallback + Redis 缓存
+### 4. Phase D：可靠性 & 可观测性
 - **结构化日志** — JSON 格式 + 请求 ID + Agent Loop 步骤追踪
 - **Prometheus Metrics** — QPS、AI 延迟、工具调用成功率
+- **Redis 缓存** — 历史消息 DB fallback + 热点会话缓存
+
+### 5. 分片锁优化
+- `chatInformation` 全局锁 → 分片锁（`shared_mutex[userId % N]`）
+- 消除不同用户间的互斥，提升并发读性能
+
+### 6. C++20 协程探索
+- `co_await` 替代线程池 + `runInLoop`
+- 用 `asio::awaitable` 实现天然异步的 AI 调用链，无需手动线程管理
+
+### 7. Nginx + Redis 部署
+- Nginx 反向代理 + 负载均衡
+- Session 迁移到 Redis 共享，支持多实例水平扩展
+
+### 8. HTTP/2 支持
+- 引入 nghttp2 库
+- 二进制帧 + 多路复用 + HPACK 头部压缩 + 无队头阻塞
+
+### 9. 自建 AI 能力（替代外部 API）
+- **TTS/ASR**：sherpa-onnx (C++ TTS) + whisper.cpp (ASR)，去掉百度 API 依赖
+- **RAG 链路**：ONNX BGE-small Embedding + FAISS 向量索引，去掉阿里百炼 API 依赖
+- **天气工具**：换国内天气 API（和风天气）
+- **路由优化**：正则 O(n) → Radix Tree O(k)
 
 ---
 
-### ✅ 优化 2+5：SSE 流式输出 + 标准 MCP Server（v1.6.0 已完成）
+## ✅ 历史版本归档
 
-**SSE 改动**：
-- `AIHelper::chatStream()` — curl WRITEFUNCTION 回调逐 token 转发
-- `ChatSseHandler` — 路由 `POST /chat/send-stream`，SSE 握手 + 流式回写
-- 前端已有会话改用 fetch streaming 读取 SSE，逐 token 渲染
+### v1.6.0 — SSE 流式 + MCP Server
+- `AIHelper::chatStream()` + `StreamWriteCallback` 逐 token 回调
+- `McpServer` JSON-RPC 2.0 `tools/list` + `tools/call`
 
-**MCP 改动**：
-- `McpServer` — 标准 JSON-RPC 2.0，`tools/list` + `tools/call`，复用 `AIToolRegistry`
-- `McpHandler` — 路由 `POST /mcp`
-- 可被 Claude Desktop、Cursor 等 MCP 兼容客户端直接接入
+### v1.5.0 — 三高表结构
+- sessions / messages / user_api_keys 三表设计
 
----
+### v1.4.0 — 并发 Bug 修复（6项）
+- msgMutex_ / Message.role / CAS / 锁分离 / exclusive=false / wait_for(3s)
 
+### v1.3.0 — 异步线程池
+- ThreadPool + deferred + runInLoop，IO 不阻塞
 
+### v1.2.0 — 读写锁 + LRU
+- shared_mutex + list+map O(1) 淘汰
 
-**改动**：
-1. **新增 `sessions` 表**：持久化会话元数据（`user_id` / `title` / `model_type` / `deleted_at` 软删除 / 毫秒精度时间戳）
-2. **新增 `messages` 表**：自增主键 `id`，显式 `role` ENUM（user/assistant/system），彻底替代奇偶判断
-3. **新增 `user_api_keys` 表**：API Key 按 `(user_id, provider)` 唯一存储，为后续服务端读取 Key 预留
-4. **迁移旧数据**：旧 `chat_message` → 新 `messages` + `sessions`，旧表保留作备份
-5. **后端适配**：`readDataFromMySQL` 改为读新表，`pushMessageToMysql` 写新表，`ChatSessionsHandler` 从 DB 读取会话 title
+### v1.1.0 — 动态 API Key
+- 前端 localStorage → 请求传递 → setApiKey()
 
----
-
-
-
-**改动**：
-
-1. **AIHelper::messages 无锁** → 引入 `msgMutex_`，所有对 `messages_` 的读写均加锁
-2. **奇偶下标判断角色** → 新增 `Message` 结构体（`role` / `content` / `ts`），`ChatHistoryHandler` 直接读 `role` 字段，彻底消除奇偶依赖
-3. **同一 session 并发请求** → 引入 `atomic<bool> processing_`，同一 session 同时只能处理一条消息，后续请求立即返回提示（非阻塞串行化）
-4. **GetMessages() 在 chatInfo 锁外调用竞争** → 分离锁范围：chatInfo 锁只保护 map 查找，AIHelper 自身的 msgMutex_ 保护消息内容
-5. **MQ 独占队列 bug** → `DeclareQueue` 的 `exclusive` 从 `true` 改为 `false`，多消费线程可共用同一队列
-6. **DB 连接池等待无超时** → `cv_.wait_for(3s)`，超时后抛出异常，防止线程池全阻塞
-
----
-
-### ✅ 优化 1：引入异步线程池处理 AI 调用（v1.3.0 已完成）
-
-**改动**：
-- 新增通用 `ThreadPool` 类（`std::thread` + `std::queue` + `condition_variable`）
-- `HttpResponse` 新增 `deferred` 异步模式 + 持有 `TcpConnectionPtr`
-- `HttpServer::onRequest` 支持异步响应（deferred 模式跳过自动发送）
-- `ChatSendHandler` / `ChatCreateAndSendHandler` AI 调用提交到 8 线程的线程池
-- 线程池任务完成后通过 `runInLoop` 回到 IO 线程发送响应
-- IO 线程完全不阻塞，并发能力从 4 提升到 8+
-
----
-
-### ✅ 优化 3：chatInformation 的线程安全 & 内存管理（v1.2.0 已完成）
-
-**改动**：
-- 所有 `std::mutex` → `std::shared_mutex`（C++17 读写锁）
-- 读操作（查找会话、获取历史）使用 `shared_lock`，写操作（创建会话）使用 `unique_lock`
-- 新增 LRU 淘汰策略：`std::list` + `unordered_map` 实现 O(1) 访问/淘汰，最大会话数 500
-- 覆盖所有共享数据：`chatInformation`、`onlineUsers_`、`sessionsIdsMap`、`ImageRecognizerMap`
-
----
-
-### ✅ 优化 4：统一的配置管理（v1.1.0 部分完成）
-
-**已完成**：
-- API Key 支持前端用户级配置（localStorage → 请求传递 → 后端动态 setApiKey）
-- Strategy 构造函数不再强制要求环境变量
-- 敏感信息不入代码仓库
-
-**未完成**：YAML/TOML 配置文件、运行时热更新
-
----
-
-### 🟠 优化 2：SSE（Server-Sent Events）流式输出
-
-**现状**：HttpResponse 不支持 chunked transfer encoding，前端用打字机效果模拟流式。
-
-**方案（待实施）**：
-- HttpResponse 新增流式发送能力（`Transfer-Encoding: chunked`）
-- `AIHelper::chat()` 使用 curl `WRITEFUNCTION` 回调逐块转发
-- 前端使用 `EventSource` API 接收 SSE
-- **依赖优化 1**（需要异步响应框架）
-
----
-
-### 🔵 优化 5：完善 MCP 实现——支持标准 MCP Server
-
-**现状**：Prompt 注入 + JSON 解析的"伪 MCP"。
-
-**方案**：
-- 实现标准 MCP Server（JSON-RPC 2.0 / stdio 传输）
-- 支持 `tools/list`、`tools/call` 等标准方法
-- 实现 Function Calling 标准接口
-
----
-
-### ⚪ 优化 6：可观测性（Observability）
-
-**现状**：仅 muduo `LOG_INFO`，无结构化日志、无 metrics。
-
-**方案**：
-- 结构化日志（JSON + 请求 ID）
-- Prometheus metrics（QPS、延迟、连接池使用率）
-- OpenTelemetry tracing
-
----
-
-## 优先级评估
-
-| 优先级 | 优化项 | 状态 | 难度 |
-|--------|--------|------|------|
-| ✅ 已完成 | Phase 1 并发 Bug 修复（6项） | v1.4.0 | 中 |
-| ✅ 已完成 | 异步线程池 — IO 线程不阻塞 | v1.3.0 | 大 |
-| ✅ 已完成 | 线程安全 — shared_mutex + LRU | v1.2.0 | 中 |
-| ✅ 部分完成 | 配置管理 — 前端 API Key 传递 | v1.1.0 | 小 |
-| 🟠 P0 | SSE 流式输出（依赖异步框架 ✅） | 待实施 | 大 |
-| 🔵 P1 | 标准 MCP Server | 待实施 | 大 |
-| 🔵 P2 | Phase 2 — 表结构重设计（role字段/sessions表/user_api_keys表） | 待实施 | 中 |
-| ⚪ P3 | 可观测性 | 待实施 | 中 |
+### v1.0.0 — 初始部署
+- 前端重构 + 基础功能
