@@ -24,16 +24,24 @@ void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpRespons
         int userId = std::stoi(session->getValue("userId"));
         std::shared_ptr<ImageRecognizer> ImageRecognizerPtr;
         {
-            std::lock_guard<std::mutex> lock(server_->mutexForImageRecognizerMap);
-            if (server_->ImageRecognizerMap.find(userId) == server_->ImageRecognizerMap.end())
-            {
-
-                server_->ImageRecognizerMap.emplace(
-                    userId,
-                    std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx") // todo:Remove hard coding
-                );
+            // 先读锁查找
+            std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForImageRecognizer);
+            auto it = server_->ImageRecognizerMap.find(userId);
+            if (it != server_->ImageRecognizerMap.end()) {
+                ImageRecognizerPtr = it->second;
             }
-            ImageRecognizerPtr = server_->ImageRecognizerMap[userId];
+            rlock.unlock();
+
+            if (!ImageRecognizerPtr) {
+                std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForImageRecognizer);
+                if (server_->ImageRecognizerMap.find(userId) == server_->ImageRecognizerMap.end()) {
+                    server_->ImageRecognizerMap.emplace(
+                        userId,
+                        std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx")
+                    );
+                }
+                ImageRecognizerPtr = server_->ImageRecognizerMap[userId];
+            }
         }
 
         auto body = req.getBody();

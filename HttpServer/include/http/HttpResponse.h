@@ -27,15 +27,31 @@ namespace http
             k500InternalServerError = 500,
         };
 
-        /**
-         * 构造响应对象
-         * @param close 是否在响应后关闭连接，默认关闭
-         * @return 无返回值
-         */
         HttpResponse(bool close = true)
-            : statusCode_(kUnknown), closeConnection_(close)
+            : statusCode_(kUnknown), closeConnection_(close), deferred_(false)
         {
         }
+
+        // --- 异步响应支持 ---
+
+        /**
+         * @brief 标记此响应为延迟发送（异步模式）
+         *
+         * 当 Handler 需要在独立线程中处理耗时任务（如 AI API 调用）时，
+         * 设置 deferred=true，HttpServer::onRequest 将跳过自动发送。
+         * Handler 自行通过 getConnection()->send() 发送响应。
+         */
+        void setDeferred(bool on) { deferred_ = on; }
+        bool isDeferred() const { return deferred_; }
+
+        /**
+         * @brief 注入/获取底层 TCP 连接
+         *
+         * 异步模式下，Handler 通过此连接在任务完成后回写响应。
+         * TcpConnectionPtr 是 shared_ptr，线程池持有它可防止连接提前释放。
+         */
+        void setConnection(const muduo::net::TcpConnectionPtr& conn) { conn_ = conn; }
+        muduo::net::TcpConnectionPtr getConnection() const { return conn_; }
 
         /**
          * 设置HTTP协议版本
@@ -169,6 +185,8 @@ namespace http
         std::map<std::string, std::string> headers_; ///< 响应头集合
         std::string body_; ///< 响应体内容
         bool isFile_; ///< 标识响应是否为文件类型
+        bool deferred_; ///< 延迟发送标记（异步模式）
+        muduo::net::TcpConnectionPtr conn_; ///< 异步模式下持有的连接
     };
 
 } // namespace http

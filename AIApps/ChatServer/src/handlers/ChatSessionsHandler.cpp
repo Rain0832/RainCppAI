@@ -22,24 +22,41 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         }
 
         int userId = std::stoi(session->getValue("userId"));
-        std::string username = session->getValue("username");
 
-        std::vector<std::string> sessions;
-
+        // Phase 2: 从 sessions 表读取含 title 的会话列表
+        // 同时兼容内存中的会话（新建但 MQ 尚未持久化的）
+        std::vector<std::string> memSessions;
         {
-            std::lock_guard<std::mutex> lock(server_->mutexForSessionsId);
-            sessions = server_->sessionsIdsMap[userId];
+            std::shared_lock<std::shared_mutex> lock(server_->rwMutexForSessionsId);
+            memSessions = server_->sessionsIdsMap[userId];
+        }
+
+        // 查 DB 获取 title
+        std::unordered_map<std::string, std::string> titleMap;
+        try {
+            http::MysqlUtil mu;
+            std::string sql = "SELECT id, title FROM sessions WHERE user_id = " + std::to_string(userId)
+                            + " AND deleted_at IS NULL ORDER BY updated_at DESC";
+            auto res = mu.executeQuery(sql);
+            while (res && res->next()) {
+                std::string sid = res->getString("id");
+                std::string title = res->isNull("title") ? "" : res->getString("title");
+                titleMap[sid] = title;
+            }
+        } catch (...) {
+            // DB 查询失败时降级为纯内存列表，不影响主流程
         }
 
         json successResp;
         successResp["success"] = true;
-
         json sessionArray = json::array();
-        for (auto sid : sessions)
-        {
+        for (auto& sid : memSessions) {
             json s;
             s["sessionId"] = sid;
-            s["name"] = "Ự " + sid;
+            auto it = titleMap.find(sid);
+            s["name"] = (it != titleMap.end() && !it->second.empty())
+                        ? it->second
+                        : "Session " + sid.substr(0, 8);
             sessionArray.push_back(s);
         }
         successResp["sessions"] = sessionArray;

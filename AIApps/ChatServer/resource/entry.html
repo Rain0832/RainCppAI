@@ -3,233 +3,196 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rain AI Helper</title>
+<title>Rain AI — 登录</title>
 <style>
-    /* 全局样式 */
-    body {
-        font-family: "Microsoft YaHei", Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background-color: #f5f5f5;
-        color: #333;
-    }
-
-    h1.title {
-        font-size: 36px;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 30px;
-        background: linear-gradient(to right, #007bff, #00c6ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .container {
-        width: 360px;
-        padding: 25px;
-        background: #ffffff;
-        border-radius: 15px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-        box-sizing: border-box;
-        text-align: center;
-        transition: all 0.3s;
-    }
-
-    .container:hover {
-        box-shadow: 0 12px 25px rgba(0,0,0,0.15);
-    }
-
-    h2 {
-        font-size: 24px;
-        margin-bottom: 20px;
-        color: #333;
-    }
-
-    .form-group {
-        margin-bottom: 18px;
-        text-align: left;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 14px;
-        color: #555;
-        margin-bottom: 5px;
-    }
-
-    .form-group input {
-        width: calc(100% - 20px);
-        padding: 10px;
-        font-size: 14px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background: #f9f9f9;
-        outline: none;
-        transition: all 0.2s;
-    }
-
-    .form-group input:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 8px rgba(0,123,255,0.3);
-        background: #fff;
-    }
-
-    .btn {
-        width: 100%;
-        padding: 12px;
-        font-size: 16px;
-        background-color: #007bff;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: all 0.3s;
-    }
-
-    .btn:hover {
-        background-color: #0056b3;
-        transform: scale(1.03);
-    }
-
-    .switch {
-        margin-top: 15px;
-        font-size: 14px;
-        color: #666;
-    }
-
-    .switch a {
-        color: #007bff;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    .switch a:hover { text-decoration: underline; }
-
-    #register-container { display: none; }
-
-    /* 成功提示框 */
-    #success-alert {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #007bff;
-        color: #fff;
-        padding: 12px 25px;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        display: none;
-        z-index: 1000;
-        font-weight: bold;
-    }
+:root {
+    --bg: #f5f7fa; --card: #ffffff; --border: #e2e8f0; --text: #1e293b;
+    --text2: #64748b; --accent: #6366f1; --accent-hover: #4f46e5;
+    --input-bg: #f8fafc; --input-focus: #eef2ff; --shadow: 0 1px 3px rgba(0,0,0,0.04);
+    --toast-bg: #6366f1; --glow: rgba(99,102,241,0.08);
+}
+[data-theme="dark"] {
+    --bg: #0c0c18; --card: #161625; --border: #252540; --text: #e2e8f0;
+    --text2: #94a3b8; --accent: #818cf8; --accent-hover: #6366f1;
+    --input-bg: #1a1a30; --input-focus: #1e1e3a; --shadow: 0 1px 3px rgba(0,0,0,0.2);
+    --toast-bg: #6366f1; --glow: rgba(129,140,248,0.06);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; transition: background .3s, color .3s;
+}
+/* 背景点缀 */
+body::before {
+    content: ''; position: fixed; top: -50%; right: -30%; width: 600px; height: 600px;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+    border-radius: 50%; pointer-events: none; z-index: 0;
+}
+body::after {
+    content: ''; position: fixed; bottom: -40%; left: -20%; width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%);
+    border-radius: 50%; pointer-events: none; z-index: 0;
+}
+.theme-toggle {
+    position: fixed; top: 20px; right: 20px; width: 40px; height: 40px;
+    border-radius: 12px; border: 1px solid var(--border); background: var(--card);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: all .2s; z-index: 100;
+}
+.theme-toggle:hover { border-color: var(--accent); transform: scale(1.05); }
+.wrapper { width: 100%; max-width: 400px; padding: 20px; position: relative; z-index: 1; }
+.logo { text-align: center; margin-bottom: 36px; }
+.logo h1 {
+    font-size: 30px; font-weight: 700; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo p { color: var(--text2); font-size: 14px; margin-top: 8px; }
+.card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px; transition: all .3s;
+    box-shadow: var(--shadow), 0 8px 32px rgba(0,0,0,0.03);
+}
+.tabs { display: flex; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.tab {
+    flex: 1; padding: 12px 0; text-align: center; font-size: 15px;
+    font-weight: 500; color: var(--text2); cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all .2s;
+    background: none; border-top: none; border-left: none; border-right: none;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:hover:not(.active) { color: var(--text); }
+.form-group { margin-bottom: 20px; }
+.form-group label {
+    display: block; font-size: 13px; font-weight: 500;
+    color: var(--text2); margin-bottom: 6px;
+}
+.form-group input {
+    width: 100%; padding: 11px 14px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--input-bg); color: var(--text);
+    outline: none; transition: all .2s;
+}
+.form-group input:focus {
+    border-color: var(--accent); background: var(--input-focus);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+.btn {
+    width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; transition: all .2s;
+}
+.btn:hover { background: var(--accent-hover); transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+}
+.btn:active { transform: translateY(0); }
+.form-panel { display: none; }
+.form-panel.active { display: block; }
+.toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: var(--toast-bg); color: #fff; padding: 10px 24px;
+    border-radius: 10px; font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    opacity: 0; transition: all .3s; pointer-events: none; z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
-<div id="success-alert">提示信息</div>
-
-<div>
-    <h1 class="title">Rain AI Helper</h1>
-
-    <!-- 登录 -->
-    <div class="container" id="login-container">
-        <h2>登录</h2>
-        <form id="login-form">
-            <div class="form-group">
-                <label for="login-username">用户名</label>
-                <input type="text" id="login-username" placeholder="请输入用户名" required>
-            </div>
-            <div class="form-group">
-                <label for="login-password">密码</label>
-                <input type="password" id="login-password" placeholder="请输入密码" required>
-            </div>
-            <button type="submit" class="btn">登录</button>
-        </form>
-        <div class="switch">
-            没有账号？<a onclick="showRegister()">去注册账号</a>
-        </div>
+<button class="theme-toggle" id="themeToggle" title="切换主题">☀️</button>
+<div class="toast" id="toast"></div>
+<div class="wrapper">
+    <div class="logo">
+        <h1>Rain AI</h1>
+        <p>智能助手平台</p>
     </div>
-
-    <!-- 注册 -->
-    <div class="container" id="register-container">
-        <h2>注册</h2>
-        <form id="register-form">
-            <div class="form-group">
-                <label for="register-username">用户名</label>
-                <input type="text" id="register-username" placeholder="请输入用户名" required>
-            </div>
-            <div class="form-group">
-                <label for="register-password">密码</label>
-                <input type="password" id="register-password" placeholder="请输入密码" required>
-            </div>
-            <button type="submit" class="btn">注册</button>
-        </form>
-        <div class="switch">
-            已有账号？<a onclick="showLogin()">返回登录</a>
+    <div class="card">
+        <div class="tabs">
+            <button class="tab active" data-tab="login">登录</button>
+            <button class="tab" data-tab="register">注册</button>
+        </div>
+        <div class="form-panel active" id="panel-login">
+            <form id="login-form">
+                <div class="form-group"><label>用户名</label>
+                    <input type="text" id="login-username" placeholder="请输入用户名" required autocomplete="username">
+                </div>
+                <div class="form-group"><label>密码</label>
+                    <input type="password" id="login-password" placeholder="请输入密码" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn">登录</button>
+            </form>
+        </div>
+        <div class="form-panel" id="panel-register">
+            <form id="register-form">
+                <div class="form-group"><label>用户名</label>
+                    <input type="text" id="register-username" placeholder="请输入用户名" required autocomplete="username">
+                </div>
+                <div class="form-group"><label>密码</label>
+                    <input type="password" id="register-password" placeholder="请输入密码" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn">注册</button>
+            </form>
         </div>
     </div>
 </div>
-
 <script>
-function showAlert(message){
-    const alertBox = document.getElementById('success-alert');
-    alertBox.textContent = message;
-    alertBox.style.display = 'block';
-    setTimeout(()=>{alertBox.style.display='none';},1000);
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+function initTheme() {
+    const t = localStorage.getItem('rain-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    $('#themeToggle').textContent = t === 'dark' ? '🌙' : '☀️';
 }
-function showRegister(){ document.getElementById('login-container').style.display='none'; document.getElementById('register-container').style.display='block'; }
-function showLogin(){ document.getElementById('register-container').style.display='none'; document.getElementById('login-container').style.display='block'; }
-
-// 登录
-document.getElementById('login-form').addEventListener('submit', function(e){
-    e.preventDefault();
-    const username=document.getElementById('login-username').value;
-    const password=document.getElementById('login-password').value;
-
-    fetch('/login',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username,password})
-    }).then(response=>{
-        if(response.status===403){ showAlert('账号已在其他地方登录！'); throw new Error('已在其他地方登录'); }
-        const contentType = response.headers.get('content-type');
-        if(response.status===200){
-            if(contentType && contentType.includes('application/json')) return response.json();
-            else throw new Error('返回格式错误');
-        }else if(response.status===401){ showAlert('账号或密码错误！'); throw new Error('认证失败'); }
-        else throw new Error('请求失败');
-    }).then(data=>{
-        if(data && data.userId){ sessionStorage.setItem('userId', data.userId); showAlert('登录成功！'); window.location.href='/menu'; }
-        else throw new Error('无效的响应数据');
-    }).catch(error=>{
-        console.error('Error:',error);
-        if(!error.message.includes('已在其他地方登录')&&!error.message.includes('认证失败')) showAlert('操作失败，请重试');
-    });
+$('#themeToggle').onclick = () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('rain-theme', next);
+    $('#themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+};
+initTheme();
+$$('.tab').forEach(tab => tab.onclick = () => {
+    $$('.tab').forEach(t => t.classList.remove('active'));
+    $$('.form-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $(`#panel-${tab.dataset.tab}`).classList.add('active');
 });
+function showToast(msg, dur = 2000) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), dur);
+}
+// 如果已登录，直接跳转
+if (sessionStorage.getItem('userId')) window.location.href = '/menu';
 
-// 注册
-document.getElementById('register-form').addEventListener('submit', function(e){
+$('#login-form').onsubmit = e => {
     e.preventDefault();
-    const username=document.getElementById('register-username').value;
-    const password=document.getElementById('register-password').value;
-
-    fetch('/register',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username,password})
-    }).then(response=>{
-        if(response.status===200){
-            showAlert('注册成功！');
-            document.getElementById('login-username').value=username;
-            document.getElementById('login-password').value=password;
-            setTimeout(showLogin,1000);
-        }else if(response.status===409){ alert('用户名已被注册，请重新输入！'); }
-    }).catch(error=>console.error('注册错误:',error));
-});
+    fetch('/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: $('#login-username').value, password: $('#login-password').value })
+    }).then(r => {
+        if (r.status === 403) { showToast('账号已在其他地方登录'); throw new Error('dup'); }
+        if (r.status === 401) { showToast('用户名或密码错误'); throw new Error('auth'); }
+        if (r.status === 200) return r.json();
+        throw new Error('fail');
+    }).then(d => {
+        if (d?.userId) { sessionStorage.setItem('userId', d.userId); showToast('登录成功');
+            setTimeout(() => window.location.href = '/menu', 500); }
+    }).catch(e => { if (!['dup','auth'].includes(e.message)) showToast('操作失败'); });
+};
+$('#register-form').onsubmit = e => {
+    e.preventDefault();
+    fetch('/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: $('#register-username').value, password: $('#register-password').value })
+    }).then(r => {
+        if (r.status === 200) { showToast('注册成功，请登录');
+            $('#login-username').value = $('#register-username').value;
+            $('#login-password').value = $('#register-password').value;
+            setTimeout(() => $$('.tab')[0].click(), 800);
+        } else if (r.status === 409) showToast('用户名已存在');
+    }).catch(() => showToast('注册失败'));
+};
 </script>
 </body>
 </html>

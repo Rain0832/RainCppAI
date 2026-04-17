@@ -14,6 +14,9 @@
 #include "../include/handlers/ChatCreateAndSendHandler.h"
 #include "../include/handlers/ChatSessionsHandler.h"
 #include "../include/handlers/ChatSpeechHandler.h"
+#include "../include/handlers/ChatSseHandler.h"
+#include "../include/handlers/McpHandler.h"
+#include "../include/handlers/ChatUpdateTitleHandler.h"
 
 #include "../include/ChatServer.h"
 #include "../../../HttpServer/include/http/HttpRequest.h"
@@ -51,7 +54,13 @@ void ChatServer::initChatMessage()
 
 void ChatServer::readDataFromMySQL()
 {
-    std::string sql = "SELECT id, username,session_id, is_user, content, ts FROM chat_message ORDER BY ts ASC, id ASC";
+    // Phase 2: 从新的 messages 表读取，JOIN sessions 获取用户 ID
+    // 通过 sessions.user_id 关联，按 created_at 排序保证消息顺序
+    std::string sql = "SELECT m.session_id, m.user_id, m.role, m.content, "
+                      "UNIX_TIMESTAMP(m.created_at) * 1000 AS ts_ms "
+                      "FROM messages m "
+                      "INNER JOIN sessions s ON m.session_id = s.id "
+                      "ORDER BY m.created_at ASC, m.id ASC";
 
     sql::ResultSet *res;
     try
@@ -64,23 +73,20 @@ void ChatServer::readDataFromMySQL()
         return;
     }
 
-    // 从数据库加载历史消息并恢复会话状态
     while (res->next())
     {
         long long user_id = 0;
         std::string session_id;
-        std::string username, content;
-        long long ts = 0;
-        int is_user = 1;
+        std::string role, content;
+        long long ts_ms = 0;
 
         try
         {
-            user_id = res->getInt64("id");
+            user_id    = res->getInt64("user_id");
             session_id = res->getString("session_id");
-            username = res->getString("username");
-            content = res->getString("content");
-            ts = res->getInt64("ts");
-            is_user = res->getInt("is_user");
+            role       = res->getString("role");
+            content    = res->getString("content");
+            ts_ms      = res->getInt64("ts_ms");
         }
         catch (const std::exception &e)
         {
@@ -103,7 +109,7 @@ void ChatServer::readDataFromMySQL()
             helper = itSession->second;
         }
 
-        helper->restoreMessage(content, ts);
+        helper->restoreMessage(content, ts_ms, role);
     }
 
     std::cout << "readDataFromMySQL finished" << std::endl;
@@ -134,14 +140,19 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/chat", std::make_shared<ChatHandler>(this));
     httpServer_.Post("/chat/send", std::make_shared<ChatSendHandler>(this));
     httpServer_.Post("/chat/send-new-session", std::make_shared<ChatCreateAndSendHandler>(this));
+    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this));  // SSE 流式
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
+    httpServer_.Post("/chat/update-session-title", std::make_shared<ChatUpdateTitleHandler>(this));
 
     // AI功能路由
     httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
     httpServer_.Get("/upload", std::make_shared<AIUploadHandler>(this));
     httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
+
+    // MCP Server 路由（标准 JSON-RPC 2.0）
+    httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));
 }
 
 void ChatServer::initializeSession()
@@ -190,5 +201,40 @@ void ChatServer::packageResp(const std::string &version,
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
         resp->setStatusMessage("Internal Server Error");
         resp->setCloseConnection(true);
+    }
+}
+
+void ChatServer::touchSession(int userId, const std::string& sessionId)
+{
+    std::string key = std::to_string(userId) + ":" + sessionId;
+    auto it = lruMap_.find(key);
+    if (it != lruMap_.end()) {
+        lruList_.erase(it->second);
+    }
+    lruList_.push_front(key);
+    lruMap_[key] = lruList_.begin();
+}
+
+void ChatServer::evictIfNeeded()
+{
+    while (lruList_.size() > MAX_SESSIONS) {
+        std::string oldest = lruList_.back();
+        lruList_.pop_back();
+        lruMap_.erase(oldest);
+
+        // 解析 "userId:sessionId"
+        auto pos = oldest.find(':');
+        if (pos != std::string::npos) {
+            int uid = std::stoi(oldest.substr(0, pos));
+            std::string sid = oldest.substr(pos + 1);
+            auto uit = chatInformation.find(uid);
+            if (uit != chatInformation.end()) {
+                uit->second.erase(sid);
+                if (uit->second.empty()) {
+                    chatInformation.erase(uit);
+                }
+            }
+            LOG_INFO << "LRU evicted session: userId=" << uid << " sessionId=" << sid;
+        }
     }
 }

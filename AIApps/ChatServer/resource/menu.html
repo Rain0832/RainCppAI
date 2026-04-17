@@ -1,238 +1,319 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>欢迎来到AI助手界面</title>
-    <style>
-        
-        body {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Microsoft YaHei", Arial, sans-serif;
-            color: #fff;
-            overflow: hidden;
-            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rain AI — 主页</title>
+<style>
+:root {
+    --bg: #f5f7fa; --card: #ffffff; --border: #e2e8f0; --text: #1e293b;
+    --text2: #64748b; --accent: #6366f1; --accent-hover: #4f46e5;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04); --card-hover: #fafaff;
+    --glow: rgba(99,102,241,0.08); --danger: #ef4444;
+}
+[data-theme="dark"] {
+    --bg: #0c0c18; --card: #161625; --border: #252540; --text: #e2e8f0;
+    --text2: #94a3b8; --accent: #818cf8; --accent-hover: #6366f1;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2); --card-hover: #1c1c34;
+    --glow: rgba(129,140,248,0.06); --danger: #f87171;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 60px 20px 40px; transition: background .3s, color .3s;
+}
+body::before {
+    content: ''; position: fixed; top: -40%; right: -20%; width: 600px; height: 600px;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+    border-radius: 50%; pointer-events: none;
+}
+.theme-toggle {
+    position: fixed; top: 20px; right: 20px; width: 40px; height: 40px;
+    border-radius: 12px; border: 1px solid var(--border); background: var(--card);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: all .2s; z-index: 100;
+}
+.theme-toggle:hover { border-color: var(--accent); transform: scale(1.05); }
+.header { text-align: center; margin-bottom: 48px; position: relative; z-index: 1; }
+.header h1 {
+    font-size: 32px; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.header p { color: var(--text2); font-size: 15px; margin-top: 8px; }
+.grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px; width: 100%; max-width: 720px; position: relative; z-index: 1;
+}
+.card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; cursor: pointer; transition: all .25s;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.card:hover {
+    border-color: var(--accent); transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06); background: var(--card-hover);
+}
+.card.danger:hover { border-color: var(--danger); }
+.card-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 14px;
+}
+.card-icon.chat { background: rgba(99,102,241,0.1); }
+.card-icon.image { background: rgba(6,182,212,0.1); }
+.card-icon.profile { background: rgba(245,158,11,0.1); }
+.card-icon.logout { background: rgba(239,68,68,0.08); }
+.card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.card p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.card .arrow {
+    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+    color: var(--border); font-size: 18px; transition: all .2s;
+}
+.card:hover .arrow { color: var(--accent); transform: translateY(-50%) translateX(3px); }
+.card.danger:hover .arrow { color: var(--danger); }
 
-        
-        .stars {
-            width: 2px;
-            height: 2px;
-            background: white;
-            border-radius: 50%;
-            position: absolute;
-            animation: twinkling 3s infinite ease-in-out;
-        }
-
-        @keyframes twinkling {
-            0%, 100% { opacity: 0.2; }
-            50% { opacity: 1; }
-        }
-
-        
-        #loading-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-        }
-
-        
-        #loading-title {
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            color: #00c3ff;
-            text-shadow: 0 0 10px #00c3ff, 0 0 20px #008bff, 0 0 30px #00e1ff;
-            letter-spacing: 3px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { text-shadow: 0 0 10px #00c3ff, 0 0 20px #008bff; }
-            50% { text-shadow: 0 0 20px #00e1ff, 0 0 40px #00ffff; }
-        }
-
-        
-        .progress-bar {
-            width: 320px;
-            height: 22px;
-            background: #222;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 15px #00c3ff;
-        }
-
-        .progress-bar-inner {
-            height: 100%;
-            background: linear-gradient(90deg, #00c3ff, #00e1ff, #00fff7);
-            width: 0;
-            transition: width 0.3s ease;
-        }
-
-        
-        #loading-text {
-            margin-top: 20px;
-            font-size: 1.2em;
-            color: #ccc;
-        }
-
-        
-        #menu-container {
-            display: none;
-            text-align: center;
-            padding: 60px 20px;
-            animation: fadeIn 1s ease forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h1 {
-            font-size: 2.8em;
-            margin-bottom: 30px;
-            color: #00e1ff;
-            text-shadow: 0 0 15px #00c3ff, 0 0 30px #008bff;
-        }
-
-        .menu-option {
-            margin: 15px 0;
-            font-size: 1.6em;
-            padding: 12px 25px;
-            border-radius: 10px;
-            display: inline-block;
-            background: rgba(0, 195, 255, 0.1);
-            border: 1px solid #00c3ff;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 8px #00c3ff;
-        }
-
-        .menu-option:hover {
-            background: rgba(0, 225, 255, 0.2);
-            color: #00ffff;
-            text-shadow: 0 0 10px #00e1ff;
-            transform: scale(1.05);
-            box-shadow: 0 0 15px #00e1ff;
-        }
-
-        .menu-border {
-            margin: 20px auto;
-            width: 85%;
-            height: 2px;
-            background: #00c3ff;
-            box-shadow: 0 0 10px #00c3ff;
-        }
-    </style>
+/* Modal */
+.modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 28px 32px; width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: modalIn .2s ease;
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h2 { font-size: 18px; font-weight: 600; }
+.modal-close {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; cursor: pointer; font-size: 14px; color: var(--text2);
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+}
+.modal-close:hover { border-color: var(--accent); color: var(--accent); }
+.modal-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.modal-tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--text2);
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s;
+    background: none; border-top: none; border-left: none; border-right: none;
+}
+.modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.modal-panel { display: none; }
+.modal-panel.active { display: block; }
+.key-section { margin-bottom: 16px; }
+.key-section label {
+    display: flex; align-items: center; font-size: 13px; font-weight: 500;
+    color: var(--text2); margin-bottom: 6px;
+}
+.key-row { display: flex; gap: 8px; }
+.key-row input {
+    flex: 1; padding: 9px 12px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+    color: var(--text); outline: none; transition: all .2s;
+}
+.key-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+.key-save {
+    padding: 9px 14px; border: none; border-radius: 8px;
+    background: var(--accent); color: #fff; font-size: 12px; font-weight: 500;
+    cursor: pointer; white-space: nowrap; transition: all .2s;
+}
+.key-save:hover { background: var(--accent-hover); }
+.key-hint { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.key-status {
+    display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 5px;
+    margin-left: 8px; font-weight: 500;
+}
+.key-status.set { background: rgba(34,197,94,0.1); color: #16a34a; }
+.key-status.unset { background: rgba(239,68,68,0.08); color: #dc2626; }
+/* 使用说明 */
+.guide { font-size: 13px; color: var(--text2); line-height: 1.8; }
+.guide h3 { font-size: 15px; color: var(--text); margin-bottom: 12px; font-weight: 600; }
+.guide ol { padding-left: 20px; }
+.guide li { margin-bottom: 8px; }
+.guide code {
+    background: var(--bg); border: 1px solid var(--border); padding: 1px 6px;
+    border-radius: 4px; font-size: 12px; font-family: 'SF Mono', monospace;
+}
+.guide .tip {
+    margin-top: 16px; padding: 12px 14px; background: rgba(99,102,241,0.06);
+    border-radius: 10px; border-left: 3px solid var(--accent); font-size: 12px;
+}
+.toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: var(--accent); color: #fff; padding: 10px 24px;
+    border-radius: 10px; font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    opacity: 0; transition: all .3s; pointer-events: none; z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
 </head>
-
 <body>
-    
-    <script>
-        for (let i = 0; i < 80; i++) {
-            let star = document.createElement("div");
-            star.className = "stars";
-            star.style.top = Math.random() * window.innerHeight + "px";
-            star.style.left = Math.random() * window.innerWidth + "px";
-            star.style.animationDuration = 2 + Math.random() * 3 + "s";
-            document.body.appendChild(star);
-        }
-    </script>
+<button class="theme-toggle" id="themeToggle">☀️</button>
+<div class="toast" id="toast"></div>
+<div class="header"><h1>Rain AI</h1><p>选择一个服务开始使用</p></div>
+<div class="grid">
+    <div class="card" onclick="location.href='/chat'">
+        <div class="card-icon chat">💬</div><h3>AI 聊天助手</h3>
+        <p>多模型对话，多会话管理，MCP 工具调用</p><span class="arrow">→</span>
+    </div>
+    <div class="card" onclick="location.href='/upload'">
+        <div class="card-icon image">🖼</div><h3>AI 图像识别</h3>
+        <p>基于 ONNX Runtime 的图像分类与识别</p><span class="arrow">→</span>
+    </div>
+    <div class="card" id="profile-btn">
+        <div class="card-icon profile">⚙️</div><h3>个人中心</h3>
+        <p>API Key 管理、使用说明与账户设置</p><span class="arrow">→</span>
+    </div>
+    <div class="card danger" id="logout">
+        <div class="card-icon logout">🚪</div><h3>退出登录</h3>
+        <p>安全退出当前账户</p><span class="arrow">→</span>
+    </div>
+</div>
 
-    
-    <div id="loading-container">
-        <div id="loading-title">AI 助手 启动中...</div>
-        <div class="progress-bar">
-            <div class="progress-bar-inner"></div>
+<!-- Profile Modal -->
+<div class="modal-overlay" id="profileModal">
+<div class="modal">
+    <div class="modal-header"><h2>个人中心</h2><button class="modal-close" id="modalClose">✕</button></div>
+    <div class="modal-tabs">
+        <button class="modal-tab active" data-panel="keys">API Key</button>
+        <button class="modal-tab" data-panel="guide">使用说明</button>
+    </div>
+    <div class="modal-panel active" id="panel-keys">
+        <div class="key-section">
+            <label>阿里百炼 API Key <span class="key-status" id="st-dashscope"></span></label>
+            <div class="key-row"><input type="password" id="key-dashscope" placeholder="sk-xxxx...">
+                <button class="key-save" onclick="saveKey('dashscope')">保存</button></div>
+            <div class="key-hint">用于阿里百炼 / 百炼RAG / 百炼MCP 模型</div>
         </div>
-        <div id="loading-text">系统正在初始化，请稍候...</div>
+        <div class="key-section">
+            <label>百炼 RAG 知识库 ID <span class="key-status" id="st-rag-id"></span></label>
+            <div class="key-row"><input type="text" id="key-rag-id" placeholder="9262z3h3py...">
+                <button class="key-save" onclick="saveKey('rag-id')">保存</button></div>
+            <div class="key-hint">在阿里云百炼控制台「知识库」页面获取 App ID</div>
+        </div>
+        <div class="key-section">
+            <label>豆包 API Key <span class="key-status" id="st-doubao"></span></label>
+            <div class="key-row"><input type="password" id="key-doubao" placeholder="sk-xxxx...">
+                <button class="key-save" onclick="saveKey('doubao')">保存</button></div>
+            <div class="key-hint">用于豆包（火山引擎）模型鉴权</div>
+        </div>
+        <div class="key-section">
+            <label>豆包 Endpoint ID <span class="key-status" id="st-doubao-ep"></span></label>
+            <div class="key-row"><input type="text" id="key-doubao-ep" placeholder="ep-xxxxx...">
+                <button class="key-save" onclick="saveKey('doubao-ep')">保存</button></div>
+            <div class="key-hint">在火山方舟控制台创建接入点后获取 ep-xxxxx</div>
+        </div>
+        <div class="key-section">
+            <label>百度语音 Client ID <span class="key-status" id="st-baidu-id"></span></label>
+            <div class="key-row"><input type="password" id="key-baidu-id" placeholder="Client ID">
+                <button class="key-save" onclick="saveKey('baidu-id')">保存</button></div>
+        </div>
+        <div class="key-section">
+            <label>百度语音 Client Secret <span class="key-status" id="st-baidu-secret"></span></label>
+            <div class="key-row"><input type="password" id="key-baidu-secret" placeholder="Client Secret">
+                <button class="key-save" onclick="saveKey('baidu-secret')">保存</button></div>
+            <div class="key-hint">用于语音合成 (TTS) 功能</div>
+        </div>
     </div>
-
-    
-    <div id="menu-container">
-        <h1>✨ 欢迎来到 AI 助手 ✨</h1>
-        <div class="menu-border"></div>
-        <div class="menu-option" id="chat-service">[1] 进入 AI 聊天助手</div>
-        <div class="menu-option" id="image-service">[2] 进入 AI 图像识别助手</div>
-        <div class="menu-option" id="logout">[0] 退出登录</div>
+    <div class="modal-panel" id="panel-guide">
+        <div class="guide">
+            <h3>快速开始</h3>
+            <ol>
+                <li><strong>配置 API Key</strong> — 在上方 <code>API Key</code> 标签页中填入对应模型的密钥，保存后即可使用该模型。</li>
+                <li><strong>AI 聊天</strong> — 点击「AI 聊天助手」，创建新对话或选择历史会话，在底部输入框提问。支持 <code>Enter</code> 发送，<code>Shift+Enter</code> 换行。</li>
+                <li><strong>切换模型</strong> — 在聊天页顶栏的下拉框选择不同模型（需先配置对应 API Key）。</li>
+                <li><strong>图像识别</strong> — 点击「AI 图像识别」，上传图片后系统会自动分类识别。</li>
+                <li><strong>主题切换</strong> — 点击右上角 ☀️/🌙 按钮切换亮色/暗色模式，设置会自动保存。</li>
+            </ol>
+            <div class="tip">
+                <strong>提示：</strong>API Key 仅保存在浏览器本地存储中，不会上传到服务器。切换浏览器或清除数据后需重新配置。
+            </div>
+        </div>
     </div>
+</div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const progressBar = document.querySelector('.progress-bar-inner');
-            const loadingContainer = document.getElementById('loading-container');
-            const menuContainer = document.getElementById('menu-container');
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 
-            
-            let percent = 0;
-            let interval = setInterval(() => {
-                percent += 10;
-                progressBar.style.width = percent + "%";
-                if (percent >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        loadingContainer.style.display = 'none';
-                        menuContainer.style.display = 'block';
-                    }, 300);
-                }
-            }, 200);
-        });
+function initTheme() {
+    const t = localStorage.getItem('rain-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    $('#themeToggle').textContent = t === 'dark' ? '🌙' : '☀️';
+}
+$('#themeToggle').onclick = () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('rain-theme', next);
+    $('#themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+};
+initTheme();
 
-        // 进入AI服务
-        function loadService(path, errorMsg) {
-            fetch(path, { method: 'GET', headers: { 'Accept': 'text/html' } })
-                .then(res => res.text())
-                .then(html => { document.open(); document.write(html); document.close(); })
-                .catch(() => alert(errorMsg));
-        }
+function showToast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
 
-        document.getElementById('chat-service').addEventListener('click', () => loadService('/chat', '进入AI聊天服务异常！'));
-        document.getElementById('image-service').addEventListener('click', () => loadService('/upload', '进入AI图像识别服务异常！'));
-        document.getElementById('logout').addEventListener('click', () => {
-            const userId = sessionStorage.getItem('userId');
-            fetch('/user/logout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: userId, type: 'manual', gameType: 0 })
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error('Logout failed');
-                    return fetch('/', { method: 'GET', headers: { 'Accept': 'text/html' } });
-                })
-                .then(res => res.text())
-                .then(html => {
-                    sessionStorage.clear();
-                    document.open();
-                    document.write(html);
-                    document.close();
-                })
-                .catch(() => alert('退出登录失败！'));
-        });
+// Auth guard — 未登录跳转
+if (!sessionStorage.getItem('userId')) window.location.href = '/entry';
 
-        // 页面刷新/关闭时自动登出
-        window.addEventListener('beforeunload', function () {
-            const userId = sessionStorage.getItem('userId');
-            if (userId) {
-                const data = new Blob([JSON.stringify({ userId: userId, type: 'refresh', gameType: 0 })],
-                    { type: 'application/json' });
-                navigator.sendBeacon('/user/logout', data);
-            }
-        });
+// Logout — 只在主动登出时清理
+$('#logout').onclick = e => {
+    e.stopPropagation();
+    const userId = sessionStorage.getItem('userId');
+    fetch('/user/logout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, type: 'manual', gameType: 0 })
+    }).then(r => {
+        sessionStorage.clear();
+        window.location.href = '/entry';
+    }).catch(() => showToast('退出失败'));
+};
 
-        // 页面加载时用户检查
-        window.addEventListener('load', function () {
-            const userId = sessionStorage.getItem('userId');
-            if (!userId) {
-                window.location.href = '/entry';
-            }
-        });
-    </script>
+// Profile modal
+$('#profile-btn').onclick = e => { e.stopPropagation(); $('#profileModal').classList.add('show'); updateKeyStatus(); };
+$('#modalClose').onclick = () => $('#profileModal').classList.remove('show');
+$('#profileModal').onclick = e => { if (e.target === $('#profileModal')) $('#profileModal').classList.remove('show'); };
+
+// Modal tabs
+$$('.modal-tab').forEach(tab => tab.onclick = () => {
+    $$('.modal-tab').forEach(t => t.classList.remove('active'));
+    $$('.modal-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $(`#panel-${tab.dataset.panel}`).classList.add('active');
+});
+
+// API Key
+const KM = {
+    dashscope:'rain-key-dashscope',
+    'rag-id':'rain-key-rag-id',
+    doubao:'rain-key-doubao',
+    'doubao-ep':'rain-key-doubao-ep',
+    'baidu-id':'rain-key-baidu-id',
+    'baidu-secret':'rain-key-baidu-secret'
+};
+function saveKey(n) {
+    const v = $(`#key-${n}`).value.trim();
+    if (!v) { showToast('请输入有效的 Key'); return; }
+    localStorage.setItem(KM[n], v); $(`#key-${n}`).value = '';
+    showToast('已保存'); updateKeyStatus();
+}
+function updateKeyStatus() {
+    Object.keys(KM).forEach(n => {
+        const el = $(`#st-${n}`), set = !!localStorage.getItem(KM[n]);
+        el.textContent = set ? '已配置' : '未配置';
+        el.className = 'key-status ' + (set ? 'set' : 'unset');
+    });
+}
+</script>
 </body>
 </html>

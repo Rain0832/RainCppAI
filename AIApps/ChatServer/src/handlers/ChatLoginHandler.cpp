@@ -33,7 +33,7 @@ void ChatLoginHandler::handle(const http::HttpRequest &req, http::HttpResponse *
             if (server_->onlineUsers_.find(userId) == server_->onlineUsers_.end() || server_->onlineUsers_[userId] == false)
             {
                 {
-                    std::lock_guard<std::mutex> lock(server_->mutexForOnlineUsers_);
+                    std::lock_guard<std::shared_mutex> lock(server_->rwMutexForOnlineUsers_);
                     server_->onlineUsers_[userId] = true;
                 }
 

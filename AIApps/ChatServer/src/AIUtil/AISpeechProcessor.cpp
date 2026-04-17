@@ -1,8 +1,12 @@
  #include"../include/AIUtil/AISpeechProcessor.h"
+#include <mutex>
+#include <ctime>
 
-// #include"AISpeechProcessor.h"
+// Token 缓存（有效期约 30 天）
+static std::string s_cachedToken;
+static time_t s_tokenExpiry = 0;
+static std::mutex s_tokenMutex;
 
- 
 static size_t onWriteData(void* buffer, size_t size, size_t nmemb, void* userp) {
     std::string* str = static_cast<std::string*>(userp);
     str->append((char*)buffer, size * nmemb);
@@ -10,6 +14,13 @@ static size_t onWriteData(void* buffer, size_t size, size_t nmemb, void* userp) 
 }
 
 std::string AISpeechProcessor::getAccessToken() {
+    {
+        std::lock_guard<std::mutex> lock(s_tokenMutex);
+        if (!s_cachedToken.empty() && time(nullptr) < s_tokenExpiry) {
+            return s_cachedToken;
+        }
+    }
+
     std::string result;
     CURL *curl = curl_easy_init();
     if (!curl) return "";
@@ -30,20 +41,20 @@ std::string AISpeechProcessor::getAccessToken() {
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
 
     CURLcode res = curl_easy_perform(curl);
-
     curl_easy_cleanup(curl);
     if (headers) curl_slist_free_all(headers);
     if (res != CURLE_OK) return "";
 
-    // 解析为 nlohmann::json
     try {
         auto j = json::parse(result);
         if (j.contains("access_token") && j["access_token"].is_string()) {
-            return j["access_token"].get<std::string>();
+            std::lock_guard<std::mutex> lock(s_tokenMutex);
+            s_cachedToken = j["access_token"].get<std::string>();
+            // 百度 token 有效期 30 天，保守设置 25 天
+            s_tokenExpiry = time(nullptr) + 25 * 24 * 3600;
+            return s_cachedToken;
         }
-    } catch (...) {
-        // parse error
-    }
+    } catch (...) {}
     return "";
 }
 
@@ -68,21 +79,18 @@ std::string AISpeechProcessor::recognize(const std::string& speechData,
     headers = curl_slist_append(headers, "Accept: application/json");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    // 构造 JSON
     json body;
     body["format"] = format;
     body["rate"] = rate;
     body["channel"] = channel;
     body["cuid"] = cuid_;
     body["token"] = token_;
-    body["len"] = static_cast<int>(speechData.size()); // 原始 PCM/WAV 字节长度
-    body["speech"] = speechData;                       // base64 已编码
+    body["len"] = static_cast<int>(speechData.size());
+    body["speech"] = speechData;
 
-    // 注意：直接 dump 会对 base64 中的 + / = 等转义
-    // 为了安全，可以使用 dump(4, ' ', false, nlohmann::json::error_handler_t::ignore)
-    std::string data = body.dump(); 
+    std::string bodyStr = body.dump(); 
 
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, bodyStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, onWriteData);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
 
@@ -92,7 +100,6 @@ std::string AISpeechProcessor::recognize(const std::string& speechData,
     if (headers) curl_slist_free_all(headers);
     if (res != CURLE_OK) return "";
 
-    // 解析返回 JSON
     try {
         json root = json::parse(result);
         if (root.contains("result") && root["result"].is_array() && !root["result"].empty()) {
@@ -109,8 +116,7 @@ std::string AISpeechProcessor::recognize(const std::string& speechData,
 }
 
 
-
-// 语音合成（创建任务 -> 轮询 -> 返回 speech_url）
+// 语音合成：创建任务 -> 快速轮询 -> 返回 URL
 std::string AISpeechProcessor::synthesize(const std::string& text,
                                           const std::string& format,
                                           const std::string& lang,
@@ -122,7 +128,7 @@ std::string AISpeechProcessor::synthesize(const std::string& text,
     CURLcode res;
     std::string response;
 
-    // ----------- 第一步：创建合成任务 -----------
+    // 第一步：创建合成任务
     curl = curl_easy_init();
     if (!curl) return "";
 
@@ -131,7 +137,6 @@ std::string AISpeechProcessor::synthesize(const std::string& text,
     curl_easy_setopt(curl, CURLOPT_URL, create_url.c_str());
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    // 按你示例使用 undefined（和官方 demo 一致）
     curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "undefined");
 
     struct curl_slist* headers = NULL;
@@ -157,42 +162,34 @@ std::string AISpeechProcessor::synthesize(const std::string& text,
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
     res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        curl_easy_cleanup(curl);
-        if (headers) curl_slist_free_all(headers);
-        return "";
-    }
-
     curl_easy_cleanup(curl);
     if (headers) curl_slist_free_all(headers);
+    if (res != CURLE_OK) return "";
 
-    // 解析 task_id
     std::string task_id;
     try {
         json result_json = json::parse(response);
-        // 有些示例中 task_id 在根节点或者在 tasks_info[0] 中都可能出现，优先取根 task_id，再尝试 tasks_info
         if (result_json.contains("task_id") && result_json["task_id"].is_string()) {
             task_id = result_json["task_id"].get<std::string>();
         } else if (result_json.contains("tasks_info") && result_json["tasks_info"].is_array()
                    && !result_json["tasks_info"].empty() && result_json["tasks_info"][0].contains("task_id")) {
             task_id = result_json["tasks_info"][0]["task_id"].get<std::string>();
         }
-    } catch (...) {
-        return "";
-    }
+    } catch (...) { return ""; }
 
     if (task_id.empty()) return "";
 
-    // ----------- 第二步：轮询查询任务状态 -----------
+    // 第二步：快速轮询（200ms 间隔，最多 20 次 = 4秒超时）
     std::string speech_url;
     json query;
     query["task_ids"] = json::array({task_id});
 
-    // 轮询，上限可按需调整（例如超时 30 次）
-    const int max_loops = 60; // 最多等 60 秒（sleep 1s）
+    const int max_loops = 20;       // 最多 4 秒
+    const int poll_ms = 200;        // 200ms 间隔（原来是 1000ms）
     int loops = 0;
+
     while (loops++ < max_loops) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms));
 
         curl = curl_easy_init();
         if (!curl) break;
@@ -219,7 +216,6 @@ std::string AISpeechProcessor::synthesize(const std::string& text,
         if (headers) curl_slist_free_all(headers);
         if (res != CURLE_OK) break;
 
-        // 解析轮询结果
         try {
             json queryResult = json::parse(response);
             if (queryResult.contains("tasks_info") && queryResult["tasks_info"].is_array()
@@ -231,11 +227,11 @@ std::string AISpeechProcessor::synthesize(const std::string& text,
                         speech_url = task["task_result"]["speech_url"].get<std::string>();
                         break;
                     }
+                    // Running 状态继续轮询，其他状态（Failed等）退出
+                    if (status != "Running") break;
                 }
             }
-        } catch (...) {
-            break;
-        }
+        } catch (...) { break; }
     }
 
     return speech_url;

@@ -3,240 +3,366 @@
 #include <stdexcept>
 #include <chrono>
 
-// 构造函数
-AIHelper::AIHelper()
-{
-    // 默认使用阿里云大模型
+static long long nowMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
+AIHelper::AIHelper() : processing_(false) {
     strategy = StrategyFactory::instance().create("1");
 }
 
-void AIHelper::setStrategy(std::shared_ptr<AIStrategy> strat)
-{
+void AIHelper::setStrategy(std::shared_ptr<AIStrategy> strat) {
     strategy = strat;
 }
 
-// 设置默认模型
-// void AIHelper::setModel(const std::string& modelName) {
-//  model_ = modelName;
-//}
-
-// 添加一条用户消息
-void AIHelper::addMessage(int userId, const std::string &userName, bool is_user, const std::string &userInput, std::string sessionId)
+// ─── 添加消息（线程安全）──────────────────────────────────────────
+void AIHelper::addMessage(int userId, const std::string &userName,
+                          const std::string &role, const std::string &content,
+                          std::string sessionId)
 {
-    auto now = std::chrono::system_clock::now();
-    auto duration = now.time_since_epoch();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-    messages.push_back({userInput, ms});
-    // 消息队列异步入库
-    pushMessageToMysql(userId, userName, is_user, userInput, ms, sessionId);
-}
-
-void AIHelper::restoreMessage(const std::string &userInput, long long ms)
-{
-    messages.push_back({userInput, ms});
-}
-
-// 发送聊天消息
-std::string AIHelper::chat(int userId, std::string userName, std::string sessionId, std::string userQuestion, std::string modelType)
-{
-
-    // 设置策略
-    setStrategy(StrategyFactory::instance().create(modelType));
-
-    if (false == strategy->isMCPModel)
+    auto ms = nowMs();
     {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        messages_.push_back({ role, content, ms });
+    }
+    pushMessageToMysql(userId, userName, role, content, sessionId);
+}
 
-        addMessage(userId, userName, true, userQuestion, sessionId);
-        json payload = strategy->buildRequest(this->messages);
+void AIHelper::restoreMessage(const std::string &content, long long ms, const std::string &role)
+{
+    std::lock_guard<std::mutex> lock(msgMutex_);
+    messages_.push_back({ role, content, ms });
+}
 
-        // 执行请求
+std::vector<Message> AIHelper::GetMessages() const {
+    std::lock_guard<std::mutex> lock(msgMutex_);
+    return messages_;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Agent Loop — N 步 Function Calling 循环（核心）
+// ═══════════════════════════════════════════════════════════════════
+std::string AIHelper::agentLoop(int userId, const std::string &userName,
+                                 const std::string &sessionId,
+                                 const std::string &userQuestion,
+                                 int maxSteps)
+{
+    // 1. 用户消息入队
+    addMessage(userId, userName, "user", userQuestion, sessionId);
+
+    // 获取工具声明（OpenAI 兼容 tools[] 格式）
+    json tools = toolRegistry_.getToolsSchema();
+
+    for (int step = 0; step < maxSteps; ++step) {
+        // 2. 构建请求（带 tools）
+        std::vector<Message> snapshot;
+        {
+            std::lock_guard<std::mutex> lock(msgMutex_);
+            snapshot = messages_;
+        }
+
+        json payload = strategy->buildRequest(snapshot, tools);
         json response = executeCurl(payload);
-        std::string answer = strategy->parseResponse(response);
-        addMessage(userId, userName, false, answer, sessionId);
-        return answer.empty() ? "[Error] 无法解析响应" : answer;
+
+        // 3. 解析响应
+        if (!response.contains("choices") || response["choices"].empty()) {
+            // API 错误
+            std::string err = "[API 错误]";
+            if (response.contains("message"))
+                err += " " + response["message"].get<std::string>();
+            addMessage(userId, userName, "assistant", err, sessionId);
+            return err;
+        }
+
+        const auto& choice = response["choices"][0];
+        const auto& msg = choice["message"];
+        std::string finishReason = choice.value("finish_reason", "");
+
+        // 4. 检查是否有 tool_calls（原生 Function Calling）
+        if (msg.contains("tool_calls") && msg["tool_calls"].is_array() && !msg["tool_calls"].empty()) {
+            // 将 assistant 的 tool_calls 消息加入历史（OpenAI 协议要求）
+            {
+                std::lock_guard<std::mutex> lock(msgMutex_);
+                Message assistantMsg;
+                assistantMsg.role = "assistant";
+                assistantMsg.content = msg.contains("content") && !msg["content"].is_null()
+                    ? msg["content"].get<std::string>() : "";
+                assistantMsg.ts = nowMs();
+                messages_.push_back(assistantMsg);
+            }
+
+            // 逐个执行工具调用
+            for (const auto& toolCall : msg["tool_calls"]) {
+                std::string toolName = toolCall["function"]["name"];
+                json toolArgs = json::parse(toolCall["function"]["arguments"].get<std::string>());
+                std::string callId = toolCall.value("id", "");
+
+                json toolResult;
+                try {
+                    toolResult = toolRegistry_.invoke(toolName, toolArgs);
+                } catch (const std::exception &e) {
+                    toolResult = {{"error", e.what()}};
+                }
+
+                // 将工具结果加入历史（role="tool"）
+                {
+                    std::lock_guard<std::mutex> lock(msgMutex_);
+                    Message toolMsg;
+                    toolMsg.role = "tool";
+                    toolMsg.content = toolResult.dump();
+                    toolMsg.ts = nowMs();
+                    messages_.push_back(toolMsg);
+                }
+            }
+            // 继续循环，让 LLM 根据工具结果生成回答
+            continue;
+        }
+
+        // 5. 无 tool_calls → 最终回答
+        std::string answer;
+        if (msg.contains("content") && !msg["content"].is_null()) {
+            answer = msg["content"].get<std::string>();
+        }
+        if (answer.empty()) answer = "[Error] 模型未返回有效内容";
+
+        addMessage(userId, userName, "assistant", answer, sessionId);
+        return answer;
     }
-    // 说明支持MCP
-    AIConfig config;
-    config.loadFromFile("../AIApps/ChatServer/resource/config.json");
-    std::string tempUserQuestion = config.buildPrompt(userQuestion);
-    std::cout << "tempUserQuestion is " << tempUserQuestion << std::endl;
-    messages.push_back({tempUserQuestion, 0});
 
-    json firstReq = strategy->buildRequest(this->messages);
-    json firstResp = executeCurl(firstReq);
-    std::string aiResult = strategy->parseResponse(firstResp);
-    // 用完立即移除提示词
-    messages.pop_back();
-
-    std::cout << "aiResult is " << aiResult << std::endl;
-    // 解析AI响应（是否工具调用）
-    AIToolCall call = config.parseAIResponse(aiResult);
-
-    // 情况1：AI 不调用工具
-    if (!call.isToolCall)
-    {
-        addMessage(userId, userName, true, userQuestion, sessionId);
-        addMessage(userId, userName, false, aiResult, sessionId);
-
-        std::cout << "No tools required" << std::endl;
-        return aiResult;
-    }
-
-    // 情况 2：AI 要调用工具
-    json toolResult;
-    AIToolRegistry registry;
-
-    try
-    {
-        toolResult = registry.invoke(call.toolName, call.args);
-        std::cout << "Tool call success" << std::endl;
-    }
-    catch (const std::exception &e)
-    {
-        // 大多数情况都不会走这里
-        std::string err = "[工具调用失败] " + std::string(e.what());
-        addMessage(userId, userName, true, userQuestion, sessionId);
-        addMessage(userId, userName, false, err, sessionId);
-
-        std::cout << "Tool call failed" << std::endl
-                  << std::string(e.what());
-        return err;
-    }
-
-    // 第二次调用AI
-    // 用同样的 prompt_template，但说明工具执行过
-    std::string secondPrompt = config.buildToolResultPrompt(userQuestion, call.toolName, call.args, toolResult);
-
-    std::cout << "secondPrompt is " << secondPrompt << std::endl;
-    messages.push_back({secondPrompt, 0});
-
-    json secondReq = strategy->buildRequest(messages);
-    json secondResp = executeCurl(secondReq);
-    std::string finalAnswer = strategy->parseResponse(secondResp);
-    // 删除包含提示词的信息
-    messages.pop_back();
-
-    std::cout << "finalAnswer is " << finalAnswer << std::endl;
-
-    addMessage(userId, userName, true, userQuestion, sessionId);
-    addMessage(userId, userName, false, finalAnswer, sessionId);
-    return finalAnswer;
+    // 循环次数耗尽
+    std::string fallback = "[提示] 工具调用循环次数已达上限，请简化问题重试";
+    addMessage(userId, userName, "assistant", fallback, sessionId);
+    return fallback;
 }
 
-// 发送自定义请求体
-json AIHelper::request(const json &payload)
+// ═══════════════════════════════════════════════════════════════════
+// chat() — 同步聊天
+// ═══════════════════════════════════════════════════════════════════
+std::string AIHelper::chat(int userId, std::string userName, std::string sessionId,
+                           std::string userQuestion, std::string modelType,
+                           std::string apiKey, std::string ragId, std::string endpointId)
 {
+    bool expected = false;
+    if (!processing_.compare_exchange_strong(expected, true))
+        return "[提示] 当前会话正在处理上一条消息，请稍后再试";
+    struct Guard { std::atomic<bool>& f; ~Guard() { f = false; } } guard{processing_};
+
+    setStrategy(StrategyFactory::instance().create(modelType));
+    if (!apiKey.empty()) strategy->setApiKey(apiKey);
+    if (!ragId.empty())  strategy->setRagId(ragId);
+    if (!endpointId.empty()) strategy->setEndpointId(endpointId);
+    if (strategy->getApiKey().empty())
+        return "[错误] 未配置 API Key，请在个人中心设置";
+
+    // MCP 模式 → Agent Loop（N 步 Function Calling）
+    if (strategy->isMCPModel) {
+        return agentLoop(userId, userName, sessionId, userQuestion);
+    }
+
+    // 普通模式 → 直接对话
+    addMessage(userId, userName, "user", userQuestion, sessionId);
+
+    std::vector<Message> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        snapshot = messages_;
+    }
+
+    json payload = strategy->buildRequest(snapshot);
+    json response = executeCurl(payload);
+    std::string answer = strategy->parseResponse(response);
+
+    addMessage(userId, userName, "assistant", answer.empty() ? "[Error] 无法解析响应" : answer, sessionId);
+    return answer.empty() ? "[Error] 无法解析响应" : answer;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// chatStream() — 流式聊天
+// ═══════════════════════════════════════════════════════════════════
+std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId,
+                                  std::string userQuestion, std::string modelType,
+                                  std::string apiKey, std::string ragId,
+                                  std::string endpointId, StreamCallback onChunk)
+{
+    bool expected = false;
+    if (!processing_.compare_exchange_strong(expected, true)) {
+        onChunk("[提示] 当前会话正在处理上一条消息，请稍后再试");
+        return "";
+    }
+    struct Guard { std::atomic<bool>& f; ~Guard() { f = false; } } guard{processing_};
+
+    setStrategy(StrategyFactory::instance().create(modelType));
+    if (!apiKey.empty()) strategy->setApiKey(apiKey);
+    if (!ragId.empty())  strategy->setRagId(ragId);
+    if (!endpointId.empty()) strategy->setEndpointId(endpointId);
+    if (strategy->getApiKey().empty()) {
+        onChunk("[错误] 未配置 API Key");
+        return "";
+    }
+
+    // ★ MCP 模式：Agent Loop（非流式）后逐字回调
+    if (strategy->isMCPModel) {
+        std::string answer = agentLoop(userId, userName, sessionId, userQuestion);
+        // 模拟流式逐字输出
+        for (size_t i = 0; i < answer.size(); ) {
+            // UTF-8 安全切分：取完整 UTF-8 字符
+            unsigned char c = answer[i];
+            size_t charLen = 1;
+            if (c >= 0xC0) charLen = 2;
+            if (c >= 0xE0) charLen = 3;
+            if (c >= 0xF0) charLen = 4;
+            size_t end = std::min(i + charLen, answer.size());
+            if (!onChunk(answer.substr(i, end - i))) break;
+            i = end;
+        }
+        return answer;
+    }
+
+    // ─── 普通模式：真流式 ─────────────────────────────
+    addMessage(userId, userName, "user", userQuestion, sessionId);
+
+    std::vector<Message> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        snapshot = messages_;
+    }
+    json payload = strategy->buildRequest(snapshot);
+    payload["stream"] = true;
+
+    std::string fullAnswer = executeCurlStream(payload, onChunk);
+
+    addMessage(userId, userName, "assistant", fullAnswer, sessionId);
+    return fullAnswer;
+}
+
+json AIHelper::request(const json &payload) {
     return executeCurl(payload);
 }
 
-std::vector<std::pair<std::string, long long>> AIHelper::GetMessages()
-{
-    return this->messages;
-}
-
-// 内部方法：执行 curl 请求
-json AIHelper::executeCurl(const json &payload)
-{
+// ─── curl ────────────────────────────────────────────────────────
+json AIHelper::executeCurl(const json &payload) {
     CURL *curl = curl_easy_init();
-    if (!curl)
-    {
-        throw std::runtime_error("Failed to initialize curl");
-    }
-
-    std::cout << "test " << strategy->getApiUrl().c_str() << ' ' << strategy->getApiKey() << std::endl;
+    if (!curl) throw std::runtime_error("Failed to initialize curl");
 
     std::string readBuffer;
     struct curl_slist *headers = nullptr;
-    std::string authHeader = "Authorization: Bearer " + strategy->getApiKey();
-
-    headers = curl_slist_append(headers, authHeader.c_str());
+    headers = curl_slist_append(headers, ("Authorization: Bearer " + strategy->getApiKey()).c_str());
     headers = curl_slist_append(headers, "Content-Type: application/json");
 
     std::string payloadStr = payload.dump();
-
     curl_easy_setopt(curl, CURLOPT_URL, strategy->getApiUrl().c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
     CURLcode res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK)
-    {
-        throw std::runtime_error("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
-    }
+        throw std::runtime_error("curl failed: " + std::string(curl_easy_strerror(res)));
 
-    try
-    {
-        return json::parse(readBuffer);
-    }
-    catch (...)
-    {
-        throw std::runtime_error("Failed to parse JSON response: " + readBuffer);
-    }
+    try { return json::parse(readBuffer); }
+    catch (...) { throw std::runtime_error("JSON parse failed: " + readBuffer); }
 }
 
-// curl 回调函数，把返回的数据写到 string buffer
-size_t AIHelper::WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-    size_t totalSize = size * nmemb;
-    std::string *buffer = static_cast<std::string *>(userp);
-    buffer->append(static_cast<char *>(contents), totalSize);
-    return totalSize;
+std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onChunk) {
+    CURL *curl = curl_easy_init();
+    if (!curl) throw std::runtime_error("Failed to initialize curl");
+
+    StreamContext ctx;
+    ctx.callback = std::move(onChunk);
+
+    struct curl_slist *headers = nullptr;
+    headers = curl_slist_append(headers, ("Authorization: Bearer " + strategy->getApiKey()).c_str());
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    std::string payloadStr = payload.dump();
+    curl_easy_setopt(curl, CURLOPT_URL, strategy->getApiUrl().c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ctx);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+
+    curl_easy_perform(curl);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    return ctx.fullContent;
 }
 
-std::string AIHelper::escapeString(const std::string &input)
-{
-    std::string output;
-    output.reserve(input.size() * 2);
-    for (char c : input)
-    {
-        switch (c)
-        {
-        case '\\':
-            output += "\\\\";
-            break;
-        case '\'':
-            output += "\\\'";
-            break;
-        case '\"':
-            output += "\\\"";
-            break;
-        case '\n':
-            output += "\\n";
-            break;
-        case '\r':
-            output += "\\r";
-            break;
-        case '\t':
-            output += "\\t";
-            break;
-        default:
-            output += c;
-            break;
+size_t AIHelper::WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+    std::string *buf = static_cast<std::string*>(userp);
+    buf->append(static_cast<char*>(contents), size * nmemb);
+    return size * nmemb;
+}
+
+size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+    size_t total = size * nmemb;
+    auto *ctx = static_cast<StreamContext*>(userp);
+    if (ctx->aborted) return 0;
+
+    ctx->buffer.append(static_cast<char*>(contents), total);
+    std::string& buf = ctx->buffer;
+    size_t pos = 0;
+    while (true) {
+        size_t nl = buf.find('\n', pos);
+        if (nl == std::string::npos) break;
+        std::string line = buf.substr(pos, nl - pos);
+        pos = nl + 1;
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty() || line == "data: [DONE]") continue;
+        if (line.substr(0, 6) == "data: ") {
+            try {
+                json chunk = json::parse(line.substr(6));
+                std::string token;
+                if (chunk.contains("choices") && !chunk["choices"].empty()) {
+                    auto& delta = chunk["choices"][0]["delta"];
+                    if (delta.contains("content") && !delta["content"].is_null())
+                        token = delta["content"].get<std::string>();
+                }
+                if (!token.empty()) {
+                    ctx->fullContent += token;
+                    if (!ctx->callback(token)) { ctx->aborted = true; break; }
+                }
+            } catch (...) {}
         }
     }
-    return output;
+    buf = buf.substr(pos);
+    return total;
 }
 
-void AIHelper::pushMessageToMysql(int userId, const std::string &userName, bool is_user, const std::string &userInput, long long ms, std::string sessionId)
+std::string AIHelper::escapeString(const std::string &input) {
+    std::string out;
+    out.reserve(input.size() * 2);
+    for (char c : input) {
+        switch (c) {
+        case '\\': out += "\\\\"; break;
+        case '\'': out += "\\'";  break;
+        case '\"': out += "\\\""; break;
+        case '\n': out += "\\n";  break;
+        case '\r': out += "\\r";  break;
+        case '\t': out += "\\t";  break;
+        default:   out += c;      break;
+        }
+    }
+    return out;
+}
+
+void AIHelper::pushMessageToMysql(int userId, const std::string &userName,
+                                   const std::string &role, const std::string &content,
+                                   std::string sessionId)
 {
-    // std::string sql = "INSERT INTO chat_message (id, username, is_user, content, ts) VALUES ("
-    //     + std::to_string(userId) + ", "  // 这里用 userId 作为 id，或者你自己生成
-    //     + "'" + userName + "', "
-    //     + std::to_string(is_user ? 1 : 0) + ", "
-    //     + "'" + userInput + "', "
-    //     + std::to_string(ms) + ")";
-    std::string safeUserName = escapeString(userName);
-    std::string safeUserInput = escapeString(userInput);
-
-    std::string sql = "INSERT INTO chat_message (id, username, session_id, is_user, content, ts) VALUES (" + std::to_string(userId) + ", " + "'" + safeUserName + "', " + sessionId + ", " + std::to_string(is_user ? 1 : 0) + ", " + "'" + safeUserInput + "', " + std::to_string(ms) + ")";
-
-    // 改成消息队列异步执行mysql操作，用于流量削峰与解耦逻辑
-    // mysqlUtil_.executeUpdate(sql);
-
-    MQManager::instance().publish("sql_queue", sql);
+    std::string safe = escapeString(content);
+    std::string sqlSession = "INSERT IGNORE INTO sessions (id, user_id) VALUES ('"
+        + sessionId + "', " + std::to_string(userId) + ")";
+    std::string sqlMsg = "INSERT INTO messages (session_id, user_id, role, content) VALUES ('"
+        + sessionId + "', " + std::to_string(userId) + ", '" + role + "', '" + safe + "')";
+    MQManager::instance().publish("sql_queue", sqlSession);
+    MQManager::instance().publish("sql_queue", sqlMsg);
 }

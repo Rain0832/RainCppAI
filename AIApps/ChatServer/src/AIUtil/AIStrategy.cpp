@@ -1,176 +1,142 @@
 #include"../include/AIUtil/AIStrategy.h"
 #include"../include/AIUtil/AIFactory.h"
 
+// ─── Helper: Message 向量转 OpenAI messages 格式 ────────────────
+static json messagesToJsonArray(const std::vector<Message>& messages) {
+    json arr = json::array();
+    for (const auto& m : messages) {
+        json msg;
+        msg["role"] = m.role;
+        msg["content"] = m.content;
+        arr.push_back(msg);
+    }
+    return arr;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AliyunStrategy
+// ═══════════════════════════════════════════════════════════════
+
 std::string AliyunStrategy::getApiUrl() const {
     return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 }
+std::string AliyunStrategy::getApiKey() const { return apiKey_; }
+std::string AliyunStrategy::getModel() const { return "qwen-plus"; }
 
-std::string AliyunStrategy::getApiKey()const {
-    return apiKey_;
-}
-
-
-std::string AliyunStrategy::getModel() const {
-    return "qwen-plus";
-}
-
-
-json AliyunStrategy::buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const {
+json AliyunStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const {
     json payload;
     payload["model"] = getModel();
-    json msgArray = json::array();
-
-    for (size_t i = 0; i < messages.size(); ++i) {
-        json msg;
-        if (i % 2 == 0) {
-            msg["role"] = "user";
-        }
-        else {
-            msg["role"] = "assistant";
-        }
-        msg["content"] = messages[i].first;
-        msgArray.push_back(msg);
+    payload["messages"] = messagesToJsonArray(messages);
+    if (!tools.empty()) {
+        payload["tools"] = tools;
     }
-    payload["messages"] = msgArray;
     return payload;
 }
-
 
 std::string AliyunStrategy::parseResponse(const json& response) const {
     if (response.contains("choices") && !response["choices"].empty()) {
-        return response["choices"][0]["message"]["content"];
+        const auto& msg = response["choices"][0]["message"];
+        if (msg.contains("content") && !msg["content"].is_null())
+            return msg["content"].get<std::string>();
     }
+    if (response.contains("message"))
+        return "[API 错误] " + response["message"].get<std::string>();
     return {};
 }
 
+// ═══════════════════════════════════════════════════════════════
+// DouBaoStrategy
+// ═══════════════════════════════════════════════════════════════
 
-std::string DouBaoStrategy::getApiUrl()const {
+std::string DouBaoStrategy::getApiUrl() const {
     return "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 }
-
-std::string DouBaoStrategy::getApiKey()const {
-    return apiKey_;
-}
-
-
+std::string DouBaoStrategy::getApiKey() const { return apiKey_; }
 std::string DouBaoStrategy::getModel() const {
-    return "doubao-seed-1-6-thinking-250715";
+    return endpointId_.empty() ? "doubao-lite-4k" : endpointId_;
 }
 
-
-json DouBaoStrategy::buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const {
+json DouBaoStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const {
     json payload;
     payload["model"] = getModel();
-    json msgArray = json::array();
-
-    for (size_t i = 0; i < messages.size(); ++i) {
-        json msg;
-        if (i % 2 == 0) {
-            msg["role"] = "user";
-        }
-        else {
-            msg["role"] = "assistant";
-        }
-        msg["content"] = messages[i].first;
-        msgArray.push_back(msg);
+    payload["messages"] = messagesToJsonArray(messages);
+    if (!tools.empty()) {
+        payload["tools"] = tools;
     }
-    payload["messages"] = msgArray;
     return payload;
 }
-
 
 std::string DouBaoStrategy::parseResponse(const json& response) const {
     if (response.contains("choices") && !response["choices"].empty()) {
-        return response["choices"][0]["message"]["content"];
+        const auto& msg = response["choices"][0]["message"];
+        if (msg.contains("content") && !msg["content"].is_null())
+            return msg["content"].get<std::string>();
+        if (msg.contains("reasoning_content") && msg["reasoning_content"].is_string())
+            return msg["reasoning_content"].get<std::string>();
     }
+    if (response.contains("message"))
+        return "[API 错误] " + response["message"].get<std::string>();
     return {};
 }
 
+// ═══════════════════════════════════════════════════════════════
+// AliyunRAGStrategy
+// ═══════════════════════════════════════════════════════════════
 
 std::string AliyunRAGStrategy::getApiUrl() const {
-    const char* key = std::getenv("Knowledge_Base_ID");
-    if (!key) throw std::runtime_error("Knowledge_Base_ID not found!");
-    std::string id(key);
-    //϶Ӧ֪ʶID
-    return "https://dashscope.aliyuncs.com/api/v1/apps/"+id+"/completion";
+    if (ragId_.empty()) throw std::runtime_error("百炼 RAG 知识库 ID 未配置，请在个人中心填写");
+    return "https://dashscope.aliyuncs.com/api/v1/apps/" + ragId_ + "/completion";
 }
+std::string AliyunRAGStrategy::getApiKey() const { return apiKey_; }
+std::string AliyunRAGStrategy::getModel() const { return ""; }
 
-std::string AliyunRAGStrategy::getApiKey()const {
-    return apiKey_;
-}
-
-
-std::string AliyunRAGStrategy::getModel() const {
-    return ""; //Ҫģ
-}
-
-
-json AliyunRAGStrategy::buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const {
+json AliyunRAGStrategy::buildRequest(const std::vector<Message>& messages, const json&) const {
     json payload;
-    json msgArray = json::array();
-    for (size_t i = 0; i < messages.size(); ++i) {
-        json msg;
-        msg["role"] = (i % 2 == 0 ? "user" : "assistant");
-        msg["content"] = messages[i].first;
-        msgArray.push_back(msg);
-    }
-    payload["input"]["messages"] = msgArray;
-    payload["parameters"] = json::object(); 
+    payload["input"]["messages"] = messagesToJsonArray(messages);
+    payload["parameters"] = json::object();
     return payload;
 }
 
-
 std::string AliyunRAGStrategy::parseResponse(const json& response) const {
-    if (response.contains("output") && response["output"].contains("text")) {
+    if (response.contains("output") && response["output"].contains("text"))
         return response["output"]["text"];
-    }
+    if (response.contains("message"))
+        return "[RAG 错误] " + response["message"].get<std::string>();
+    if (response.contains("code"))
+        return "[RAG 错误] code=" + response["code"].get<std::string>();
     return {};
 }
 
-
+// ═══════════════════════════════════════════════════════════════
+// AliyunMcpStrategy（现在使用原生 Function Calling）
+// ═══════════════════════════════════════════════════════════════
 
 std::string AliyunMcpStrategy::getApiUrl() const {
     return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 }
+std::string AliyunMcpStrategy::getApiKey() const { return apiKey_; }
+std::string AliyunMcpStrategy::getModel() const { return "qwen-plus"; }
 
-std::string AliyunMcpStrategy::getApiKey()const {
-    return apiKey_;
-}
-
-
-std::string AliyunMcpStrategy::getModel() const {
-    return "qwen-plus";
-}
-
-
-json AliyunMcpStrategy::buildRequest(const std::vector<std::pair<std::string, long long>>& messages) const {
+json AliyunMcpStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const {
     json payload;
     payload["model"] = getModel();
-    json msgArray = json::array();
-
-    for (size_t i = 0; i < messages.size(); ++i) {
-        json msg;
-        if (i % 2 == 0) {
-            msg["role"] = "user";
-        }
-        else {
-            msg["role"] = "assistant";
-        }
-        msg["content"] = messages[i].first;
-        msgArray.push_back(msg);
+    payload["messages"] = messagesToJsonArray(messages);
+    if (!tools.empty()) {
+        payload["tools"] = tools;
     }
-    payload["messages"] = msgArray;
     return payload;
 }
 
-
 std::string AliyunMcpStrategy::parseResponse(const json& response) const {
     if (response.contains("choices") && !response["choices"].empty()) {
-        return response["choices"][0]["message"]["content"];
+        const auto& msg = response["choices"][0]["message"];
+        if (msg.contains("content") && !msg["content"].is_null())
+            return msg["content"].get<std::string>();
     }
+    if (response.contains("message"))
+        return "[MCP 错误] " + response["message"].get<std::string>();
     return {};
 }
-
 
 static StrategyRegister<AliyunStrategy> regAliyun("1");
 static StrategyRegister<DouBaoStrategy> regDoubao("2");
