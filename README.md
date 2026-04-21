@@ -182,29 +182,29 @@ CREATE TABLE user_api_keys (
 
 ## 📋 更新日志
 
-### v1.6.0 (2026-04-03)
+### v1.6.0
 **SSE 流式输出 + 标准 MCP Server**
 - `chatStream()` + curl `WRITEFUNCTION` 逐 token 回调推送
 - `ChatSseHandler` — SSE 握手 + `runInLoop` 流式回写
 - `McpServer` — JSON-RPC 2.0 标准实现，可被 Claude Desktop / Cursor 直接接入
 - 前端改用 `fetch().body.getReader()` 实时渲染
 
-### v1.5.0 (2026-04-03)
+### v1.5.0
 **数据库表结构重设计** — sessions / messages / user_api_keys 三高表
 
-### v1.4.0 (2026-04-03)
+### v1.4.0
 **并发 Bug 修复（6 项）** — msgMutex_ / Message.role / CAS 串行化 / exclusive=false / wait_for
 
-### v1.3.0 (2026-04-02)
+### v1.3.0
 **异步线程池** — deferred 响应 + ThreadPool + runInLoop，IO 零阻塞
 
-### v1.2.0 (2026-04-01)
+### v1.2.0
 **读写锁 + LRU** — shared_mutex + list+map O(1) 淘汰
 
-### v1.1.0 (2026-04-01)
+### v1.1.0
 **动态 API Key + 前端重构**
 
-### v1.0.0 (2026-04-01)
+### v1.0.0
 初始部署
 
 ---
