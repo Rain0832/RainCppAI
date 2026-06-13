@@ -3,8 +3,7 @@
 void ChatEntryHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
 
-    std::string reqFile;
-    reqFile.append("web/entry.html");
+    std::string reqFile = server_->getResourceRoot() + "web/entry.html";
     FileUtil fileOperater(reqFile);
     if (!fileOperater.isValid())
     {

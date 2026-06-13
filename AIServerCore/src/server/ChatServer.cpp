@@ -18,9 +18,9 @@
 #include "controller/McpHandler.h"
 
 #include "server/ChatServer.h"
-#include "HttpServer/include/http/HttpRequest.h"
-#include "HttpServer/include/http/HttpResponse.h"
-#include "HttpServer/include/http/HttpServer.h"
+#include "http/HttpRequest.h"
+#include "http/HttpResponse.h"
+#include "http/HttpServer.h"
 
 using namespace http;
 
@@ -39,9 +39,71 @@ void ChatServer::initialize()
     // 初始化MySQL数据库连接池
     http::MysqlUtil::init("127.0.0.1:3307", "chat", "123456", "ChatHttpServer", 5);
 
+    initDatabase();
     initializeSession();
     initializeMiddleware();
     initializeRouter();
+}
+
+void ChatServer::initDatabase()
+{
+    // 建表（幂等，已存在则跳过）
+    const char* createUsers = R"SQL(
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL
+        ) CHARSET=utf8mb4
+    )SQL";
+
+    const char* createSessions = R"SQL(
+        CREATE TABLE IF NOT EXISTS sessions (
+            id VARCHAR(64) NOT NULL PRIMARY KEY,
+            user_id BIGINT UNSIGNED NOT NULL,
+            title VARCHAR(128) DEFAULT NULL,
+            model_type VARCHAR(32) DEFAULT NULL,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+            deleted_at DATETIME DEFAULT NULL,
+            INDEX idx_user_id (user_id)
+        ) CHARSET=utf8mb4
+    )SQL";
+
+    const char* createMessages = R"SQL(
+        CREATE TABLE IF NOT EXISTS messages (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            session_id VARCHAR(64) NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            role ENUM('user','assistant','system') NOT NULL,
+            content MEDIUMTEXT NOT NULL,
+            model VARCHAR(64) DEFAULT NULL,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            INDEX idx_session_created (session_id, created_at),
+            INDEX idx_user_id (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC
+    )SQL";
+
+    const char* createApiKeys = R"SQL(
+        CREATE TABLE IF NOT EXISTS user_api_keys (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT UNSIGNED NOT NULL,
+            provider VARCHAR(32) NOT NULL,
+            api_key VARCHAR(512) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_user_provider (user_id, provider)
+        ) CHARSET=utf8mb4
+    )SQL";
+
+    try {
+        mysqlUtil_.executeUpdate(createUsers);
+        mysqlUtil_.executeUpdate(createSessions);
+        mysqlUtil_.executeUpdate(createMessages);
+        mysqlUtil_.executeUpdate(createApiKeys);
+        std::cout << "Database tables initialized successfully." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to init database tables: " << e.what() << std::endl;
+    }
 }
 
 void ChatServer::initChatMessage()

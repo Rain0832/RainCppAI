@@ -24,7 +24,7 @@ void AIUploadHandler::handle(const http::HttpRequest &req, http::HttpResponse *r
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
 
-        std::string reqFile("web/upload.html");
+        std::string reqFile = server_->getResourceRoot() + "web/upload.html";
         FileUtil fileOperater(reqFile);
         if (!fileOperater.isValid())
         {

@@ -134,6 +134,13 @@ private:
 	void initialize();
 
 	/**
+	 * @brief 初始化数据库表结构
+	 *
+	 * 使用 CREATE TABLE IF NOT EXISTS 确保幂等性
+	 */
+	void initDatabase();
+
+	/**
 	 * @brief 初始化会话管理系统
 	 *
 	 * 配置基于内存的会话存储，支持用户登录状态管理
@@ -212,11 +219,24 @@ private:
 		return httpServer_.getSessionManager();
 	}
 
+	/**
+	 * @brief 获取资源根路径
+	 *
+	 * 返回项目根目录（相对于 build/ 为 "../"），
+	 * Handler 可拼接此路径访问 web/*.html 等静态资源。
+	 */
+	const std::string &getResourceRoot() const
+	{
+		return resource_root_;
+	}
+
 	http::HttpServer httpServer_; ///< HTTP服务器实例
 
 	http::ThreadPool aiThreadPool_{8}; ///< AI 任务线程池（8线程，处理耗时 AI API 调用）
 
 	http::MysqlUtil mysqlUtil_; ///< MySQL数据库工具实例
+
+	std::string resource_root_ = "../"; ///< 资源根路径（相对于 build/ 工作目录）
 
 	std::unordered_map<int, bool> onlineUsers_; ///< 在线用户状态映射
 	mutable std::shared_mutex rwMutexForOnlineUsers_; ///< 在线用户读写锁

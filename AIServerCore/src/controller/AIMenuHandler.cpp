@@ -27,7 +27,7 @@ void AIMenuHandler::handle(const http::HttpRequest &req, http::HttpResponse *res
         std::string username = session->getValue("username");
 
         // 读取菜单页面模板
-        std::string reqFile("web/menu.html");
+        std::string reqFile = server_->getResourceRoot() + "web/menu.html";
         FileUtil fileOperater(reqFile);
         if (!fileOperater.isValid())
         {
