@@ -12,7 +12,7 @@
  *   - tools/list   — 返回所有已注册工具的描述
  *   - tools/call   — 调用指定工具并返回结果
  *
- * 复用现有 AIToolRegistry，无需重复实现工具逻辑。
+ * 复用 AIToolRegistry 单例，与 AIHelper 共享同一工具注册表。
  *
  * JSON-RPC 2.0 请求格式：
  *   {"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}
@@ -36,6 +36,8 @@ public:
 
     /**
      * @brief 注册额外工具（工具名 + 描述 + 参数 schema + 执行函数）
+     *
+     * 该方法同时向 AIToolRegistry 单例和本地的 toolMetas_ 注册
      */
     void registerTool(const std::string& name, const std::string& description, const json& inputSchema,
                       AIToolRegistry::ToolFunc func);
@@ -46,9 +48,10 @@ private:
     json buildError(int code, const std::string& message);
     json buildResult(const json& id, const json& result);
 
-private:
-    AIToolRegistry registry_;
+    /// 从 AIToolRegistry 单例同步 toolMetas_ 缓存
+    void syncMetasFromRegistry();
 
+private:
     /// 工具元信息（name → {description, inputSchema}）
     struct ToolMeta
     {

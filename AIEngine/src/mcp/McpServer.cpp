@@ -2,22 +2,32 @@
 
 McpServer::McpServer()
 {
-    // 注册内置工具（复用 AIToolRegistry 的实现，补充元信息）
-    toolMetas_.push_back({"get_weather",
-                          "获取指定城市的实时天气信息",
-                          {{"type", "object"},
-                           {"properties", {{"city", {{"type", "string"}, {"description", "城市名称"}}}}},
-                           {"required", json::array({"city"})}}});
-    toolMetas_.push_back({"get_time",
-                          "获取当前服务器时间",
-                          {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}}});
+    // 从 AIToolRegistry 单例同步元信息（不再硬编码）
+    syncMetasFromRegistry();
 }
 
 void McpServer::registerTool(const std::string& name, const std::string& description, const json& inputSchema,
                              AIToolRegistry::ToolFunc func)
 {
-    registry_.registerTool(name, func);
+    // 同时向单例和本地 toolMetas_ 注册
+    AIToolRegistry::instance().registerTool(name, std::move(func));
     toolMetas_.push_back({name, description, inputSchema});
+}
+
+void McpServer::syncMetasFromRegistry()
+{
+    toolMetas_.clear();
+    auto& registry = AIToolRegistry::instance();
+    json toolsSchema = registry.getToolsSchema();
+    for (auto& toolDef : toolsSchema)
+    {
+        auto& func = toolDef["function"];
+        ToolMeta meta;
+        meta.name = func.value("name", "");
+        meta.description = func.value("description", "");
+        meta.inputSchema = func.value("parameters", json::object());
+        toolMetas_.push_back(std::move(meta));
+    }
 }
 
 std::string McpServer::handleRequest(const std::string& requestBody)
@@ -83,12 +93,7 @@ json McpServer::handleToolsCall(const json& params)
     std::string name = params["name"];
     json args = params.value("arguments", json::object());
 
-    if (!registry_.hasTool(name))
-    {
-        throw std::runtime_error("Tool not found: " + name);
-    }
-
-    json result = registry_.invoke(name, args);
+    json result = AIToolRegistry::instance().invoke(name, args);
     return {{"content", json::array({{{"type", "text"}, {"text", result.dump()}}})}, {"isError", false}};
 }
 
