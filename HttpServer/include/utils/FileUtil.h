@@ -35,10 +35,12 @@ public:
 
     void readFile(std::vector<char>& buffer)
     {
-        if (file_.read(buffer.data(), size())) {
+        if (file_.read(buffer.data(), size()))
+        {
             LOG_INFO << "File content load into memory (" << size() << " bytes)";
         }
-        else {
+        else
+        {
             LOG_ERROR << "File read failed";
         }
     }

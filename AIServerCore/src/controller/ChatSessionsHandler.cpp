@@ -2,10 +2,12 @@
 
 void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
         LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
@@ -28,25 +30,29 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
 
         // 查 DB 获取 title
         std::unordered_map<std::string, std::string> titleMap;
-        try {
+        try
+        {
             http::MysqlUtil mu;
             std::string sql = "SELECT id, title FROM sessions WHERE user_id = " + std::to_string(userId) +
                               " AND deleted_at IS NULL ORDER BY updated_at DESC";
             auto res = mu.executeQuery(sql);
-            while (res && res->next()) {
+            while (res && res->next())
+            {
                 std::string sid = res->getString("id");
                 std::string title = res->isNull("title") ? "" : res->getString("title");
                 titleMap[sid] = title;
             }
         }
-        catch (...) {
+        catch (...)
+        {
             // DB 查询失败时降级为纯内存列表，不影响主流程
         }
 
         json successResp;
         successResp["success"] = true;
         json sessionArray = json::array();
-        for (auto& sid : memSessions) {
+        for (auto& sid : memSessions)
+        {
             json s;
             s["sessionId"] = sid;
             auto it = titleMap.find(sid);
@@ -64,7 +70,8 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         resp->setBody(successBody);
         return;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

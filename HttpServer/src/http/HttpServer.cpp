@@ -4,7 +4,8 @@
 #include <functional>
 #include <memory>
 
-namespace http {
+namespace http
+{
 
 // 默认http回应函数
 void defaultHttpCallback(const HttpRequest&, HttpResponse* resp)
@@ -41,9 +42,11 @@ void HttpServer::initialize()
 
 void HttpServer::setSslConfig(const ssl::SslConfig& config)
 {
-    if (useSSL_) {
+    if (useSSL_)
+    {
         sslCtx_ = std::make_unique<ssl::SslContext>(config);
-        if (!sslCtx_->initialize()) {
+        if (!sslCtx_->initialize())
+        {
             LOG_ERROR << "Failed to initialize SSL context";
             abort();
         }
@@ -52,8 +55,10 @@ void HttpServer::setSslConfig(const ssl::SslConfig& config)
 
 void HttpServer::onConnection(const muduo::net::TcpConnectionPtr& conn)
 {
-    if (conn->connected()) {
-        if (useSSL_) {
+    if (conn->connected())
+    {
+        if (useSSL_)
+        {
             auto sslConn = std::make_unique<ssl::SslConnection>(conn, sslCtx_.get());
             sslConn->setMessageCallback(std::bind(&HttpServer::onMessage, this, std::placeholders::_1,
                                                   std::placeholders::_2, std::placeholders::_3));
@@ -62,8 +67,10 @@ void HttpServer::onConnection(const muduo::net::TcpConnectionPtr& conn)
         }
         conn->setContext(HttpContext());
     }
-    else {
-        if (useSSL_) {
+    else
+    {
+        if (useSSL_)
+        {
             sslConns_.erase(conn);
         }
     }
@@ -72,19 +79,23 @@ void HttpServer::onConnection(const muduo::net::TcpConnectionPtr& conn)
 void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net::Buffer* buf,
                            muduo::Timestamp receiveTime)
 {
-    try {
+    try
+    {
         // 这层判断只是代表是否支持ssl
-        if (useSSL_) {
+        if (useSSL_)
+        {
             LOG_INFO << "onMessage useSSL_ is true";
             // 1.查找对应的SSL连接
             auto it = sslConns_.find(conn);
-            if (it != sslConns_.end()) {
+            if (it != sslConns_.end())
+            {
                 LOG_INFO << "onMessage sslConns_ is not empty";
                 // 2. SSL连接处理数据
                 it->second->onRead(conn, buf, receiveTime);
 
                 // 3. 如果 SSL 握手还未完成，直接返回
-                if (!it->second->isHandshakeCompleted()) {
+                if (!it->second->isHandshakeCompleted())
+                {
                     LOG_INFO << "onMessage sslConns_ is not empty";
                     return;
                 }
@@ -108,12 +119,14 @@ void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
             conn->shutdown();
         }
         // 如果buf缓冲区中解析出一个完整的数据包才封装响应报文
-        if (context->gotAll()) {
+        if (context->gotAll())
+        {
             onRequest(conn, context->request());
             context->reset();
         }
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         // 捕获异常，返回错误信息
         LOG_ERROR << "Exception in onMessage: " << e.what();
         conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
@@ -131,7 +144,8 @@ void HttpServer::onRequest(const muduo::net::TcpConnectionPtr& conn, const HttpR
     httpCallback_(req, &response);
 
     // 异步模式：Handler 已标记 deferred，由 Handler 自行发送响应
-    if (response.isDeferred()) {
+    if (response.isDeferred())
+    {
         return;
     }
 
@@ -141,7 +155,8 @@ void HttpServer::onRequest(const muduo::net::TcpConnectionPtr& conn, const HttpR
     LOG_INFO << "Sending response:\n" << buf.toStringPiece().as_string();
 
     conn->send(&buf);
-    if (response.closeConnection()) {
+    if (response.closeConnection())
+    {
         conn->shutdown();
     }
 }
@@ -149,14 +164,16 @@ void HttpServer::onRequest(const muduo::net::TcpConnectionPtr& conn, const HttpR
 // 执行请求对应的路由处理函数
 void HttpServer::handleRequest(const HttpRequest& req, HttpResponse* resp)
 {
-    try {
+    try
+    {
         // 处理请求前的中间件
         HttpRequest mutableReq = req;
         // 中间件前置
         middlewareChain_.processBefore(mutableReq);
 
         // 路由处理
-        if (!router_.route(mutableReq, resp)) {
+        if (!router_.route(mutableReq, resp))
+        {
             LOG_INFO << "请求的啥，url：" << req.method() << " " << req.path();
             LOG_INFO << "未找到路由，返回404";
             resp->setStatusCode(HttpResponse::k404NotFound);
@@ -167,11 +184,13 @@ void HttpServer::handleRequest(const HttpRequest& req, HttpResponse* resp)
         // 处理响应后的中间件
         middlewareChain_.processAfter(*resp);
     }
-    catch (const HttpResponse& res) {
+    catch (const HttpResponse& res)
+    {
         // 处理中间件抛出的响应（如CORS预检请求）
         *resp = res;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         // 错误处理
         resp->setStatusCode(HttpResponse::k500InternalServerError);
         resp->setBody(e.what());

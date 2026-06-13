@@ -2,9 +2,11 @@
 
 void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized");
             resp->setBody("{}");
             resp->setContentType("application/json");
@@ -13,7 +15,8 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
         }
 
         auto body = req.getBody();
-        if (body.empty()) {
+        if (body.empty())
+        {
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
             resp->setBody("{}");
             resp->setContentType("application/json");
@@ -25,10 +28,12 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
         std::string sessionId = j.value("sessionId", "");
         std::string title = j.value("title", "");
 
-        if (!sessionId.empty() && !title.empty()) {
+        if (!sessionId.empty() && !title.empty())
+        {
             // 转义 title 防止 SQL 注入
             std::string safeTitle;
-            for (char c : title) {
+            for (char c : title)
+            {
                 if (c == '\'')
                     safeTitle += "\\'";
                 else if (c == '\\')
@@ -37,11 +42,13 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
                     safeTitle += c;
             }
             std::string sql = "UPDATE sessions SET title = '" + safeTitle + "' WHERE id = '" + sessionId + "'";
-            try {
+            try
+            {
                 http::MysqlUtil mu;
                 mu.executeUpdate(sql);
             }
-            catch (...) {
+            catch (...)
+            {
                 // DB 更新失败不影响主流程
             }
         }
@@ -55,7 +62,8 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
         resp->setContentLength(b.size());
         resp->setBody(b);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json f;
         f["status"] = "error";
         f["message"] = e.what();

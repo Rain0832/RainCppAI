@@ -5,8 +5,10 @@
 
 #include "Middleware.h"
 
-namespace http {
-namespace middleware {
+namespace http
+{
+namespace middleware
+{
 
 class MiddlewareChain
 {

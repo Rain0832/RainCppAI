@@ -19,7 +19,8 @@ std::string AISpeechProcessor::getAccessToken()
 {
     {
         std::lock_guard<std::mutex> lock(s_tokenMutex);
-        if (!s_cachedToken.empty() && time(nullptr) < s_tokenExpiry) {
+        if (!s_cachedToken.empty() && time(nullptr) < s_tokenExpiry)
+        {
             return s_cachedToken;
         }
     }
@@ -51,9 +52,11 @@ std::string AISpeechProcessor::getAccessToken()
     if (res != CURLE_OK)
         return "";
 
-    try {
+    try
+    {
         auto j = json::parse(result);
-        if (j.contains("access_token") && j["access_token"].is_string()) {
+        if (j.contains("access_token") && j["access_token"].is_string())
+        {
             std::lock_guard<std::mutex> lock(s_tokenMutex);
             s_cachedToken = j["access_token"].get<std::string>();
             // 百度 token 有效期 30 天，保守设置 25 天
@@ -61,11 +64,11 @@ std::string AISpeechProcessor::getAccessToken()
             return s_cachedToken;
         }
     }
-    catch (...) {
+    catch (...)
+    {
     }
     return "";
 }
-
 
 // 语音识别
 std::string AISpeechProcessor::recognize(const std::string& speechData, const std::string& format, int rate,
@@ -109,22 +112,25 @@ std::string AISpeechProcessor::recognize(const std::string& speechData, const st
     if (res != CURLE_OK)
         return "";
 
-    try {
+    try
+    {
         json root = json::parse(result);
-        if (root.contains("result") && root["result"].is_array() && !root["result"].empty()) {
-            if (root["result"][0].is_string()) {
+        if (root.contains("result") && root["result"].is_array() && !root["result"].empty())
+        {
+            if (root["result"][0].is_string())
+            {
                 return root["result"][0].get<std::string>();
             }
         }
     }
-    catch (...) {
+    catch (...)
+    {
         std::cout << "Parse error in recognize response: " << result << std::endl;
     }
 
     std::cout << "Recognize failed, response: " << result << std::endl;
     return "";
 }
-
 
 // 语音合成：创建任务 -> 快速轮询 -> 返回 URL
 std::string AISpeechProcessor::synthesize(const std::string& text, const std::string& format, const std::string& lang,
@@ -169,17 +175,21 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
         return "";
 
     std::string task_id;
-    try {
+    try
+    {
         json result_json = json::parse(response);
-        if (result_json.contains("task_id") && result_json["task_id"].is_string()) {
+        if (result_json.contains("task_id") && result_json["task_id"].is_string())
+        {
             task_id = result_json["task_id"].get<std::string>();
         }
         else if (result_json.contains("tasks_info") && result_json["tasks_info"].is_array() &&
-                 !result_json["tasks_info"].empty() && result_json["tasks_info"][0].contains("task_id")) {
+                 !result_json["tasks_info"].empty() && result_json["tasks_info"][0].contains("task_id"))
+        {
             task_id = result_json["tasks_info"][0]["task_id"].get<std::string>();
         }
     }
-    catch (...) {
+    catch (...)
+    {
         return "";
     }
 
@@ -195,7 +205,8 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
     const int poll_ms = 200;   // 200ms 间隔（原来是 1000ms）
     int loops = 0;
 
-    while (loops++ < max_loops) {
+    while (loops++ < max_loops)
+    {
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms));
 
         curl = curl_easy_init();
@@ -226,15 +237,19 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
         if (res != CURLE_OK)
             break;
 
-        try {
+        try
+        {
             json queryResult = json::parse(response);
             if (queryResult.contains("tasks_info") && queryResult["tasks_info"].is_array() &&
-                !queryResult["tasks_info"].empty()) {
+                !queryResult["tasks_info"].empty())
+            {
                 json task = queryResult["tasks_info"][0];
-                if (task.contains("task_status") && task["task_status"].is_string()) {
+                if (task.contains("task_status") && task["task_status"].is_string())
+                {
                     std::string status = task["task_status"].get<std::string>();
                     if (status == "Success" && task.contains("task_result") &&
-                        task["task_result"].contains("speech_url")) {
+                        task["task_result"].contains("speech_url"))
+                    {
                         speech_url = task["task_result"]["speech_url"].get<std::string>();
                         break;
                     }
@@ -244,7 +259,8 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
                 }
             }
         }
-        catch (...) {
+        catch (...)
+        {
             break;
         }
     }

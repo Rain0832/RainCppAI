@@ -5,18 +5,23 @@ static void sendAsyncResp(const muduo::net::TcpConnectionPtr& conn, const std::s
     std::string statusLine = success ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n";
     std::string http = statusLine + "Content-Type: application/json\r\n" + "Connection: Keep-Alive\r\n" +
                        "Content-Length: " + std::to_string(body.size()) + "\r\n" + "\r\n" + body;
-    conn->getLoop()->runInLoop([conn, http]() {
-        if (conn->connected()) {
-            conn->send(http);
-        }
-    });
+    conn->getLoop()->runInLoop(
+            [conn, http]()
+            {
+                if (conn->connected())
+                {
+                    conn->send(http);
+                }
+            });
 }
 
 void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
@@ -36,7 +41,8 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
         std::string ragId;
 
         auto body = req.getBody();
-        if (!body.empty()) {
+        if (!body.empty())
+        {
             auto j = json::parse(body);
             if (j.contains("question"))
                 userQuestion = j["question"];
@@ -56,7 +62,8 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
         {
             std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
             auto& userSessions = server_->chatInformation[userId];
-            if (userSessions.find(sessionId) == userSessions.end()) {
+            if (userSessions.find(sessionId) == userSessions.end())
+            {
                 userSessions.emplace(sessionId, std::make_shared<AIHelper>());
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->rwMutexForSessionsId);
@@ -73,8 +80,10 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
         auto conn = resp->getConnection();
 
         server_->aiThreadPool_.submit(
-                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]() {
-                    try {
+                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]()
+                {
+                    try
+                    {
                         std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion,
                                                                       modelType, apiKey, ragId, endpointId);
                         json successResp;
@@ -83,7 +92,8 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
                         successResp["sessionId"] = sessionId;
                         sendAsyncResp(conn, successResp.dump(), true);
                     }
-                    catch (const std::exception& e) {
+                    catch (const std::exception& e)
+                    {
                         json failResp;
                         failResp["status"] = "error";
                         failResp["message"] = e.what();
@@ -91,7 +101,8 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
                     }
                 });
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

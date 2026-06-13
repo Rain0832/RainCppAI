@@ -48,7 +48,8 @@
 class HttpRequest;
 class HttpResponse;
 
-namespace http {
+namespace http
+{
 
 /**
  * @brief HTTP服务器核心类

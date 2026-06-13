@@ -2,29 +2,26 @@
 
 #include <sstream>
 
-
 AIToolRegistry::AIToolRegistry()
 {
     registerTool("get_weather", getWeather);
     registerTool("get_time", getTime);
 }
 
-
 void AIToolRegistry::registerTool(const std::string& name, ToolFunc func)
 {
     tools_[name] = func;
 }
 
-
 json AIToolRegistry::invoke(const std::string& name, const json& args) const
 {
     auto it = tools_.find(name);
-    if (it == tools_.end()) {
+    if (it == tools_.end())
+    {
         throw std::runtime_error("Tool not found: " + name);
     }
     return it->second(args);
 }
-
 
 bool AIToolRegistry::hasTool(const std::string& name) const
 {
@@ -54,7 +51,6 @@ json AIToolRegistry::getToolsSchema() const
     return tools;
 }
 
-
 size_t AIToolRegistry::WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output)
 {
     size_t totalSize = size * nmemb;
@@ -62,28 +58,31 @@ size_t AIToolRegistry::WriteCallback(void* contents, size_t size, size_t nmemb, 
     return totalSize;
 }
 
-
 json AIToolRegistry::getWeather(const json& args)
 {
-    if (!args.contains("city")) {
+    if (!args.contains("city"))
+    {
         return json {{"error", "Missing parameter: city"}};
     }
 
     std::string city = args["city"].get<std::string>();
 
     CURL* curl = curl_easy_init();
-    if (!curl) {
+    if (!curl)
+    {
         return json {{"error", "Failed to init CURL"}};
     }
 
     // 使用 curl handle 进行 URL 编码（curl_easy_escape 第一个参数需要有效 handle）
     char* encoded = curl_easy_escape(curl, city.c_str(), static_cast<int>(city.length()));
     std::string encodedCity;
-    if (encoded) {
+    if (encoded)
+    {
         encodedCity = encoded;
         curl_free(encoded);
     }
-    else {
+    else
+    {
         curl_easy_cleanup(curl);
         return json {{"error", "URL encode failed"}};
     }
@@ -104,7 +103,8 @@ json AIToolRegistry::getWeather(const json& args)
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK) {
+    if (res != CURLE_OK)
+    {
         // 网络失败时返回模拟数据（让 AI 至少能回答）
         return json {{"city", city},
                      {"weather", "当前网络无法获取实时天气，建议用户查看手机天气App"},
@@ -113,7 +113,6 @@ json AIToolRegistry::getWeather(const json& args)
 
     return json {{"city", city}, {"weather", response}, {"source", "wttr.in"}};
 }
-
 
 json AIToolRegistry::getTime(const json& args)
 {

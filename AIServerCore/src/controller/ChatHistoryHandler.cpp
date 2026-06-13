@@ -2,9 +2,11 @@
 
 void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
@@ -18,7 +20,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
 
         std::string sessionId;
         auto body = req.getBody();
-        if (!body.empty()) {
+        if (!body.empty())
+        {
             auto j = json::parse(body);
             if (j.contains("sessionId"))
                 sessionId = j["sessionId"];
@@ -29,18 +32,22 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         {
             std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForChatInfo);
             auto uit = server_->chatInformation.find(userId);
-            if (uit != server_->chatInformation.end()) {
+            if (uit != server_->chatInformation.end())
+            {
                 auto sit = uit->second.find(sessionId);
-                if (sit != uit->second.end()) {
+                if (sit != uit->second.end())
+                {
                     AIHelperPtr = sit->second;
                 }
             }
         }  // 读锁释放
 
-        if (!AIHelperPtr) {
+        if (!AIHelperPtr)
+        {
             std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
             auto& userSessions = server_->chatInformation[userId];
-            if (userSessions.find(sessionId) == userSessions.end()) {
+            if (userSessions.find(sessionId) == userSessions.end())
+            {
                 userSessions.emplace(sessionId, std::make_shared<AIHelper>());
             }
             AIHelperPtr = userSessions[sessionId];
@@ -50,13 +57,16 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         std::vector<Message> messages = AIHelperPtr->GetMessages();
 
         // ★ Fix A3: 内存为空时 fallback 到 MySQL
-        if (messages.empty()) {
-            try {
+        if (messages.empty())
+        {
+            try
+            {
                 http::MysqlUtil mu;
                 std::string sql = "SELECT role, content FROM messages WHERE session_id = '" + sessionId +
                                   "' AND user_id = " + std::to_string(userId) + " ORDER BY created_at ASC, id ASC";
                 auto res = mu.executeQuery(sql);
-                while (res && res->next()) {
+                while (res && res->next())
+                {
                     std::string role = res->getString("role");
                     std::string content = res->getString("content");
                     messages.push_back({role, content, 0});
@@ -64,7 +74,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     AIHelperPtr->restoreMessage(content, 0, role);
                 }
             }
-            catch (const std::exception& dbErr) {
+            catch (const std::exception& dbErr)
+            {
                 // DB 查询失败则返回空历史，不影响主流程
                 LOG_ERROR << "DB fallback failed: " << dbErr.what();
             }
@@ -74,7 +85,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         successResp["success"] = true;
         successResp["history"] = json::array();
 
-        for (const auto& msg : messages) {
+        for (const auto& msg : messages)
+        {
             json msgJson;
             // ★ 直接用 role 字段，彻底消除奇偶依赖
             msgJson["is_user"] = (msg.role == "user");
@@ -89,7 +101,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         resp->setContentLength(successBody.size());
         resp->setBody(successBody);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

@@ -6,25 +6,31 @@ static void sendSseChunk(const muduo::net::TcpConnectionPtr& conn, const std::st
 {
     // SSE 帧格式：data: <payload>\n\n
     std::string frame = "data: " + data + "\n\n";
-    conn->getLoop()->runInLoop([conn, frame]() {
-        if (conn->connected())
-            conn->send(frame);
-    });
+    conn->getLoop()->runInLoop(
+            [conn, frame]()
+            {
+                if (conn->connected())
+                    conn->send(frame);
+            });
 }
 
 static void sendSseDone(const muduo::net::TcpConnectionPtr& conn)
 {
-    conn->getLoop()->runInLoop([conn]() {
-        if (conn->connected())
-            conn->send("data: [DONE]\n\n");
-    });
+    conn->getLoop()->runInLoop(
+            [conn]()
+            {
+                if (conn->connected())
+                    conn->send("data: [DONE]\n\n");
+            });
 }
 
 void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             json e;
             e["status"] = "error";
             e["message"] = "Unauthorized";
@@ -39,7 +45,8 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
 
         std::string userQuestion, modelType, sessionId, apiKey, ragId, endpointId;
         auto body = req.getBody();
-        if (!body.empty()) {
+        if (!body.empty())
+        {
             auto j = json::parse(body);
             if (j.contains("question"))
                 userQuestion = j["question"];
@@ -59,13 +66,15 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
         {
             std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForChatInfo);
             auto uit = server_->chatInformation.find(userId);
-            if (uit != server_->chatInformation.end()) {
+            if (uit != server_->chatInformation.end())
+            {
                 auto sit = uit->second.find(sessionId);
                 if (sit != uit->second.end())
                     AIHelperPtr = sit->second;
             }
         }
-        if (!AIHelperPtr) {
+        if (!AIHelperPtr)
+        {
             std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
             auto& us = server_->chatInformation[userId];
             if (!us.count(sessionId))
@@ -80,25 +89,30 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
         auto conn = resp->getConnection();
 
         // SSE 握手：在 IO 线程中立即发送响应头
-        conn->getLoop()->runInLoop([conn, req]() {
-            if (!conn->connected())
-                return;
-            std::string sseHeader = "HTTP/1.1 200 OK\r\n"
-                                    "Content-Type: text/event-stream\r\n"
-                                    "Cache-Control: no-cache\r\n"
-                                    "Connection: keep-alive\r\n"
-                                    "Access-Control-Allow-Origin: *\r\n"
-                                    "\r\n";
-            conn->send(sseHeader);
-        });
+        conn->getLoop()->runInLoop(
+                [conn, req]()
+                {
+                    if (!conn->connected())
+                        return;
+                    std::string sseHeader = "HTTP/1.1 200 OK\r\n"
+                                            "Content-Type: text/event-stream\r\n"
+                                            "Cache-Control: no-cache\r\n"
+                                            "Connection: keep-alive\r\n"
+                                            "Access-Control-Allow-Origin: *\r\n"
+                                            "\r\n";
+                    conn->send(sseHeader);
+                });
 
         // 提交流式 AI 调用到线程池
         server_->aiThreadPool_.submit(
-                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]() {
-                    try {
+                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]()
+                {
+                    try
+                    {
                         AIHelperPtr->chatStream(
                                 userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
-                                [&conn](const std::string& token) -> bool {
+                                [&conn](const std::string& token) -> bool
+                                {
                                     if (!conn->connected())
                                         return false;
                                     // 将 token 包装为 JSON 发送
@@ -110,7 +124,8 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                                 endpointId);
                         sendSseDone(conn);
                     }
-                    catch (const std::exception& e) {
+                    catch (const std::exception& e)
+                    {
                         json err;
                         err["error"] = e.what();
                         sendSseChunk(conn, err.dump());
@@ -118,7 +133,8 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                     }
                 });
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json f;
         f["status"] = "error";
         f["message"] = e.what();

@@ -3,8 +3,10 @@
 #include <string>
 #include <vector>
 
-namespace http {
-namespace middleware {
+namespace http
+{
+namespace middleware
+{
 
 struct CorsConfig
 {

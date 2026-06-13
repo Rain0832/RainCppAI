@@ -1,6 +1,5 @@
 #include "common/AISessionIdGenerator.h"
 
-
 std::string AISessionIdGenerator::generate()
 {
     auto now = std::chrono::system_clock::now().time_since_epoch().count();

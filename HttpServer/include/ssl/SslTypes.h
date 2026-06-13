@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 
-namespace ssl {
+namespace ssl
+{
 
 // SSL/TLS 协议版本
 enum class SSLVersion

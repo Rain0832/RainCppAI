@@ -2,8 +2,10 @@
 #include <stdexcept>
 #include <string>
 
-namespace http {
-namespace db {
+namespace http
+{
+namespace db
+{
 
 class DbException : public std::runtime_error
 {

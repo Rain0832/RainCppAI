@@ -5,9 +5,11 @@
 #include <string>
 #include <unordered_map>
 
-namespace http {
+namespace http
+{
 
-namespace session {
+namespace session
+{
 
 class SessionManager;
 

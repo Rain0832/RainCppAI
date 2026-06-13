@@ -2,7 +2,8 @@
 
 #include <muduo/net/TcpServer.h>
 
-namespace http {
+namespace http
+{
 
 /**
  * HttpResponse

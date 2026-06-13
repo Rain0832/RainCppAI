@@ -2,10 +2,12 @@
 
 void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
         LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
@@ -21,7 +23,8 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
 
         std::string reqFile = server_->getResourceRoot() + "web/upload.html";
         FileUtil fileOperater(reqFile);
-        if (!fileOperater.isValid()) {
+        if (!fileOperater.isValid())
+        {
             LOG_WARN << reqFile << "not exist.";
             fileOperater.resetDefaultFile();
         }
@@ -31,7 +34,8 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         std::string htmlContent(buffer.data(), buffer.size());
 
         size_t headEnd = htmlContent.find("</head>");
-        if (headEnd != std::string::npos) {
+        if (headEnd != std::string::npos)
+        {
             std::string script = "<script>const userId = '" + std::to_string(userId) + "';</script>";
             htmlContent.insert(headEnd, script);
         }
@@ -41,7 +45,8 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         resp->setContentLength(htmlContent.size());
         resp->setBody(htmlContent);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

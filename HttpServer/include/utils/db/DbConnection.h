@@ -12,8 +12,10 @@
 
 #include "DbException.h"
 
-namespace http {
-namespace db {
+namespace http
+{
+namespace db
+{
 
 class DbConnection
 {
@@ -33,13 +35,15 @@ public:
     template <typename... Args> sql::ResultSet* executeQuery(const std::string& sql, Args&&... args)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        try {
+        try
+        {
             // 直接创建新的预处理语句，不使用缓存
             std::unique_ptr<sql::PreparedStatement> stmt(conn_->prepareStatement(sql));
             bindParams(stmt.get(), 1, std::forward<Args>(args)...);
             return stmt->executeQuery();
         }
-        catch (const sql::SQLException& e) {
+        catch (const sql::SQLException& e)
+        {
             LOG_ERROR << "Query failed: " << e.what() << ", SQL: " << sql;
             throw DbException(e.what());
         }
@@ -48,13 +52,15 @@ public:
     template <typename... Args> int executeUpdate(const std::string& sql, Args&&... args)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        try {
+        try
+        {
             // 直接创建新的预处理语句，不使用缓存
             std::unique_ptr<sql::PreparedStatement> stmt(conn_->prepareStatement(sql));
             bindParams(stmt.get(), 1, std::forward<Args>(args)...);
             return stmt->executeUpdate();
         }
-        catch (const sql::SQLException& e) {
+        catch (const sql::SQLException& e)
+        {
             LOG_ERROR << "Update failed: " << e.what() << ", SQL: " << sql;
             throw DbException(e.what());
         }

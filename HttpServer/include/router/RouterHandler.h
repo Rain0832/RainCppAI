@@ -5,8 +5,10 @@
 #include "../http/HttpRequest.h"
 #include "../http/HttpResponse.h"
 
-namespace http {
-namespace router {
+namespace http
+{
+namespace router
+{
 
 class RouterHandler
 {

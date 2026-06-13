@@ -3,8 +3,10 @@
 
 #include "Session.h"
 
-namespace http {
-namespace session {
+namespace http
+{
+namespace session
+{
 
 class SessionStorage
 {

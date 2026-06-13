@@ -11,8 +11,10 @@
 #include "../http/HttpResponse.h"
 #include "RouterHandler.h"
 
-namespace http {
-namespace router {
+namespace http
+{
+namespace router
+{
 
 // 选择注册对象式的路由处理器还是注册回调函数式的处理器取决于处理器执行的复杂程度
 // 如果是简单的处理可以注册回调函数，否则注册对象式路由处理器(对象中可封装多个相关函数)
@@ -135,7 +137,8 @@ private:
     void extractPathParameters(const std::smatch& match, HttpRequest& request)
     {
         // Assuming the first match is the full path, parameters start from index 1
-        for (size_t i = 1; i < match.size(); ++i) {
+        for (size_t i = 1; i < match.size(); ++i)
+        {
             request.setPathParameters("param" + std::to_string(i), match[i].str());
         }
     }

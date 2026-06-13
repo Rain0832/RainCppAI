@@ -6,7 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-namespace http {
+namespace http
+{
 
 class HttpRequest
 {
@@ -115,7 +116,8 @@ public:
     // - end：请求体结束指针。
     void setBody(const char* start, const char* end)
     {
-        if (end >= start) {
+        if (end >= start)
+        {
             content_.assign(start, end - start);
         }
     }

@@ -4,7 +4,8 @@ void ChatEntryHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
 {
     std::string reqFile = server_->getResourceRoot() + "web/entry.html";
     FileUtil fileOperater(reqFile);
-    if (!fileOperater.isValid()) {
+    if (!fileOperater.isValid())
+    {
         LOG_WARN << reqFile << " not exist";
         fileOperater.resetDefaultFile();  // 404 NOT FOUND
     }

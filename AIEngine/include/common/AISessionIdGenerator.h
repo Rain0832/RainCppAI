@@ -5,7 +5,6 @@
 #include <random>
 #include <string>
 
-
 class AISessionIdGenerator
 {
 public:

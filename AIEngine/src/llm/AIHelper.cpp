@@ -49,7 +49,8 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
 {
     // ★ 同一 session 并发保护：若上一条消息还在处理，立即拒绝
     bool expected = false;
-    if (!processing_.compare_exchange_strong(expected, true)) {
+    if (!processing_.compare_exchange_strong(expected, true))
+    {
         return "[提示] 当前会话正在处理上一条消息，请稍后再试";
     }
     // RAII 确保无论何种路径退出都解锁
@@ -65,11 +66,13 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
         strategy->setRagId(ragId);
-    if (strategy->getApiKey().empty()) {
+    if (strategy->getApiKey().empty())
+    {
         return "[错误] 未配置 API Key，请在个人中心设置对应模型的 API Key";
     }
 
-    if (!strategy->isMCPModel) {
+    if (!strategy->isMCPModel)
+    {
         addMessage(userId, userName, true, userQuestion, sessionId);
 
         // 持锁拷贝快照，然后解锁，避免 curl 期间长时间持锁
@@ -105,7 +108,8 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     AIToolCall call = config.parseAIResponse(aiResult);
 
     // 情况1：不调用工具
-    if (!call.isToolCall) {
+    if (!call.isToolCall)
+    {
         addMessage(userId, userName, true, userQuestion, sessionId);
         addMessage(userId, userName, false, aiResult, sessionId);
         return aiResult;
@@ -114,10 +118,12 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     // 情况2：调用工具
     json toolResult;
     AIToolRegistry registry;
-    try {
+    try
+    {
         toolResult = registry.invoke(call.toolName, call.args);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         std::string err = "[工具调用失败] " + std::string(e.what());
         addMessage(userId, userName, true, userQuestion, sessionId);
         addMessage(userId, userName, false, err, sessionId);
@@ -152,7 +158,8 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                                  std::string endpointId)
 {
     bool expected = false;
-    if (!processing_.compare_exchange_strong(expected, true)) {
+    if (!processing_.compare_exchange_strong(expected, true))
+    {
         onChunk("[提示] 当前会话正在处理上一条消息，请稍后再试");
         return "";
     }
@@ -167,7 +174,8 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
         strategy->setRagId(ragId);
-    if (strategy->getApiKey().empty()) {
+    if (strategy->getApiKey().empty())
+    {
         onChunk("[错误] 未配置 API Key");
         return "";
     }
@@ -247,7 +255,8 @@ size_t AIHelper::StreamWriteCallback(void* contents, size_t size, size_t nmemb, 
     // 按行处理 SSE 格式：data: {...}\n\n
     std::string& buf = ctx->buffer;
     size_t pos = 0;
-    while (true) {
+    while (true)
+    {
         size_t nl = buf.find('\n', pos);
         if (nl == std::string::npos)
             break;
@@ -264,28 +273,35 @@ size_t AIHelper::StreamWriteCallback(void* contents, size_t size, size_t nmemb, 
             continue;
 
         // 解析 "data: {...}"
-        if (line.substr(0, 6) == "data: ") {
+        if (line.substr(0, 6) == "data: ")
+        {
             std::string jsonStr = line.substr(6);
-            try {
+            try
+            {
                 json chunk = json::parse(jsonStr);
                 std::string token;
                 // OpenAI 兼容格式
-                if (chunk.contains("choices") && !chunk["choices"].empty()) {
+                if (chunk.contains("choices") && !chunk["choices"].empty())
+                {
                     auto& delta = chunk["choices"][0]["delta"];
-                    if (delta.contains("content") && !delta["content"].is_null()) {
+                    if (delta.contains("content") && !delta["content"].is_null())
+                    {
                         token = delta["content"].get<std::string>();
                     }
                 }
-                if (!token.empty()) {
+                if (!token.empty())
+                {
                     ctx->fullContent += token;
-                    if (!ctx->callback(token)) {
+                    if (!ctx->callback(token))
+                    {
                         ctx->aborted = true;
                         buf = buf.substr(pos);
                         return 0;
                     }
                 }
             }
-            catch (...) { /* 忽略解析失败的 chunk */
+            catch (...)
+            { /* 忽略解析失败的 chunk */
             }
         }
     }
@@ -322,10 +338,12 @@ json AIHelper::executeCurl(const json& payload)
     if (res != CURLE_OK)
         throw std::runtime_error("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
 
-    try {
+    try
+    {
         return json::parse(readBuffer);
     }
-    catch (...) {
+    catch (...)
+    {
         throw std::runtime_error("Failed to parse JSON response: " + readBuffer);
     }
 }
@@ -341,8 +359,10 @@ std::string AIHelper::escapeString(const std::string& input)
 {
     std::string output;
     output.reserve(input.size() * 2);
-    for (char c : input) {
-        switch (c) {
+    for (char c : input)
+    {
+        switch (c)
+        {
         case '\\':
             output += "\\\\";
             break;

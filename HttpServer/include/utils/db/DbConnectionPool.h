@@ -7,8 +7,10 @@
 
 #include "DbConnection.h"
 
-namespace http {
-namespace db {
+namespace http
+{
+namespace db
+{
 
 class DbConnectionPool
 {

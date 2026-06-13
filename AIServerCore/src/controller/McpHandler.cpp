@@ -2,10 +2,12 @@
 
 void McpHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         // MCP 接口可选鉴权（目前开放，后续可加 API Key 校验）
         auto body = req.getBody();
-        if (body.empty()) {
+        if (body.empty())
+        {
             json e;
             e["error"] = "Empty request body";
             std::string b = e.dump();
@@ -25,7 +27,8 @@ void McpHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
         resp->setContentLength(responseBody.size());
         resp->setBody(responseBody);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json f;
         f["status"] = "error";
         f["message"] = e.what();

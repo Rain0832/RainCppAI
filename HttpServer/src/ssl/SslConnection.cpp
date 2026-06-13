@@ -3,7 +3,8 @@
 #include <muduo/base/Logging.h>
 #include <openssl/err.h>
 
-namespace ssl {
+namespace ssl
+{
 
 // 自定义 BIO 方法
 static BIO_METHOD* createCustomBioMethod()
@@ -21,7 +22,8 @@ SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
 {
     // 创建 SSL 对象
     ssl_ = SSL_new(ctx_->getNativeHandle());
-    if (!ssl_) {
+    if (!ssl_)
+    {
         LOG_ERROR << "Failed to create SSL object: " << ERR_error_string(ERR_get_error(), nullptr);
         return;
     }
@@ -30,7 +32,8 @@ SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
     readBio_ = BIO_new(BIO_s_mem());
     writeBio_ = BIO_new(BIO_s_mem());
 
-    if (!readBio_ || !writeBio_) {
+    if (!readBio_ || !writeBio_)
+    {
         LOG_ERROR << "Failed to create BIO objects";
         SSL_free(ssl_);
         ssl_ = nullptr;
@@ -51,7 +54,8 @@ SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
 
 SslConnection::~SslConnection()
 {
-    if (ssl_) {
+    if (ssl_)
+    {
         SSL_free(ssl_);  // 这会同时释放 BIO
     }
 }
@@ -64,13 +68,15 @@ void SslConnection::startHandshake()
 
 void SslConnection::send(const void* data, size_t len)
 {
-    if (state_ != SSLState::ESTABLISHED) {
+    if (state_ != SSLState::ESTABLISHED)
+    {
         LOG_ERROR << "Cannot send data before SSL handshake is complete";
         return;
     }
 
     int written = SSL_write(ssl_, data, len);
-    if (written <= 0) {
+    if (written <= 0)
+    {
         int err = SSL_get_error(ssl_, written);
         LOG_ERROR << "SSL_write failed: " << ERR_error_string(err, nullptr);
         return;
@@ -78,9 +84,11 @@ void SslConnection::send(const void* data, size_t len)
 
     char buf[4096];
     int pending;
-    while ((pending = BIO_pending(writeBio_)) > 0) {
+    while ((pending = BIO_pending(writeBio_)) > 0)
+    {
         int bytes = BIO_read(writeBio_, buf, std::min(pending, static_cast<int>(sizeof(buf))));
-        if (bytes > 0) {
+        if (bytes > 0)
+        {
             conn_->send(buf, bytes);
         }
     }
@@ -88,24 +96,28 @@ void SslConnection::send(const void* data, size_t len)
 
 void SslConnection::onRead(const TcpConnectionPtr& conn, BufferPtr buf, muduo::Timestamp time)
 {
-    if (state_ == SSLState::HANDSHAKE) {
+    if (state_ == SSLState::HANDSHAKE)
+    {
         // 将数据写入 BIO
         BIO_write(readBio_, buf->peek(), buf->readableBytes());
         buf->retrieve(buf->readableBytes());
         handleHandshake();
         return;
     }
-    else if (state_ == SSLState::ESTABLISHED) {
+    else if (state_ == SSLState::ESTABLISHED)
+    {
         // 解密数据
         char decryptedData[4096];
         int ret = SSL_read(ssl_, decryptedData, sizeof(decryptedData));
-        if (ret > 0) {
+        if (ret > 0)
+        {
             // 创建新的 Buffer 存储解密后的数据
             muduo::net::Buffer decryptedBuffer;
             decryptedBuffer.append(decryptedData, ret);
 
             // 调用上层回调处理解密后的数据
-            if (messageCallback_) {
+            if (messageCallback_)
+            {
                 messageCallback_(conn, &decryptedBuffer, time);
             }
         }
@@ -116,27 +128,31 @@ void SslConnection::handleHandshake()
 {
     int ret = SSL_do_handshake(ssl_);
 
-    if (ret == 1) {
+    if (ret == 1)
+    {
         state_ = SSLState::ESTABLISHED;
         LOG_INFO << "SSL handshake completed successfully";
         LOG_INFO << "Using cipher: " << SSL_get_cipher(ssl_);
         LOG_INFO << "Protocol version: " << SSL_get_version(ssl_);
 
         // 握手完成后，确保设置了正确的回调
-        if (!messageCallback_) {
+        if (!messageCallback_)
+        {
             LOG_WARN << "No message callback set after SSL handshake";
         }
         return;
     }
 
     int err = SSL_get_error(ssl_, ret);
-    switch (err) {
+    switch (err)
+    {
     case SSL_ERROR_WANT_READ:
     case SSL_ERROR_WANT_WRITE:
         // 正常的握手过程，需要继续
         break;
 
-    default: {
+    default:
+    {
         // 获取详细的错误信息
         char errBuf[256];
         unsigned long errCode = ERR_get_error();
@@ -162,7 +178,8 @@ void SslConnection::onDecrypted(const char* data, size_t len)
 SSLError SslConnection::getLastError(int ret)
 {
     int err = SSL_get_error(ssl_, ret);
-    switch (err) {
+    switch (err)
+    {
     case SSL_ERROR_NONE:
         return SSLError::NONE;
     case SSL_ERROR_WANT_READ:
@@ -180,7 +197,8 @@ SSLError SslConnection::getLastError(int ret)
 
 void SslConnection::handleError(SSLError error)
 {
-    switch (error) {
+    switch (error)
+    {
     case SSLError::WANT_READ:
     case SSLError::WANT_WRITE:
         // 需要等待更多数据或写入缓冲区可用
@@ -214,7 +232,8 @@ int SslConnection::bioRead(BIO* bio, char* data, int len)
         return -1;
 
     size_t readable = conn->readBuffer_.readableBytes();
-    if (readable == 0) {
+    if (readable == 0)
+    {
         return -1;  // 无数据可读
     }
 
@@ -226,13 +245,13 @@ int SslConnection::bioRead(BIO* bio, char* data, int len)
 
 long SslConnection::bioCtrl(BIO* bio, int cmd, long num, void* ptr)
 {
-    switch (cmd) {
+    switch (cmd)
+    {
     case BIO_CTRL_FLUSH:
         return 1;
     default:
         return 0;
     }
 }
-
 
 }  // namespace ssl

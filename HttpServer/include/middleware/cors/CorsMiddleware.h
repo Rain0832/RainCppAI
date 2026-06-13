@@ -5,8 +5,10 @@
 #include "../Middleware.h"
 #include "CorsConfig.h"
 
-namespace http {
-namespace middleware {
+namespace http
+{
+namespace middleware
+{
 
 class CorsMiddleware : public Middleware
 {

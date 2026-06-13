@@ -10,7 +10,8 @@
 #include <thread>
 #include <vector>
 
-namespace http {
+namespace http
+{
 
 /**
  * @brief 通用线程池
@@ -23,21 +24,25 @@ class ThreadPool
 public:
     explicit ThreadPool(size_t numThreads = std::thread::hardware_concurrency()) : stop_(false)
     {
-        for (size_t i = 0; i < numThreads; ++i) {
-            workers_.emplace_back([this] {
-                while (true) {
-                    std::function<void()> task;
+        for (size_t i = 0; i < numThreads; ++i)
+        {
+            workers_.emplace_back(
+                    [this]
                     {
-                        std::unique_lock<std::mutex> lock(mutex_);
-                        cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
-                        if (stop_ && tasks_.empty())
-                            return;
-                        task = std::move(tasks_.front());
-                        tasks_.pop();
-                    }
-                    task();
-                }
-            });
+                        while (true)
+                        {
+                            std::function<void()> task;
+                            {
+                                std::unique_lock<std::mutex> lock(mutex_);
+                                cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                                if (stop_ && tasks_.empty())
+                                    return;
+                                task = std::move(tasks_.front());
+                                tasks_.pop();
+                            }
+                            task();
+                        }
+                    });
         }
     }
 
@@ -48,7 +53,8 @@ public:
             stop_ = true;
         }
         cv_.notify_all();
-        for (auto& t : workers_) {
+        for (auto& t : workers_)
+        {
             if (t.joinable())
                 t.join();
         }

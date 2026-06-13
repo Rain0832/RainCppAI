@@ -1,6 +1,7 @@
 #include "../../include/http/HttpResponse.h"
 
-namespace http {
+namespace http
+{
 
 void HttpResponse::appendToBuffer(muduo::net::Buffer* outputBuf) const
 {
@@ -13,15 +14,18 @@ void HttpResponse::appendToBuffer(muduo::net::Buffer* outputBuf) const
     outputBuf->append("\r\n");
 
     // 输出连接相关头部
-    if (closeConnection_) {
+    if (closeConnection_)
+    {
         outputBuf->append("Connection: close\r\n");
     }
-    else {
+    else
+    {
         outputBuf->append("Connection: Keep-Alive\r\n");
     }
 
     // 输出自定义响应头
-    for (const auto& header : headers_) {
+    for (const auto& header : headers_)
+    {
         outputBuf->append(header.first);
         outputBuf->append(": ");
         outputBuf->append(header.second);

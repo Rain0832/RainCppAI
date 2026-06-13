@@ -2,9 +2,11 @@
 
 #include <iostream>
 
-namespace http {
+namespace http
+{
 
-namespace session {
+namespace session
+{
 
 void MemorySessionStorage::save(std::shared_ptr<Session> session)
 {
@@ -16,11 +18,14 @@ void MemorySessionStorage::save(std::shared_ptr<Session> session)
 std::shared_ptr<Session> MemorySessionStorage::load(const std::string& sessionId)
 {
     auto it = sessions_.find(sessionId);
-    if (it != sessions_.end()) {
-        if (!it->second->isExpired()) {
+    if (it != sessions_.end())
+    {
+        if (!it->second->isExpired())
+        {
             return it->second;
         }
-        else {
+        else
+        {
             // 如果会话已过期，则从存储中移除
             sessions_.erase(it);
         }

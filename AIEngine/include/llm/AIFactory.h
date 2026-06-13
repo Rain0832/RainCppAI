@@ -53,9 +53,11 @@ template <typename T> struct StrategyRegister
     //   name: 策略名称。
     StrategyRegister(const std::string& name)
     {
-        StrategyFactory::instance().registerStrategy(name, [] {
-            std::shared_ptr<AIStrategy> instance = std::make_shared<T>();
-            return instance;
-        });
+        StrategyFactory::instance().registerStrategy(name,
+                                                     []
+                                                     {
+                                                         std::shared_ptr<AIStrategy> instance = std::make_shared<T>();
+                                                         return instance;
+                                                     });
     }
 };

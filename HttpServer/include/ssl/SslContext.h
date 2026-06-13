@@ -6,7 +6,8 @@
 
 #include "SslConfig.h"
 
-namespace ssl {
+namespace ssl
+{
 
 class SslContext : muduo::noncopyable
 {

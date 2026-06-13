@@ -93,14 +93,16 @@ void ChatServer::initDatabase()
         ) CHARSET=utf8mb4
     )SQL";
 
-    try {
+    try
+    {
         mysqlUtil_.executeUpdate(createUsers);
         mysqlUtil_.executeUpdate(createSessions);
         mysqlUtil_.executeUpdate(createMessages);
         mysqlUtil_.executeUpdate(createApiKeys);
         std::cout << "Database tables initialized successfully." << std::endl;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         std::cerr << "Failed to init database tables: " << e.what() << std::endl;
     }
 }
@@ -123,28 +125,33 @@ void ChatServer::readDataFromMySQL()
                       "ORDER BY m.created_at ASC, m.id ASC";
 
     sql::ResultSet* res;
-    try {
+    try
+    {
         res = mysqlUtil_.executeQuery(sql);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         std::cerr << "MySQL query failed: " << e.what() << std::endl;
         return;
     }
 
-    while (res->next()) {
+    while (res->next())
+    {
         long long user_id = 0;
         std::string session_id;
         std::string role, content;
         long long ts_ms = 0;
 
-        try {
+        try
+        {
             user_id = res->getInt64("user_id");
             session_id = res->getString("session_id");
             role = res->getString("role");
             content = res->getString("content");
             ts_ms = res->getInt64("ts_ms");
         }
-        catch (const std::exception& e) {
+        catch (const std::exception& e)
+        {
             std::cerr << "Failed to read row: " << e.what() << std::endl;
             continue;
         }
@@ -153,12 +160,14 @@ void ChatServer::readDataFromMySQL()
 
         std::shared_ptr<AIHelper> helper;
         auto itSession = userSessions.find(session_id);
-        if (itSession == userSessions.end()) {
+        if (itSession == userSessions.end())
+        {
             helper = std::make_shared<AIHelper>();
             userSessions[session_id] = helper;
             sessionsIdsMap[user_id].push_back(session_id);
         }
-        else {
+        else
+        {
             helper = itSession->second;
         }
 
@@ -225,12 +234,14 @@ void ChatServer::packageResp(const std::string& version, http::HttpResponse::Htt
                              const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
                              const std::string& body, http::HttpResponse* resp)
 {
-    if (resp == nullptr) {
+    if (resp == nullptr)
+    {
         LOG_ERROR << "Response pointer is null";
         return;
     }
 
-    try {
+    try
+    {
         resp->setVersion(version);
         resp->setStatusCode(statusCode);
         resp->setStatusMessage(statusMsg);
@@ -241,7 +252,8 @@ void ChatServer::packageResp(const std::string& version, http::HttpResponse::Htt
 
         LOG_INFO << "Response packaged successfully";
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         LOG_ERROR << "Error in packageResp: " << e.what();
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
         resp->setStatusMessage("Internal Server Error");
@@ -253,7 +265,8 @@ void ChatServer::touchSession(int userId, const std::string& sessionId)
 {
     std::string key = std::to_string(userId) + ":" + sessionId;
     auto it = lruMap_.find(key);
-    if (it != lruMap_.end()) {
+    if (it != lruMap_.end())
+    {
         lruList_.erase(it->second);
     }
     lruList_.push_front(key);
@@ -262,20 +275,24 @@ void ChatServer::touchSession(int userId, const std::string& sessionId)
 
 void ChatServer::evictIfNeeded()
 {
-    while (lruList_.size() > MAX_SESSIONS) {
+    while (lruList_.size() > MAX_SESSIONS)
+    {
         std::string oldest = lruList_.back();
         lruList_.pop_back();
         lruMap_.erase(oldest);
 
         // 解析 "userId:sessionId"
         auto pos = oldest.find(':');
-        if (pos != std::string::npos) {
+        if (pos != std::string::npos)
+        {
             int uid = std::stoi(oldest.substr(0, pos));
             std::string sid = oldest.substr(pos + 1);
             auto uit = chatInformation.find(uid);
-            if (uit != chatInformation.end()) {
+            if (uit != chatInformation.end())
+            {
                 uit->second.erase(sid);
-                if (uit->second.empty()) {
+                if (uit->second.empty())
+                {
                     chatInformation.erase(uit);
                 }
             }

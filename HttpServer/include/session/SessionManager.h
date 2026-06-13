@@ -7,8 +7,10 @@
 #include "../http/HttpResponse.h"
 #include "SessionStorage.h"
 
-namespace http {
-namespace session {
+namespace http
+{
+namespace session
+{
 
 class SessionManager
 {

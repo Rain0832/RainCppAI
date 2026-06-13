@@ -19,7 +19,6 @@ void executeMysql(const std::string sql)
     mysqlUtil_.executeUpdate(sql);
 }
 
-
 int main(int argc, char* argv[])
 {
     LOG_INFO << "pid = " << getpid();
@@ -28,9 +27,12 @@ int main(int argc, char* argv[])
     //
     int opt;
     const char* str = "p:";
-    while ((opt = getopt(argc, argv, str)) != -1) {
-        switch (opt) {
-        case 'p': {
+    while ((opt = getopt(argc, argv, str)) != -1)
+    {
+        switch (opt)
+        {
+        case 'p':
+        {
             port = atoi(optarg);
             break;
         }
@@ -45,7 +47,6 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     server.initChatMessage();
-
 
     RabbitMQThreadPool pool(RABBITMQ_HOST, QUEUE_NAME, THREAD_NUM, executeMysql);
     pool.start();

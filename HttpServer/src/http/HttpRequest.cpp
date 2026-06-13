@@ -1,6 +1,7 @@
 #include "../../include/http/HttpRequest.h"
 
-namespace http {
+namespace http
+{
 
 void HttpRequest::setReceiveTime(muduo::Timestamp t)
 {
@@ -11,22 +12,28 @@ bool HttpRequest::setMethod(const char* start, const char* end)
 {
     assert(method_ == kInvalid);
     std::string m(start, end);  // [start, end)
-    if (m == "GET") {
+    if (m == "GET")
+    {
         method_ = kGet;
     }
-    else if (m == "POST") {
+    else if (m == "POST")
+    {
         method_ = kPost;
     }
-    else if (m == "PUT") {
+    else if (m == "PUT")
+    {
         method_ = kPut;
     }
-    else if (m == "DELETE") {
+    else if (m == "DELETE")
+    {
         method_ = kDelete;
     }
-    else if (m == "OPTIONS") {
+    else if (m == "OPTIONS")
+    {
         method_ = kOptions;
     }
-    else {
+    else
+    {
         method_ = kInvalid;
     }
 
@@ -46,7 +53,8 @@ void HttpRequest::setPathParameters(const std::string& key, const std::string& v
 std::string HttpRequest::getPathParameters(const std::string& key) const
 {
     auto it = pathParameters_.find(key);
-    if (it != pathParameters_.end()) {
+    if (it != pathParameters_.end())
+    {
         return it->second;
     }
     return "";
@@ -55,7 +63,8 @@ std::string HttpRequest::getPathParameters(const std::string& key) const
 std::string HttpRequest::getQueryParameters(const std::string& key) const
 {
     auto it = queryParameters_.find(key);
-    if (it != queryParameters_.end()) {
+    if (it != queryParameters_.end())
+    {
         return it->second;
     }
     return "";
@@ -69,11 +78,13 @@ void HttpRequest::setQueryParameters(const char* start, const char* end)
     std::string::size_type prev = 0;
 
     // 按 & 分割多个参数
-    while ((pos = argumentStr.find('&', prev)) != std::string::npos) {
+    while ((pos = argumentStr.find('&', prev)) != std::string::npos)
+    {
         std::string pair = argumentStr.substr(prev, pos - prev);
         std::string::size_type equalPos = pair.find('=');
 
-        if (equalPos != std::string::npos) {
+        if (equalPos != std::string::npos)
+        {
             std::string key = pair.substr(0, equalPos);
             std::string value = pair.substr(equalPos + 1);
             queryParameters_[key] = value;
@@ -85,7 +96,8 @@ void HttpRequest::setQueryParameters(const char* start, const char* end)
     // 处理最后一个参数
     std::string lastPair = argumentStr.substr(prev);
     std::string::size_type equalPos = lastPair.find('=');
-    if (equalPos != std::string::npos) {
+    if (equalPos != std::string::npos)
+    {
         std::string key = lastPair.substr(0, equalPos);
         std::string value = lastPair.substr(equalPos + 1);
         queryParameters_[key] = value;
@@ -96,7 +108,8 @@ void HttpRequest::addHeader(const char* start, const char* colon, const char* en
 {
     std::string key(start, colon);
     ++colon;
-    while (colon < end && isspace(*colon)) {
+    while (colon < end && isspace(*colon))
+    {
         ++colon;
     }
     std::string value(colon, end);
@@ -111,7 +124,8 @@ std::string HttpRequest::getHeader(const std::string& field) const
 {
     std::string result;
     auto it = headers_.find(field);
-    if (it != headers_.end()) {
+    if (it != headers_.end())
+    {
         result = it->second;
     }
     return result;

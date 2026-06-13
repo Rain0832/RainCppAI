@@ -4,8 +4,10 @@
 #include <iostream>
 #include <sstream>
 
-namespace http {
-namespace session {
+namespace http
+{
+namespace session
+{
 
 // 初始化会话管理器，设置会话存储对象和随机数生成器
 SessionManager::SessionManager(std::unique_ptr<SessionStorage> storage)
@@ -20,16 +22,19 @@ std::shared_ptr<Session> SessionManager::getSession(const HttpRequest& req, Http
 
     std::shared_ptr<Session> session;
 
-    if (!sessionId.empty()) {
+    if (!sessionId.empty())
+    {
         session = storage_->load(sessionId);
     }
 
-    if (!session || session->isExpired()) {
+    if (!session || session->isExpired())
+    {
         sessionId = generateSessionId();
         session = std::make_shared<Session>(sessionId, this);
         setSessionCookie(sessionId, resp);
     }
-    else {
+    else
+    {
         session->setManager(this);  // 为现有会话设置管理器
     }
 
@@ -45,7 +50,8 @@ std::string SessionManager::generateSessionId()
     std::uniform_int_distribution<> dist(0, 15);
 
     // 生成32个字符的会话ID，每个字符是一个十六进制数字
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < 32; ++i)
+    {
         ss << std::hex << dist(rng_);
     }
     return ss.str();
@@ -68,15 +74,19 @@ std::string SessionManager::getSessionIdFromCookie(const HttpRequest& req)
     std::string sessionId;
     std::string cookie = req.getHeader("Cookie");
 
-    if (!cookie.empty()) {
+    if (!cookie.empty())
+    {
         size_t pos = cookie.find("sessionId=");
-        if (pos != std::string::npos) {
+        if (pos != std::string::npos)
+        {
             pos += 10;  // 跳过"sessionId="
             size_t end = cookie.find(';', pos);
-            if (end != std::string::npos) {
+            if (end != std::string::npos)
+            {
                 sessionId = cookie.substr(pos, end - pos);
             }
-            else {
+            else
+            {
                 sessionId = cookie.substr(pos);
             }
         }

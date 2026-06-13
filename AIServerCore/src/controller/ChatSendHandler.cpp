@@ -8,18 +8,23 @@ static void sendAsyncResponse(const muduo::net::TcpConnectionPtr& conn, const st
                        "Content-Length: " + std::to_string(body.size()) + "\r\n" + "\r\n" + body;
 
     // 通过 runInLoop 确保在 IO 线程中发送
-    conn->getLoop()->runInLoop([conn, http]() {
-        if (conn->connected()) {
-            conn->send(http);
-        }
-    });
+    conn->getLoop()->runInLoop(
+            [conn, http]()
+            {
+                if (conn->connected())
+                {
+                    conn->send(http);
+                }
+            });
 }
 
 void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try {
+    try
+    {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true") {
+        if (session->getValue("isLoggedIn") != "true")
+        {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
@@ -40,7 +45,8 @@ void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         std::string endpointId;
 
         auto body = req.getBody();
-        if (!body.empty()) {
+        if (!body.empty())
+        {
             auto j = json::parse(body);
             if (j.contains("question"))
                 userQuestion = j["question"];
@@ -59,18 +65,22 @@ void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         {
             std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForChatInfo);
             auto uit = server_->chatInformation.find(userId);
-            if (uit != server_->chatInformation.end()) {
+            if (uit != server_->chatInformation.end())
+            {
                 auto sit = uit->second.find(sessionId);
-                if (sit != uit->second.end()) {
+                if (sit != uit->second.end())
+                {
                     AIHelperPtr = sit->second;
                 }
             }
             rlock.unlock();
 
-            if (!AIHelperPtr) {
+            if (!AIHelperPtr)
+            {
                 std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
                 auto& userSessions = server_->chatInformation[userId];
-                if (userSessions.find(sessionId) == userSessions.end()) {
+                if (userSessions.find(sessionId) == userSessions.end())
+                {
                     userSessions.emplace(sessionId, std::make_shared<AIHelper>());
                 }
                 AIHelperPtr = userSessions[sessionId];
@@ -84,8 +94,10 @@ void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         auto conn = resp->getConnection();
 
         server_->aiThreadPool_.submit(
-                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]() {
-                    try {
+                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]()
+                {
+                    try
+                    {
                         std::string aiInformation = AIHelperPtr->chat(userId, username, sessionId, userQuestion,
                                                                       modelType, apiKey, ragId, endpointId);
                         json successResp;
@@ -93,7 +105,8 @@ void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
                         successResp["Information"] = aiInformation;
                         sendAsyncResponse(conn, successResp.dump(), true);
                     }
-                    catch (const std::exception& e) {
+                    catch (const std::exception& e)
+                    {
                         json failResp;
                         failResp["status"] = "error";
                         failResp["message"] = e.what();
@@ -101,7 +114,8 @@ void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
                     }
                 });
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

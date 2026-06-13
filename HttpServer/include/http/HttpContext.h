@@ -6,7 +6,8 @@
 
 #include "HttpRequest.h"
 
-namespace http {
+namespace http
+{
 
 class HttpContext
 {

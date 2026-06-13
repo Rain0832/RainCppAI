@@ -2,8 +2,10 @@
 
 #include "../include/session/SessionManager.h"
 
-namespace http {
-namespace session {
+namespace http
+{
+namespace session
+{
 
 Session::Session(const std::string& sessionId, SessionManager* sessionManager, int maxAge)
     : sessionId_(sessionId), maxAge_(maxAge), sessionManager_(sessionManager)
@@ -28,7 +30,8 @@ void Session::setValue(const std::string& key, const std::string& value)
 {
     data_[key] = value;
     // 如果设置了manager，自动保存更改
-    if (sessionManager_) {
+    if (sessionManager_)
+    {
         sessionManager_->updateSession(shared_from_this());
     }
 }

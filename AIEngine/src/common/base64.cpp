@@ -80,13 +80,15 @@ static std::string insert_linebreaks(std::string str, size_t distance)
     //
     // Provided by https://github.com/JomaCorpFX, adapted by me.
     //
-    if (!str.length()) {
+    if (!str.length())
+    {
         return "";
     }
 
     size_t pos = distance;
 
-    while (pos < str.size()) {
+    while (pos < str.size())
+    {
         str.insert(pos, "\n");
         pos += distance + 1;
     }
@@ -136,24 +138,29 @@ std::string base64_encode(unsigned char const* bytes_to_encode, size_t in_len, b
 
     unsigned int pos = 0;
 
-    while (pos < in_len) {
+    while (pos < in_len)
+    {
         ret.push_back(base64_chars_[(bytes_to_encode[pos + 0] & 0xfc) >> 2]);
 
-        if (pos + 1 < in_len) {
+        if (pos + 1 < in_len)
+        {
             ret.push_back(
                     base64_chars_[((bytes_to_encode[pos + 0] & 0x03) << 4) + ((bytes_to_encode[pos + 1] & 0xf0) >> 4)]);
 
-            if (pos + 2 < in_len) {
+            if (pos + 2 < in_len)
+            {
                 ret.push_back(base64_chars_[((bytes_to_encode[pos + 1] & 0x0f) << 2) +
                                             ((bytes_to_encode[pos + 2] & 0xc0) >> 6)]);
                 ret.push_back(base64_chars_[bytes_to_encode[pos + 2] & 0x3f]);
             }
-            else {
+            else
+            {
                 ret.push_back(base64_chars_[(bytes_to_encode[pos + 1] & 0x0f) << 2]);
                 ret.push_back(trailing_char);
             }
         }
-        else {
+        else
+        {
             ret.push_back(base64_chars_[(bytes_to_encode[pos + 0] & 0x03) << 4]);
             ret.push_back(trailing_char);
             ret.push_back(trailing_char);
@@ -161,7 +168,6 @@ std::string base64_encode(unsigned char const* bytes_to_encode, size_t in_len, b
 
         pos += 3;
     }
-
 
     return ret;
 }
@@ -176,7 +182,8 @@ template <typename String> static std::string decode(String const& encoded_strin
     if (encoded_string.empty())
         return std::string();
 
-    if (remove_linebreaks) {
+    if (remove_linebreaks)
+    {
         std::string copy(encoded_string);
 
         copy.erase(std::remove(copy.begin(), copy.end(), '\n'), copy.end());
@@ -197,7 +204,8 @@ template <typename String> static std::string decode(String const& encoded_strin
     std::string ret;
     ret.reserve(approx_length_of_decoded_string);
 
-    while (pos < length_of_string) {
+    while (pos < length_of_string)
+    {
         //
         // Iterate over encoded input string in chunks. The size of all
         // chunks except the last one is 4 bytes.
@@ -223,7 +231,8 @@ template <typename String> static std::string decode(String const& encoded_strin
              length_of_string) &&  // Check for data that is not padded with equal signs (which is allowed by RFC 2045)
             encoded_string.at(pos + 2) != '=' &&
             encoded_string.at(pos + 2) != '.'  // accept URL-safe base 64 strings, too, so check for '.' also.
-        ) {
+        )
+        {
             //
             // Emit a chunk's second byte (which might not be produced in the last chunk).
             //
@@ -231,8 +240,8 @@ template <typename String> static std::string decode(String const& encoded_strin
             ret.push_back(static_cast<std::string::value_type>(((pos_of_char_1 & 0x0f) << 4) +
                                                                ((pos_of_char_2 & 0x3c) >> 2)));
 
-            if ((pos + 3 < length_of_string) && encoded_string.at(pos + 3) != '=' &&
-                encoded_string.at(pos + 3) != '.') {
+            if ((pos + 3 < length_of_string) && encoded_string.at(pos + 3) != '=' && encoded_string.at(pos + 3) != '.')
+            {
                 //
                 // Emit a chunk's third byte (which might not be produced in the last chunk).
                 //

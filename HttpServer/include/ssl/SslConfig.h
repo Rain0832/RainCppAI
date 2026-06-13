@@ -4,7 +4,8 @@
 
 #include "SslTypes.h"
 
-namespace ssl {
+namespace ssl
+{
 
 class SslConfig
 {

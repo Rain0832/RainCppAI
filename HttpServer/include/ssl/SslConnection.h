@@ -8,7 +8,8 @@
 
 #include "SslContext.h"
 
-namespace ssl {
+namespace ssl
+{
 
 /**
  * SSL连接消息回调函数类型定义

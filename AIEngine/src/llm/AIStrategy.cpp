@@ -7,7 +7,8 @@
 static json messagesToJsonArray(const std::vector<Message>& messages)
 {
     json arr = json::array();
-    for (const auto& m : messages) {
+    for (const auto& m : messages)
+    {
         json msg;
         msg["role"] = m.role;
         msg["content"] = m.content;
@@ -38,7 +39,8 @@ json AliyunStrategy::buildRequest(const std::vector<Message>& messages, const js
     json payload;
     payload["model"] = getModel();
     payload["messages"] = messagesToJsonArray(messages);
-    if (!tools.empty()) {
+    if (!tools.empty())
+    {
         payload["tools"] = tools;
     }
     return payload;
@@ -46,7 +48,8 @@ json AliyunStrategy::buildRequest(const std::vector<Message>& messages, const js
 
 std::string AliyunStrategy::parseResponse(const json& response) const
 {
-    if (response.contains("choices") && !response["choices"].empty()) {
+    if (response.contains("choices") && !response["choices"].empty())
+    {
         const auto& msg = response["choices"][0]["message"];
         if (msg.contains("content") && !msg["content"].is_null())
             return msg["content"].get<std::string>();
@@ -78,7 +81,8 @@ json DouBaoStrategy::buildRequest(const std::vector<Message>& messages, const js
     json payload;
     payload["model"] = getModel();
     payload["messages"] = messagesToJsonArray(messages);
-    if (!tools.empty()) {
+    if (!tools.empty())
+    {
         payload["tools"] = tools;
     }
     return payload;
@@ -86,7 +90,8 @@ json DouBaoStrategy::buildRequest(const std::vector<Message>& messages, const js
 
 std::string DouBaoStrategy::parseResponse(const json& response) const
 {
-    if (response.contains("choices") && !response["choices"].empty()) {
+    if (response.contains("choices") && !response["choices"].empty())
+    {
         const auto& msg = response["choices"][0]["message"];
         if (msg.contains("content") && !msg["content"].is_null())
             return msg["content"].get<std::string>();
@@ -158,7 +163,8 @@ json AliyunMcpStrategy::buildRequest(const std::vector<Message>& messages, const
     json payload;
     payload["model"] = getModel();
     payload["messages"] = messagesToJsonArray(messages);
-    if (!tools.empty()) {
+    if (!tools.empty())
+    {
         payload["tools"] = tools;
     }
     return payload;
@@ -166,7 +172,8 @@ json AliyunMcpStrategy::buildRequest(const std::vector<Message>& messages, const
 
 std::string AliyunMcpStrategy::parseResponse(const json& response) const
 {
-    if (response.contains("choices") && !response["choices"].empty()) {
+    if (response.contains("choices") && !response["choices"].empty())
+    {
         const auto& msg = response["choices"][0]["message"];
         if (msg.contains("content") && !msg["content"].is_null())
             return msg["content"].get<std::string>();

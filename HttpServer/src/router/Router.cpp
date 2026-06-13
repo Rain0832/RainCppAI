@@ -2,13 +2,16 @@
 
 #include <muduo/base/Logging.h>
 
-namespace http {
-namespace router {
+namespace http
+{
+namespace router
+{
 
 void Router::registerHandler(HttpRequest::Method method, const std::string& path, HandlerPtr handler)
 {
     RouteKey key {method, path};
-    if (handlers_.find(key) != handlers_.end()) {
+    if (handlers_.find(key) != handlers_.end())
+    {
         LOG_ERROR << "Router::registerHandler: handler already exists";
         return;
     }
@@ -27,7 +30,8 @@ bool Router::route(const HttpRequest& req, HttpResponse* resp)
 
     // 查找处理器
     auto handlerIt = handlers_.find(key);
-    if (handlerIt != handlers_.end()) {
+    if (handlerIt != handlers_.end())
+    {
         // 执行处理器
         handlerIt->second->handle(req, resp);
         return true;
@@ -35,18 +39,21 @@ bool Router::route(const HttpRequest& req, HttpResponse* resp)
 
     // 查找回调函数
     auto callbackIt = callbacks_.find(key);
-    if (callbackIt != callbacks_.end()) {
+    if (callbackIt != callbacks_.end())
+    {
         // 执行回调函数
         callbackIt->second(req, resp);
         return true;
     }
 
     // 查找动态路由处理器
-    for (const auto& [method, pathRegex, handler] : regexHandlers_) {
+    for (const auto& [method, pathRegex, handler] : regexHandlers_)
+    {
         std::smatch match;
         std::string pathStr(req.path());
         // 如果方法匹配并且动态路由匹配，则执行处理器
-        if (method == req.method() && std::regex_match(pathStr, match, pathRegex)) {
+        if (method == req.method() && std::regex_match(pathStr, match, pathRegex))
+        {
             // Extract path parameters and add them to the request
             HttpRequest newReq(req);  // 因为这里需要用这一次所以是可以改的
             extractPathParameters(match, newReq);
@@ -57,11 +64,13 @@ bool Router::route(const HttpRequest& req, HttpResponse* resp)
     }
 
     // 查找动态路由回调函数
-    for (const auto& [method, pathRegex, callback] : regexCallbacks_) {
+    for (const auto& [method, pathRegex, callback] : regexCallbacks_)
+    {
         std::smatch match;
         std::string pathStr(req.path());
         // 如果方法匹配并且动态路由匹配，则执行回调函数
-        if (method == req.method() && std::regex_match(pathStr, match, pathRegex)) {
+        if (method == req.method() && std::regex_match(pathStr, match, pathRegex))
+        {
             // Extract path parameters and add them to the request
             HttpRequest newReq(req);  // 因为这里需要用这一次所以是可以改的
             extractPathParameters(match, newReq);

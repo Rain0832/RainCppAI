@@ -3,8 +3,10 @@
 #include "../http/HttpRequest.h"
 #include "../http/HttpResponse.h"
 
-namespace http {
-namespace middleware {
+namespace http
+{
+namespace middleware
+{
 
 class Middleware
 {

@@ -3,7 +3,8 @@
 
 #include "db/DbConnectionPool.h"
 
-namespace http {
+namespace http
+{
 class MysqlUtil
 {
 public:
