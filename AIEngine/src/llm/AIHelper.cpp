@@ -45,7 +45,8 @@ std::vector<Message> AIHelper::GetMessages() const
 // ─── 核心聊天方法 ────────────────────────────────────────────────────
 std::string AIHelper::chat(int userId, std::string userName, std::string sessionId,
                            std::string userQuestion, std::string modelType,
-                           std::string apiKey, std::string ragId)
+                           std::string apiKey, std::string ragId,
+                           std::string endpointId)
 {
     // ★ 同一 session 并发保护：若上一条消息还在处理，立即拒绝
     bool expected = false;
@@ -77,15 +78,7 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
             snapshot = messages_;
         }
 
-        json payload = strategy->buildRequest(
-            // 转换为 vector<pair<string,long long>> 供现有 buildRequest 使用
-            [&]() {
-                std::vector<std::pair<std::string, long long>> v;
-                v.reserve(snapshot.size());
-                for (auto& m : snapshot) v.push_back({m.content, m.ts});
-                return v;
-            }()
-        );
+        json payload = strategy->buildRequest(snapshot);
 
         json response = executeCurl(payload);
         std::string answer = strategy->parseResponse(response);
@@ -99,12 +92,12 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     std::string tempPrompt = config.buildPrompt(userQuestion);
 
     // 第一次调用：意图识别（临时追加 prompt，不持久化）
-    std::vector<std::pair<std::string, long long>> firstMsgs;
+    std::vector<Message> firstMsgs;
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        for (auto& m : messages_) firstMsgs.push_back({m.content, m.ts});
+        firstMsgs = messages_;
     }
-    firstMsgs.push_back({tempPrompt, 0});
+    firstMsgs.push_back({"system", tempPrompt, 0});
 
     json firstResp = executeCurl(strategy->buildRequest(firstMsgs));
     std::string aiResult = strategy->parseResponse(firstResp);
@@ -132,12 +125,12 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
 
     // 第二次调用：综合工具结果
     std::string secondPrompt = config.buildToolResultPrompt(userQuestion, call.toolName, call.args, toolResult);
-    std::vector<std::pair<std::string, long long>> secondMsgs;
+    std::vector<Message> secondMsgs;
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        for (auto& m : messages_) secondMsgs.push_back({m.content, m.ts});
+        secondMsgs = messages_;
     }
-    secondMsgs.push_back({secondPrompt, 0});
+    secondMsgs.push_back({"system", secondPrompt, 0});
 
     json secondResp = executeCurl(strategy->buildRequest(secondMsgs));
     std::string finalAnswer = strategy->parseResponse(secondResp);
@@ -155,7 +148,8 @@ json AIHelper::request(const json &payload)
 // ─── 流式聊天（SSE）────────────────────────────────────────────────
 std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId,
                                   std::string userQuestion, std::string modelType,
-                                  std::string apiKey, std::string ragId, StreamCallback onChunk)
+                                  std::string apiKey, std::string ragId, StreamCallback onChunk,
+                                  std::string endpointId)
 {
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true)) {
@@ -182,10 +176,10 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
     pushMessageToMysql(userId, userName, true, userQuestion, ms, sessionId);
 
     // 构建请求 payload，加 stream=true
-    std::vector<std::pair<std::string, long long>> snapshot;
+    std::vector<Message> snapshot;
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        for (auto& m : messages_) snapshot.push_back({m.content, m.ts});
+        snapshot = messages_;
     }
     json payload = strategy->buildRequest(snapshot);
     payload["stream"] = true;   // 启用 OpenAI 兼容流式接口

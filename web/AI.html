@@ -232,6 +232,9 @@ function getApiKey(mt) {
 function getRagId() {
     return localStorage.getItem('rain-key-rag-id') || '';
 }
+function getEndpointId() {
+    return localStorage.getItem('rain-key-doubao-ep') || '';
+}
 
 function renderSessions() {
     const el = $('#sessionList'); el.innerHTML = '';
@@ -427,6 +430,7 @@ $('#chatForm').onsubmit = async e => {
     if (!currentSessionId && !tempSession) { showToast('请先新建对话或选择会话'); return; }
     const mt = $('#modelType').value, ak = getApiKey(mt), mn = getModelName();
     const ragId = getRagId();
+    const endpointId = getEndpointId();
     lastUserQuestion = q;
 
     appendMsg('user', q);
@@ -438,7 +442,7 @@ $('#chatForm').onsubmit = async e => {
         if (tempSession) {
             // 新建会话：先用普通接口拿到 sessionId，再改用 SSE
             const r = await fetch('/chat/send-new-session', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, modelType: mt, apiKey: ak, ragId }) });
+                body: JSON.stringify({ question: q, modelType: mt, apiKey: ak, ragId, endpointId }) });
             const d = await r.json();
             if (d.success) {
                 const sid = String(d.sessionId);
@@ -456,14 +460,14 @@ $('#chatForm').onsubmit = async e => {
                 showToast('请先选择或创建会话'); $('#sendBtn').disabled = false; return;
             }
             sessions[currentSessionId].messages.push({ role: 'user', content: q });
-            await sendWithSSE(q, mt, ak, mn, currentSessionId, ragId);
+            await sendWithSSE(q, mt, ak, mn, currentSessionId, ragId, endpointId);
         }
     } catch (err) { const tk = $('#thinkingMsg'); if (tk) tk.remove(); appendMsg('assistant', '无法连接到服务器', mn); }
     $('#sendBtn').disabled = false;
 };
 
 // ─── SSE 流式发送 ─────────────────────────────────────────────────
-async function sendWithSSE(question, modelType, apiKey, modelName, sessionId, ragId = '') {
+async function sendWithSSE(question, modelType, apiKey, modelName, sessionId, ragId = '', endpointId = '') {
     // 移除 thinking 占位，换成流式消息气泡
     const tk = $('#thinkingMsg'); if (tk) tk.remove();
 
@@ -481,7 +485,7 @@ async function sendWithSSE(question, modelType, apiKey, modelName, sessionId, ra
         const response = await fetch('/chat/send-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, modelType, sessionId, apiKey, ragId })
+            body: JSON.stringify({ question, modelType, sessionId, apiKey, ragId, endpointId })
         });
 
         const reader = response.body.getReader();

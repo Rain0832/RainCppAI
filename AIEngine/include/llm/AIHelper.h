@@ -14,16 +14,8 @@
 
 #include "llm/AIFactory.h"
 #include "common/AIConfig.h"
+#include "common/Message.h"
 #include "mcp/AIToolRegistry.h"
-
-/**
- * @brief 消息条目，显式携带 role 字段（不再依赖奇偶下标推断角色）
- */
-struct Message {
-    std::string role;     ///< "user" 或 "assistant"
-    std::string content;
-    long long   ts;       ///< 毫秒时间戳
-};
 
 /**
  * @brief AI助手类，封装curl访问各模型的接口。
@@ -52,7 +44,8 @@ public:
      */
     std::string chat(int userId, std::string userName, std::string sessionId,
                      std::string userQuestion, std::string modelType,
-                     std::string apiKey = "", std::string ragId = "");
+                     std::string apiKey = "", std::string ragId = "",
+                     std::string endpointId = "");
 
     /**
      * @brief 流式聊天（SSE）：每收到 token 块立即回调
@@ -61,7 +54,8 @@ public:
      */
     std::string chatStream(int userId, std::string userName, std::string sessionId,
                            std::string userQuestion, std::string modelType,
-                           std::string apiKey, std::string ragId, StreamCallback onChunk);
+                           std::string apiKey, std::string ragId, StreamCallback onChunk,
+                           std::string endpointId = "");
 
     json request(const json &payload);
 

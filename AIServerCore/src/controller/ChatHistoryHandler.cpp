@@ -50,6 +50,27 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         // ★ 在 chatInformation 锁完全释放后，通过 AIHelper 自身的 msgMutex_ 安全读取
         std::vector<Message> messages = AIHelperPtr->GetMessages();
 
+        // ★ Fix A3: 内存为空时 fallback 到 MySQL
+        if (messages.empty()) {
+            try {
+                http::MysqlUtil mu;
+                std::string sql = "SELECT role, content FROM messages WHERE session_id = '"
+                    + sessionId + "' AND user_id = " + std::to_string(userId)
+                    + " ORDER BY created_at ASC, id ASC";
+                auto res = mu.executeQuery(sql);
+                while (res && res->next()) {
+                    std::string role = res->getString("role");
+                    std::string content = res->getString("content");
+                    messages.push_back({role, content, 0});
+                    // 同时恢复到内存中
+                    AIHelperPtr->restoreMessage(content, 0, role);
+                }
+            } catch (const std::exception& dbErr) {
+                // DB 查询失败则返回空历史，不影响主流程
+                LOG_ERROR << "DB fallback failed: " << dbErr.what();
+            }
+        }
+
         json successResp;
         successResp["success"] = true;
         successResp["history"] = json::array();
