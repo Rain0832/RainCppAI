@@ -95,7 +95,7 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
 
     // ─── MCP 两段式推理 ───────────────────────────────────────────
     AIConfig config;
-    config.loadFromFile("web/config.json");
+    config.loadFromFile("../web/config.json");
     std::string tempPrompt = config.buildPrompt(userQuestion);
 
     // 第一次调用：意图识别（临时追加 prompt，不持久化）
