@@ -1,10 +1,11 @@
 #include "llm/AIHelper.h"
-#include "common/MQManager.h"
-#include <stdexcept>
-#include <chrono>
 
-AIHelper::AIHelper()
-    : processing_(false)
+#include <chrono>
+#include <stdexcept>
+
+#include "common/MQManager.h"
+
+AIHelper::AIHelper() : processing_(false)
 {
     strategy = StrategyFactory::instance().create("1");
 }
@@ -15,24 +16,24 @@ void AIHelper::setStrategy(std::shared_ptr<AIStrategy> strat)
 }
 
 // ─── 添加消息（线程安全）──────────────────────────────────────────
-void AIHelper::addMessage(int userId, const std::string &userName, bool is_user,
-                          const std::string &userInput, std::string sessionId)
+void AIHelper::addMessage(int userId, const std::string& userName, bool is_user, const std::string& userInput,
+                          std::string sessionId)
 {
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                      .count();
 
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        messages_.push_back({ is_user ? "user" : "assistant", userInput, ms });
+        messages_.push_back({is_user ? "user" : "assistant", userInput, ms});
     }
     pushMessageToMysql(userId, userName, is_user, userInput, ms, sessionId);
 }
 
 // ─── 从 DB 恢复历史消息（线程安全，启动阶段单线程调用，但加锁保险）───
-void AIHelper::restoreMessage(const std::string &content, long long ms, const std::string &role)
+void AIHelper::restoreMessage(const std::string& content, long long ms, const std::string& role)
 {
     std::lock_guard<std::mutex> lock(msgMutex_);
-    messages_.push_back({ role, content, ms });
+    messages_.push_back({role, content, ms});
 }
 
 // ─── 获取历史副本（线程安全）────────────────────────────────────────
@@ -43,10 +44,8 @@ std::vector<Message> AIHelper::GetMessages() const
 }
 
 // ─── 核心聊天方法 ────────────────────────────────────────────────────
-std::string AIHelper::chat(int userId, std::string userName, std::string sessionId,
-                           std::string userQuestion, std::string modelType,
-                           std::string apiKey, std::string ragId,
-                           std::string endpointId)
+std::string AIHelper::chat(int userId, std::string userName, std::string sessionId, std::string userQuestion,
+                           std::string modelType, std::string apiKey, std::string ragId, std::string endpointId)
 {
     // ★ 同一 session 并发保护：若上一条消息还在处理，立即拒绝
     bool expected = false;
@@ -54,21 +53,23 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
         return "[提示] 当前会话正在处理上一条消息，请稍后再试";
     }
     // RAII 确保无论何种路径退出都解锁
-    struct ProcessingGuard {
+    struct ProcessingGuard
+    {
         std::atomic<bool>& flag;
         ~ProcessingGuard() { flag = false; }
-    } guard{ processing_ };
+    } guard {processing_};
 
     // 设置策略
     setStrategy(StrategyFactory::instance().create(modelType));
-    if (!apiKey.empty()) strategy->setApiKey(apiKey);
-    if (!ragId.empty())  strategy->setRagId(ragId);
+    if (!apiKey.empty())
+        strategy->setApiKey(apiKey);
+    if (!ragId.empty())
+        strategy->setRagId(ragId);
     if (strategy->getApiKey().empty()) {
         return "[错误] 未配置 API Key，请在个人中心设置对应模型的 API Key";
     }
 
-    if (!strategy->isMCPModel)
-    {
+    if (!strategy->isMCPModel) {
         addMessage(userId, userName, true, userQuestion, sessionId);
 
         // 持锁拷贝快照，然后解锁，避免 curl 期间长时间持锁
@@ -104,8 +105,7 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     AIToolCall call = config.parseAIResponse(aiResult);
 
     // 情况1：不调用工具
-    if (!call.isToolCall)
-    {
+    if (!call.isToolCall) {
         addMessage(userId, userName, true, userQuestion, sessionId);
         addMessage(userId, userName, false, aiResult, sessionId);
         return aiResult;
@@ -116,7 +116,8 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     AIToolRegistry registry;
     try {
         toolResult = registry.invoke(call.toolName, call.args);
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception& e) {
         std::string err = "[工具调用失败] " + std::string(e.what());
         addMessage(userId, userName, true, userQuestion, sessionId);
         addMessage(userId, userName, false, err, sessionId);
@@ -140,35 +141,40 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     return finalAnswer;
 }
 
-json AIHelper::request(const json &payload)
+json AIHelper::request(const json& payload)
 {
     return executeCurl(payload);
 }
 
 // ─── 流式聊天（SSE）────────────────────────────────────────────────
-std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId,
-                                  std::string userQuestion, std::string modelType,
-                                  std::string apiKey, std::string ragId, StreamCallback onChunk,
-                                  std::string endpointId)
+std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId, std::string userQuestion,
+                                 std::string modelType, std::string apiKey, std::string ragId, StreamCallback onChunk,
+                                 std::string endpointId)
 {
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true)) {
         onChunk("[提示] 当前会话正在处理上一条消息，请稍后再试");
         return "";
     }
-    struct Guard { std::atomic<bool>& f; ~Guard() { f = false; } } guard{processing_};
+    struct Guard
+    {
+        std::atomic<bool>& f;
+        ~Guard() { f = false; }
+    } guard {processing_};
 
     setStrategy(StrategyFactory::instance().create(modelType));
-    if (!apiKey.empty()) strategy->setApiKey(apiKey);
-    if (!ragId.empty())  strategy->setRagId(ragId);
+    if (!apiKey.empty())
+        strategy->setApiKey(apiKey);
+    if (!ragId.empty())
+        strategy->setRagId(ragId);
     if (strategy->getApiKey().empty()) {
         onChunk("[错误] 未配置 API Key");
         return "";
     }
 
     // 记录用户消息到内存（不调用 addMessage，避免重复 push_back；后面统一处理）
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                      .count();
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
         messages_.push_back({"user", userQuestion, ms});
@@ -182,13 +188,14 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         snapshot = messages_;
     }
     json payload = strategy->buildRequest(snapshot);
-    payload["stream"] = true;   // 启用 OpenAI 兼容流式接口
+    payload["stream"] = true;  // 启用 OpenAI 兼容流式接口
 
     std::string fullAnswer = executeCurlStream(payload, onChunk);
 
     // 将完整回复加入历史
-    auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto ms2 =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                    .count();
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
         messages_.push_back({"assistant", fullAnswer, ms2});
@@ -199,15 +206,16 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
 }
 
 // ─── 流式 curl 请求 ────────────────────────────────────────────────
-std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onChunk)
+std::string AIHelper::executeCurlStream(const json& payload, StreamCallback onChunk)
 {
-    CURL *curl = curl_easy_init();
-    if (!curl) throw std::runtime_error("Failed to initialize curl");
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        throw std::runtime_error("Failed to initialize curl");
 
     StreamContext ctx;
     ctx.callback = std::move(onChunk);
 
-    struct curl_slist *headers = nullptr;
+    struct curl_slist* headers = nullptr;
     std::string authHeader = "Authorization: Bearer " + strategy->getApiKey();
     headers = curl_slist_append(headers, authHeader.c_str());
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -227,11 +235,12 @@ std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onCh
 }
 
 // ─── SSE 流式回调 ────────────────────────────────────────────────────
-size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+size_t AIHelper::StreamWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
     size_t total = size * nmemb;
-    auto *ctx = static_cast<StreamContext*>(userp);
-    if (ctx->aborted) return 0; // 返回 0 让 curl 中止
+    auto* ctx = static_cast<StreamContext*>(userp);
+    if (ctx->aborted)
+        return 0;  // 返回 0 让 curl 中止
 
     ctx->buffer.append(static_cast<char*>(contents), total);
 
@@ -240,16 +249,19 @@ size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, 
     size_t pos = 0;
     while (true) {
         size_t nl = buf.find('\n', pos);
-        if (nl == std::string::npos) break;
+        if (nl == std::string::npos)
+            break;
 
         std::string line = buf.substr(pos, nl - pos);
         pos = nl + 1;
 
         // 去掉 \r
-        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
 
         // 跳过空行和 [DONE]
-        if (line.empty() || line == "data: [DONE]") continue;
+        if (line.empty() || line == "data: [DONE]")
+            continue;
 
         // 解析 "data: {...}"
         if (line.substr(0, 6) == "data: ") {
@@ -272,21 +284,24 @@ size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, 
                         return 0;
                     }
                 }
-            } catch (...) { /* 忽略解析失败的 chunk */ }
+            }
+            catch (...) { /* 忽略解析失败的 chunk */
+            }
         }
     }
-    buf = buf.substr(pos); // 保留未处理的数据
+    buf = buf.substr(pos);  // 保留未处理的数据
     return total;
 }
 
 // ─── curl 请求 ────────────────────────────────────────────────────
-json AIHelper::executeCurl(const json &payload)
+json AIHelper::executeCurl(const json& payload)
 {
-    CURL *curl = curl_easy_init();
-    if (!curl) throw std::runtime_error("Failed to initialize curl");
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        throw std::runtime_error("Failed to initialize curl");
 
     std::string readBuffer;
-    struct curl_slist *headers = nullptr;
+    struct curl_slist* headers = nullptr;
     std::string authHeader = "Authorization: Bearer " + strategy->getApiKey();
 
     headers = curl_slist_append(headers, authHeader.c_str());
@@ -309,52 +324,64 @@ json AIHelper::executeCurl(const json &payload)
 
     try {
         return json::parse(readBuffer);
-    } catch (...) {
+    }
+    catch (...) {
         throw std::runtime_error("Failed to parse JSON response: " + readBuffer);
     }
 }
 
-size_t AIHelper::WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+size_t AIHelper::WriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
-    std::string *buffer = static_cast<std::string *>(userp);
-    buffer->append(static_cast<char *>(contents), size * nmemb);
+    std::string* buffer = static_cast<std::string*>(userp);
+    buffer->append(static_cast<char*>(contents), size * nmemb);
     return size * nmemb;
 }
 
-std::string AIHelper::escapeString(const std::string &input)
+std::string AIHelper::escapeString(const std::string& input)
 {
     std::string output;
     output.reserve(input.size() * 2);
     for (char c : input) {
         switch (c) {
-        case '\\': output += "\\\\"; break;
-        case '\'': output += "\\'";  break;
-        case '\"': output += "\\\""; break;
-        case '\n': output += "\\n";  break;
-        case '\r': output += "\\r";  break;
-        case '\t': output += "\\t";  break;
-        default:   output += c;      break;
+        case '\\':
+            output += "\\\\";
+            break;
+        case '\'':
+            output += "\\'";
+            break;
+        case '\"':
+            output += "\\\"";
+            break;
+        case '\n':
+            output += "\\n";
+            break;
+        case '\r':
+            output += "\\r";
+            break;
+        case '\t':
+            output += "\\t";
+            break;
+        default:
+            output += c;
+            break;
         }
     }
     return output;
 }
 
-void AIHelper::pushMessageToMysql(int userId, const std::string &userName, bool is_user,
-                                   const std::string &userInput, long long ms, std::string sessionId)
+void AIHelper::pushMessageToMysql(int userId, const std::string& userName, bool is_user, const std::string& userInput,
+                                  long long ms, std::string sessionId)
 {
     std::string safeUserInput = escapeString(userInput);
     std::string role = is_user ? "user" : "assistant";
 
     // Phase 2: 写入新的 messages 表
     // 同时 INSERT IGNORE sessions（首条消息时创建会话记录）
-    std::string sqlSession = "INSERT IGNORE INTO sessions (id, user_id) VALUES ('"
-        + sessionId + "', " + std::to_string(userId) + ")";
+    std::string sqlSession =
+            "INSERT IGNORE INTO sessions (id, user_id) VALUES ('" + sessionId + "', " + std::to_string(userId) + ")";
 
-    std::string sqlMsg = "INSERT INTO messages (session_id, user_id, role, content) VALUES ('"
-        + sessionId + "', "
-        + std::to_string(userId) + ", '"
-        + role + "', '"
-        + safeUserInput + "')";
+    std::string sqlMsg = "INSERT INTO messages (session_id, user_id, role, content) VALUES ('" + sessionId + "', " +
+                         std::to_string(userId) + ", '" + role + "', '" + safeUserInput + "')";
 
     // 两条 SQL 通过 MQ 异步执行
     MQManager::instance().publish("sql_queue", sqlSession);

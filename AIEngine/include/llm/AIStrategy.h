@@ -1,15 +1,16 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <utility>
 #include <iostream>
-#include <sstream>
 #include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "3rdparty/JsonUtil.h"
 #include "common/Message.h"
 
-class AIStrategy {
+class AIStrategy
+{
 public:
     virtual ~AIStrategy() = default;
 
@@ -27,19 +28,21 @@ public:
     virtual std::string getModel() const = 0;
 
     // buildRequest: Message 向量 + 可选的 tools JSON
-    virtual json buildRequest(const std::vector<Message>& messages,
-                              const json& tools = json::object()) const = 0;
+    virtual json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const = 0;
 
     virtual std::string parseResponse(const json& response) const = 0;
 
     bool isMCPModel = false;
 };
 
-class AliyunStrategy : public AIStrategy {
+class AliyunStrategy : public AIStrategy
+{
 public:
-    AliyunStrategy() {
+    AliyunStrategy()
+    {
         const char* key = std::getenv("DASHSCOPE_API_KEY");
-        if (key) api_key_ = key;
+        if (key)
+            api_key_ = key;
         isMCPModel = false;
     }
 
@@ -48,19 +51,21 @@ public:
     void setApiKey(const std::string& key) override { api_key_ = key; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message>& messages,
-                      const json& tools = json::object()) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
     std::string api_key_;
 };
 
-class DouBaoStrategy : public AIStrategy {
+class DouBaoStrategy : public AIStrategy
+{
 public:
-    DouBaoStrategy() {
+    DouBaoStrategy()
+    {
         const char* key = std::getenv("DOUBAO_API_KEY");
-        if (key) api_key_ = key;
+        if (key)
+            api_key_ = key;
         isMCPModel = false;
     }
 
@@ -70,8 +75,7 @@ public:
     void setEndpointId(const std::string& id) override { endpoint_id_ = id; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message>& messages,
-                      const json& tools = json::object()) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
@@ -79,13 +83,17 @@ private:
     std::string endpoint_id_;
 };
 
-class AliyunRAGStrategy : public AIStrategy {
+class AliyunRAGStrategy : public AIStrategy
+{
 public:
-    AliyunRAGStrategy() {
+    AliyunRAGStrategy()
+    {
         const char* key = std::getenv("DASHSCOPE_API_KEY");
-        if (key) api_key_ = key;
+        if (key)
+            api_key_ = key;
         const char* rid = std::getenv("Knowledge_Base_ID");
-        if (rid) rag_id_ = rid;
+        if (rid)
+            rag_id_ = rid;
         isMCPModel = false;
     }
 
@@ -96,8 +104,7 @@ public:
     std::string getRagId() const override { return rag_id_; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message>& messages,
-                      const json& tools = json::object()) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
@@ -105,11 +112,14 @@ private:
     std::string rag_id_;
 };
 
-class AliyunMcpStrategy : public AIStrategy {
+class AliyunMcpStrategy : public AIStrategy
+{
 public:
-    AliyunMcpStrategy() {
+    AliyunMcpStrategy()
+    {
         const char* key = std::getenv("DASHSCOPE_API_KEY");
-        if (key) api_key_ = key;
+        if (key)
+            api_key_ = key;
         isMCPModel = true;
     }
 
@@ -118,17 +128,9 @@ public:
     void setApiKey(const std::string& key) override { api_key_ = key; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message>& messages,
-                      const json& tools = json::object()) const override;
+    json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
 
 private:
     std::string api_key_;
 };
-
-
-
-
-
-
-

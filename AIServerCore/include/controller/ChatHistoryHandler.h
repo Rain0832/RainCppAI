@@ -5,11 +5,11 @@
 class ChatHistoryHandler : public http::router::RouterHandler
 {
 public:
-    explicit ChatHistoryHandler(ChatServer *server) : server_(server) {}
+    explicit ChatHistoryHandler(ChatServer* server) : server_(server) {}
 
 private:
-    void handle(const http::HttpRequest &req, http::HttpResponse *resp) override;
+    void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 
 private:
-    ChatServer *server_;
+    ChatServer* server_;
 };

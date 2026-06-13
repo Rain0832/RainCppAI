@@ -1,0 +1,136 @@
+# RainCppAI Clang-Format Configuration
+# Generated from DEVELOP_STANDARD.md
+# Reference: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+---
+# 语言
+Language: Cpp
+
+# 缩进：4 空格（不使用 Tab）
+UseTab: Never
+IndentWidth: 4
+ContinuationIndentWidth: 8
+TabWidth: 4
+
+# 行宽：最大 120 字符
+ColumnLimit: 120
+
+# 大括号：K&R 风格（左括号不换行，除命名空间外）
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: true
+  AfterControlStatement: Never
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+# 指针 / 引用：Type* ptr、Type& ref（* 和 & 紧贴类型）
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# 命名空间：不缩进内容
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+# 访问修饰符（public/protected/private）缩进
+AccessModifierOffset: -4
+
+# 排序 #include
+IncludeCategories:
+  - Regex:           '^<sys/'
+    Priority:        2
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^<[^>]+\.h>'
+    Priority:        2
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^<[a-z]'
+    Priority:        3
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^<(muduo|nlohmann|json|cpr|gtest|spdlog)\/'
+    Priority:        4
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^"'
+    Priority:        5
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '.*'
+    Priority:        6
+    SortPriority:    0
+    CaseSensitive:   false
+
+IncludeBlocks: Regroup
+
+# 排序 using 声明
+SortUsingDeclarations: true
+
+# 函数声明/定义参数
+AlignAfterOpenBracket: Align
+BinPackParameters: true
+BinPackArguments: true
+AllowAllParametersOfDeclarationOnNextLine: false
+
+# 构造函数初始化列表
+ConstructorInitializerIndentWidth: 4
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+# 空行控制
+MaxEmptyLinesToKeep: 2
+KeepEmptyLinesAtTheStartOfBlocks: false
+
+# 空格控制
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Cpp11BracedListStyle: true
+
+# 权限修饰符后的空行
+BreakAfterAttributes: Leave
+
+# 三元运算符
+AlignOperands: AlignAfterOperator
+
+# 注释风格
+ReflowComments: true
+CommentPragmas: '^ IWYU pragma:'
+
+# 整数文字分隔符
+# 不使用分隔符
+...
+

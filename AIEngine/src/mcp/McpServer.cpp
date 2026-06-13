@@ -3,28 +3,24 @@
 McpServer::McpServer()
 {
     // 注册内置工具（复用 AIToolRegistry 的实现，补充元信息）
-    toolMetas_.push_back({
-        "get_weather",
-        "获取指定城市的实时天气信息",
-        {{"type","object"},{"properties",{{"city",{{"type","string"},{"description","城市名称"}}}}},{"required",json::array({"city"})}}
-    });
-    toolMetas_.push_back({
-        "get_time",
-        "获取当前服务器时间",
-        {{"type","object"},{"properties",json::object()},{"required",json::array()}}
-    });
+    toolMetas_.push_back({"get_weather",
+                          "获取指定城市的实时天气信息",
+                          {{"type", "object"},
+                           {"properties", {{"city", {{"type", "string"}, {"description", "城市名称"}}}}},
+                           {"required", json::array({"city"})}}});
+    toolMetas_.push_back({"get_time",
+                          "获取当前服务器时间",
+                          {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}}});
 }
 
-void McpServer::registerTool(const std::string &name,
-                              const std::string &description,
-                              const json &inputSchema,
-                              AIToolRegistry::ToolFunc func)
+void McpServer::registerTool(const std::string& name, const std::string& description, const json& inputSchema,
+                             AIToolRegistry::ToolFunc func)
 {
     registry_.registerTool(name, func);
     toolMetas_.push_back({name, description, inputSchema});
 }
 
-std::string McpServer::handleRequest(const std::string &requestBody)
+std::string McpServer::handleRequest(const std::string& requestBody)
 {
     json id = nullptr;
     try {
@@ -41,26 +37,29 @@ std::string McpServer::handleRequest(const std::string &requestBody)
 
         if (method == "tools/list") {
             return buildResult(id, handleToolsList(params)).dump();
-        } else if (method == "tools/call") {
+        }
+        else if (method == "tools/call") {
             return buildResult(id, handleToolsCall(params)).dump();
-        } else {
+        }
+        else {
             json err = buildError(-32601, "Method not found: " + method);
             err["id"] = id;
             return err.dump();
         }
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception& e) {
         json err = buildError(-32700, std::string("Parse error: ") + e.what());
         err["id"] = id;
         return err.dump();
     }
 }
 
-json McpServer::handleToolsList(const json &)
+json McpServer::handleToolsList(const json&)
 {
     json tools = json::array();
-    for (auto &meta : toolMetas_) {
+    for (auto& meta : toolMetas_) {
         json t;
-        t["name"]        = meta.name;
+        t["name"] = meta.name;
         t["description"] = meta.description;
         t["inputSchema"] = meta.inputSchema;
         tools.push_back(t);
@@ -68,7 +67,7 @@ json McpServer::handleToolsList(const json &)
     return {{"tools", tools}};
 }
 
-json McpServer::handleToolsCall(const json &params)
+json McpServer::handleToolsCall(const json& params)
 {
     if (!params.contains("name")) {
         throw std::runtime_error("Missing 'name' in tools/call params");
@@ -81,25 +80,15 @@ json McpServer::handleToolsCall(const json &params)
     }
 
     json result = registry_.invoke(name, args);
-    return {
-        {"content", json::array({{{"type","text"},{"text", result.dump()}}})},
-        {"isError", false}
-    };
+    return {{"content", json::array({{{"type", "text"}, {"text", result.dump()}}})}, {"isError", false}};
 }
 
-json McpServer::buildError(int code, const std::string &message)
+json McpServer::buildError(int code, const std::string& message)
 {
-    return {
-        {"jsonrpc", "2.0"},
-        {"error", {{"code", code}, {"message", message}}}
-    };
+    return {{"jsonrpc", "2.0"}, {"error", {{"code", code}, {"message", message}}}};
 }
 
-json McpServer::buildResult(const json &id, const json &result)
+json McpServer::buildResult(const json& id, const json& result)
 {
-    return {
-        {"jsonrpc", "2.0"},
-        {"id", id},
-        {"result", result}
-    };
+    return {{"jsonrpc", "2.0"}, {"id", id}, {"result", result}};
 }

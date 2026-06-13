@@ -1,11 +1,9 @@
 #include "common/MQManager.h"
 
 // ------------------- MQManager -------------------
-MQManager::MQManager(size_t poolSize)
-    : poolSize_(poolSize), counter_(0)
+MQManager::MQManager(size_t poolSize) : poolSize_(poolSize), counter_(0)
 {
-    for (size_t i = 0; i < poolSize_; ++i)
-    {
+    for (size_t i = 0; i < poolSize_; ++i) {
         auto conn = std::make_shared<MQConn>();
         //  Create
         conn->channel = AmqpClient::Channel::Create("localhost", 5672, "guest", "guest", "/");
@@ -14,10 +12,10 @@ MQManager::MQManager(size_t poolSize)
     }
 }
 
-void MQManager::publish(const std::string &queue, const std::string &msg)
+void MQManager::publish(const std::string& queue, const std::string& msg)
 {
     size_t index = counter_.fetch_add(1) % poolSize_;
-    auto &conn = pool_[index];
+    auto& conn = pool_[index];
 
     std::lock_guard<std::mutex> lock(conn->mtx);
     auto message = AmqpClient::BasicMessage::Create(msg);
@@ -28,8 +26,7 @@ void MQManager::publish(const std::string &queue, const std::string &msg)
 
 void RabbitMQThreadPool::start()
 {
-    for (int i = 0; i < thread_num_; ++i)
-    {
+    for (int i = 0; i < thread_num_; ++i) {
         workers_.emplace_back(&RabbitMQThreadPool::worker, this, i);
     }
 }
@@ -37,8 +34,7 @@ void RabbitMQThreadPool::start()
 void RabbitMQThreadPool::shutdown()
 {
     stop_ = true;
-    for (auto &t : workers_)
-    {
+    for (auto& t : workers_) {
         if (t.joinable())
             t.join();
     }
@@ -46,8 +42,7 @@ void RabbitMQThreadPool::shutdown()
 
 void RabbitMQThreadPool::worker(int id)
 {
-    try
-    {
+    try {
         // Each thread has its own independent channel
         auto channel = AmqpClient::Channel::Create(rabbitmq_host_, 5672, "guest", "guest", "/");
         // durable=true（与已存在的 sql_queue 参数一致），exclusive=false（多消费者）
@@ -56,12 +51,10 @@ void RabbitMQThreadPool::worker(int id)
 
         channel->BasicQos(consumer_tag, 1);
 
-        while (!stop_)
-        {
+        while (!stop_) {
             AmqpClient::Envelope::ptr_t env;
-            bool ok = channel->BasicConsumeMessage(consumer_tag, env, 500); // 500ms
-            if (ok && env)
-            {
+            bool ok = channel->BasicConsumeMessage(consumer_tag, env, 500);  // 500ms
+            if (ok && env) {
                 std::string msg = env->Message()->Body();
                 handler_(msg);
                 channel->BasicAck(env);
@@ -70,8 +63,7 @@ void RabbitMQThreadPool::worker(int id)
 
         channel->BasicCancel(consumer_tag);
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception& e) {
         std::cerr << "Thread " << id << " exception: " << e.what() << std::endl;
     }
 }

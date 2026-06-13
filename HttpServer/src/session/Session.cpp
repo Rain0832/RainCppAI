@@ -2,17 +2,13 @@
 
 #include "../include/session/SessionManager.h"
 
-namespace http
-{
-namespace session
-{
+namespace http {
+namespace session {
 
 Session::Session(const std::string& sessionId, SessionManager* sessionManager, int maxAge)
-    : sessionId_(sessionId)
-    , maxAge_(maxAge)
-    , sessionManager_(sessionManager)
+    : sessionId_(sessionId), maxAge_(maxAge), sessionManager_(sessionManager)
 {
-    refresh(); // 初始化时设置过期时间
+    refresh();  // 初始化时设置过期时间
 }
 
 // 检查会话是否已过期
@@ -32,8 +28,7 @@ void Session::setValue(const std::string& key, const std::string& value)
 {
     data_[key] = value;
     // 如果设置了manager，自动保存更改
-    if (sessionManager_)
-    {
+    if (sessionManager_) {
         sessionManager_->updateSession(shared_from_this());
     }
 }
@@ -57,5 +52,5 @@ void Session::clear()
     data_.clear();
 }
 
-} // namespace session
-} // namespace http
+}  // namespace session
+}  // namespace http

@@ -1,11 +1,12 @@
 #pragma once
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <regex>
-#include <fstream>
-#include <sstream>
-#include <iostream>
+
 #include "3rdparty/JsonUtil.h"
 
 struct AITool
@@ -30,21 +31,21 @@ public:
      * @param path 配置文件路径。
      * @return 是否加载成功。
      */
-    bool loadFromFile(const std::string &path);
+    bool loadFromFile(const std::string& path);
 
     /**
      * @brief 根据用户输入构建最终提示词。
      * @param userInput 用户输入内容。
      * @return 组合后的提示词文本。
      */
-    std::string buildPrompt(const std::string &userInput) const;
+    std::string buildPrompt(const std::string& userInput) const;
 
     /**
      * @brief 解析模型响应并识别是否为工具调用。
      * @param response 模型返回的原始文本。
      * @return 解析后的工具调用信息。
      */
-    AIToolCall parseAIResponse(const std::string &response) const;
+    AIToolCall parseAIResponse(const std::string& response) const;
 
     /**
      * @brief 构造工具调用结果的二次提示词。
@@ -54,7 +55,8 @@ public:
      * @param toolResult 工具返回结果。
      * @return 组合后的提示词文本。
      */
-    std::string buildToolResultPrompt(const std::string &userInput, const std::string &toolName, const json &toolArgs, const json &toolResult) const;
+    std::string buildToolResultPrompt(const std::string& userInput, const std::string& toolName, const json& toolArgs,
+                                      const json& toolResult) const;
 
 private:
     std::string promptTemplate_;

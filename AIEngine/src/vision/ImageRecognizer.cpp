@@ -1,7 +1,6 @@
 #include "vision/ImageRecognizer.h"
 
-ImageRecognizer::ImageRecognizer(const std::string& model_path,
-    const std::string& label_path)
+ImageRecognizer::ImageRecognizer(const std::string& model_path, const std::string& label_path)
     : env(ORT_LOGGING_LEVEL_WARNING, "ImageRecognizer")
 {
     Ort::SessionOptions session_options;
@@ -24,7 +23,8 @@ ImageRecognizer::ImageRecognizer(const std::string& model_path,
     LoadLabels(label_path);
 }
 
-void ImageRecognizer::LoadLabels(const std::string& label_path) {
+void ImageRecognizer::LoadLabels(const std::string& label_path)
+{
     std::ifstream infile(label_path);
     if (!infile.is_open()) {
         throw std::runtime_error("Failed to open label file: " + label_path);
@@ -43,7 +43,8 @@ void ImageRecognizer::LoadLabels(const std::string& label_path) {
     }
 }
 
-std::string ImageRecognizer::PredictFromFile(const std::string& image_path) {
+std::string ImageRecognizer::PredictFromFile(const std::string& image_path)
+{
     cv::Mat img = cv::imread(image_path);
     if (img.empty()) {
         throw std::runtime_error("Failed to load image: " + image_path);
@@ -51,7 +52,8 @@ std::string ImageRecognizer::PredictFromFile(const std::string& image_path) {
     return PredictFromMat(img);
 }
 
-std::string ImageRecognizer::PredictFromBuffer(const std::vector<unsigned char>& image_data) {
+std::string ImageRecognizer::PredictFromBuffer(const std::vector<unsigned char>& image_data)
+{
     cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
     if (img.empty()) {
         throw std::runtime_error("Failed to decode image from buffer");
@@ -59,7 +61,8 @@ std::string ImageRecognizer::PredictFromBuffer(const std::vector<unsigned char>&
     return PredictFromMat(img);
 }
 
-std::string ImageRecognizer::PredictFromMat(const cv::Mat& img_raw) {
+std::string ImageRecognizer::PredictFromMat(const cv::Mat& img_raw)
+{
     if (img_raw.empty()) {
         throw std::runtime_error("Input image is empty");
     }
@@ -71,24 +74,20 @@ std::string ImageRecognizer::PredictFromMat(const cv::Mat& img_raw) {
     // NHWC -> NCHW
     cv::dnn::blobFromImage(img, img);
 
-    std::vector<int64_t> dims = { 1, 3, input_height, input_width };
+    std::vector<int64_t> dims = {1, 3, input_height, input_width};
     size_t input_tensor_size = 1 * 3 * input_height * input_width;
 
-    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+    Ort::MemoryInfo memory_info =
+            Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
-    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-        memory_info, img.ptr<float>(), input_tensor_size, dims.data(), dims.size());
+    Ort::Value input_tensor =
+            Ort::Value::CreateTensor<float>(memory_info, img.ptr<float>(), input_tensor_size, dims.data(), dims.size());
 
     // Run inference
-    const char* input_names[] = { input_name.c_str() };
-    const char* output_names[] = { output_name.c_str() };
+    const char* input_names[] = {input_name.c_str()};
+    const char* output_names[] = {output_name.c_str()};
 
-    auto output_tensors = session->Run(
-        Ort::RunOptions{ nullptr },
-        input_names, &input_tensor, 1,
-        output_names, 1
-    );
+    auto output_tensors = session->Run(Ort::RunOptions {nullptr}, input_names, &input_tensor, 1, output_names, 1);
 
     float* output_data = output_tensors.front().GetTensorMutableData<float>();
 

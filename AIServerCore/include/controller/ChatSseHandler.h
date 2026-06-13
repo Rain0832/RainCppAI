@@ -16,11 +16,11 @@
 class ChatSseHandler : public http::router::RouterHandler
 {
 public:
-    explicit ChatSseHandler(ChatServer *server) : server_(server) {}
+    explicit ChatSseHandler(ChatServer* server) : server_(server) {}
 
 private:
-    void handle(const http::HttpRequest &req, http::HttpResponse *resp) override;
+    void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 
 private:
-    ChatServer *server_;
+    ChatServer* server_;
 };

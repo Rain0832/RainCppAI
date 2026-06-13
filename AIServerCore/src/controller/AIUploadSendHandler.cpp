@@ -1,23 +1,18 @@
 #include "controller/AIUploadSendHandler.h"
 
-void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try
-    {
-
+    try {
         auto session = server_->getSessionManager()->getSession(req, resp);
         LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
-        if (session->getValue("isLoggedIn") != "true")
-        {
-
+        if (session->getValue("isLoggedIn") != "true") {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
             std::string errorBody = errorResp.dump(4);
 
-            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                                 "Unauthorized", true, "application/json", errorBody.size(),
-                                 errorBody, resp);
+            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
+                                 "application/json", errorBody.size(), errorBody, resp);
             return;
         }
 
@@ -36,9 +31,7 @@ void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpRespons
                 std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForImageRecognizer);
                 if (server_->ImageRecognizerMap.find(userId) == server_->ImageRecognizerMap.end()) {
                     server_->ImageRecognizerMap.emplace(
-                        userId,
-                        std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx")
-                    );
+                            userId, std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx"));
                 }
                 ImageRecognizerPtr = server_->ImageRecognizerMap[userId];
             }
@@ -47,16 +40,14 @@ void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpRespons
         auto body = req.getBody();
         std::string filename;
         std::string imageBase64;
-        if (!body.empty())
-        {
+        if (!body.empty()) {
             auto j = json::parse(body);
             if (j.contains("filename"))
                 filename = j["filename"];
             if (j.contains("image"))
                 imageBase64 = j["image"];
         }
-        if (imageBase64.empty())
-        {
+        if (imageBase64.empty()) {
             throw std::runtime_error("No image data provided");
         }
 
@@ -70,7 +61,7 @@ void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpRespons
         successResp["filename"] = filename;
         successResp["class_name"] = className;
 
-        successResp["confidence"] = 0.95; // todo:Calculating true confidence
+        successResp["confidence"] = 0.95;  // todo:Calculating true confidence
 
         std::string successBody = successResp.dump(4);
 
@@ -81,9 +72,7 @@ void AIUploadSendHandler::handle(const http::HttpRequest &req, http::HttpRespons
         resp->setBody(successBody);
         return;
     }
-    catch (const std::exception &e)
-    {
-
+    catch (const std::exception& e) {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

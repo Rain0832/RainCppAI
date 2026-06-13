@@ -1,6 +1,7 @@
 #pragma once
-#include <string>
 #include <functional>
+#include <string>
+
 #include "3rdparty/JsonUtil.h"
 #include "mcp/AIToolRegistry.h"
 
@@ -31,30 +32,29 @@ public:
      * @param requestBody 请求 JSON 字符串
      * @return 响应 JSON 字符串
      */
-    std::string handleRequest(const std::string &requestBody);
+    std::string handleRequest(const std::string& requestBody);
 
     /**
      * @brief 注册额外工具（工具名 + 描述 + 参数 schema + 执行函数）
      */
-    void registerTool(const std::string &name,
-                      const std::string &description,
-                      const json &inputSchema,
+    void registerTool(const std::string& name, const std::string& description, const json& inputSchema,
                       AIToolRegistry::ToolFunc func);
 
 private:
-    json handleToolsList(const json &params);
-    json handleToolsCall(const json &params);
-    json buildError(int code, const std::string &message);
-    json buildResult(const json &id, const json &result);
+    json handleToolsList(const json& params);
+    json handleToolsCall(const json& params);
+    json buildError(int code, const std::string& message);
+    json buildResult(const json& id, const json& result);
 
 private:
     AIToolRegistry registry_;
 
     /// 工具元信息（name → {description, inputSchema}）
-    struct ToolMeta {
+    struct ToolMeta
+    {
         std::string name;
         std::string description;
-        json        inputSchema;
+        json inputSchema;
     };
     std::vector<ToolMeta> toolMetas_;
 };

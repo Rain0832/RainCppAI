@@ -1,16 +1,13 @@
 #include "controller/ChatRegisterHandler.h"
 
-void ChatRegisterHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-
     json parsed = json::parse(req.getBody());
     std::string username = parsed["username"];
     std::string password = parsed["password"];
 
     int userId = insertUser(username, password);
-    if (userId != -1)
-    {
-
+    if (userId != -1) {
         json successResp;
         successResp["status"] = "success";
         successResp["message"] = "Register successful";
@@ -23,9 +20,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest &req, http::HttpRespons
         resp->setContentLength(successBody.size());
         resp->setBody(successBody);
     }
-    else
-    {
-
+    else {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = "username already exists";
@@ -39,30 +34,25 @@ void ChatRegisterHandler::handle(const http::HttpRequest &req, http::HttpRespons
     }
 }
 
-int ChatRegisterHandler::insertUser(const std::string &username, const std::string &password)
+int ChatRegisterHandler::insertUser(const std::string& username, const std::string& password)
 {
-
-    if (!isUserExist(username))
-    {
-
+    if (!isUserExist(username)) {
         std::string sql = "INSERT INTO users (username, password) VALUES ('" + username + "', '" + password + "')";
         mysqlUtil_.executeUpdate(sql);
         std::string sql2 = "SELECT id FROM users WHERE username = '" + username + "'";
         auto res = mysqlUtil_.executeQuery(sql2);
-        if (res->next())
-        {
+        if (res->next()) {
             return res->getInt("id");
         }
     }
     return -1;
 }
 
-bool ChatRegisterHandler::isUserExist(const std::string &username)
+bool ChatRegisterHandler::isUserExist(const std::string& username)
 {
     std::string sql = "SELECT id FROM users WHERE username = '" + username + "'";
     auto res = mysqlUtil_.executeQuery(sql);
-    if (res->next())
-    {
+    if (res->next()) {
         return true;
     }
     return false;

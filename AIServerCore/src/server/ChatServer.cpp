@@ -1,33 +1,30 @@
 // ChatServer.cpp - AI聊天服务器实现文件
 
-#include "controller/ChatLoginHandler.h"
-#include "controller/ChatRegisterHandler.h"
-#include "controller/ChatLogoutHandler.h"
-#include "controller/ChatHandler.h"
-#include "controller/ChatEntryHandler.h"
-#include "controller/ChatSendHandler.h"
-#include "controller/AIMenuHandler.h"
-#include "controller/AIUploadSendHandler.h"
-#include "controller/AIUploadHandler.h"
-#include "controller/ChatHistoryHandler.h"
+#include "server/ChatServer.h"
 
+#include "controller/AIMenuHandler.h"
+#include "controller/AIUploadHandler.h"
+#include "controller/AIUploadSendHandler.h"
 #include "controller/ChatCreateAndSendHandler.h"
+#include "controller/ChatEntryHandler.h"
+#include "controller/ChatHandler.h"
+#include "controller/ChatHistoryHandler.h"
+#include "controller/ChatLoginHandler.h"
+#include "controller/ChatLogoutHandler.h"
+#include "controller/ChatRegisterHandler.h"
+#include "controller/ChatSendHandler.h"
 #include "controller/ChatSessionsHandler.h"
 #include "controller/ChatSpeechHandler.h"
 #include "controller/ChatSseHandler.h"
 #include "controller/ChatUpdateTitleHandler.h"
 #include "controller/McpHandler.h"
-
-#include "server/ChatServer.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "http/HttpServer.h"
 
 using namespace http;
 
-ChatServer::ChatServer(int port,
-                       const std::string &name,
-                       muduo::net::TcpServer::Option option)
+ChatServer::ChatServer(int port, const std::string& name, muduo::net::TcpServer::Option option)
     : httpServer_(port, name, option)
 {
     initialize();
@@ -102,7 +99,8 @@ void ChatServer::initDatabase()
         mysqlUtil_.executeUpdate(createMessages);
         mysqlUtil_.executeUpdate(createApiKeys);
         std::cout << "Database tables initialized successfully." << std::endl;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
         std::cerr << "Failed to init database tables: " << e.what() << std::endl;
     }
 }
@@ -124,50 +122,43 @@ void ChatServer::readDataFromMySQL()
                       "INNER JOIN sessions s ON m.session_id = s.id "
                       "ORDER BY m.created_at ASC, m.id ASC";
 
-    sql::ResultSet *res;
-    try
-    {
+    sql::ResultSet* res;
+    try {
         res = mysqlUtil_.executeQuery(sql);
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception& e) {
         std::cerr << "MySQL query failed: " << e.what() << std::endl;
         return;
     }
 
-    while (res->next())
-    {
+    while (res->next()) {
         long long user_id = 0;
         std::string session_id;
         std::string role, content;
         long long ts_ms = 0;
 
-        try
-        {
-            user_id    = res->getInt64("user_id");
+        try {
+            user_id = res->getInt64("user_id");
             session_id = res->getString("session_id");
-            role       = res->getString("role");
-            content    = res->getString("content");
-            ts_ms      = res->getInt64("ts_ms");
+            role = res->getString("role");
+            content = res->getString("content");
+            ts_ms = res->getInt64("ts_ms");
         }
-        catch (const std::exception &e)
-        {
+        catch (const std::exception& e) {
             std::cerr << "Failed to read row: " << e.what() << std::endl;
             continue;
         }
 
-        auto &userSessions = chatInformation[user_id];
+        auto& userSessions = chatInformation[user_id];
 
         std::shared_ptr<AIHelper> helper;
         auto itSession = userSessions.find(session_id);
-        if (itSession == userSessions.end())
-        {
+        if (itSession == userSessions.end()) {
             helper = std::make_shared<AIHelper>();
             userSessions[session_id] = helper;
             sessionsIdsMap[user_id].push_back(session_id);
         }
-        else
-        {
+        else {
             helper = itSession->second;
         }
 
@@ -230,23 +221,16 @@ void ChatServer::initializeMiddleware()
     httpServer_.addMiddleware(corsMiddleware);
 }
 
-void ChatServer::packageResp(const std::string &version,
-                             http::HttpResponse::HttpStatusCode statusCode,
-                             const std::string &statusMsg,
-                             bool close,
-                             const std::string &contentType,
-                             int contentLen,
-                             const std::string &body,
-                             http::HttpResponse *resp)
+void ChatServer::packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
+                             const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
+                             const std::string& body, http::HttpResponse* resp)
 {
-    if (resp == nullptr)
-    {
+    if (resp == nullptr) {
         LOG_ERROR << "Response pointer is null";
         return;
     }
 
-    try
-    {
+    try {
         resp->setVersion(version);
         resp->setStatusCode(statusCode);
         resp->setStatusMessage(statusMsg);
@@ -257,8 +241,7 @@ void ChatServer::packageResp(const std::string &version,
 
         LOG_INFO << "Response packaged successfully";
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception& e) {
         LOG_ERROR << "Error in packageResp: " << e.what();
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
         resp->setStatusMessage("Internal Server Error");

@@ -1,7 +1,7 @@
 #pragma once
 #include "HttpServer/include/router/RouterHandler.h"
-#include "server/ChatServer.h"
 #include "mcp/McpServer.h"
+#include "server/ChatServer.h"
 
 /**
  * @brief 标准 MCP Server Handler
@@ -15,12 +15,12 @@
 class McpHandler : public http::router::RouterHandler
 {
 public:
-    explicit McpHandler(ChatServer *server) : server_(server) {}
+    explicit McpHandler(ChatServer* server) : server_(server) {}
 
 private:
-    void handle(const http::HttpRequest &req, http::HttpResponse *resp) override;
+    void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 
 private:
-    ChatServer *server_;
-    McpServer   mcpServer_;
+    ChatServer* server_;
+    McpServer mcpServer_;
 };

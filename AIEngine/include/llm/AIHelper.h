@@ -1,20 +1,20 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <utility>
-#include <mutex>
+#include <curl/curl.h>
+
 #include <atomic>
 #include <functional>
-#include <curl/curl.h>
 #include <iostream>
+#include <mutex>
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "3rdparty/JsonUtil.h"
 #include "HttpServer/include/utils/MysqlUtil.h"
-
-#include "llm/AIFactory.h"
 #include "common/AIConfig.h"
 #include "common/Message.h"
+#include "llm/AIFactory.h"
 #include "mcp/AIToolRegistry.h"
 
 /**
@@ -34,17 +34,16 @@ public:
 
     void setStrategy(std::shared_ptr<AIStrategy> strat);
 
-    void addMessage(int userId, const std::string &userName, bool is_user,
-                    const std::string &userInput, std::string sessionId);
+    void addMessage(int userId, const std::string& userName, bool is_user, const std::string& userInput,
+                    std::string sessionId);
 
-    void restoreMessage(const std::string &content, long long ms, const std::string &role);
+    void restoreMessage(const std::string& content, long long ms, const std::string& role);
 
     /**
      * @brief 同步聊天（非 SSE）：等待完整响应后返回
      */
-    std::string chat(int userId, std::string userName, std::string sessionId,
-                     std::string userQuestion, std::string modelType,
-                     std::string apiKey = "", std::string ragId = "",
+    std::string chat(int userId, std::string userName, std::string sessionId, std::string userQuestion,
+                     std::string modelType, std::string apiKey = "", std::string ragId = "",
                      std::string endpointId = "");
 
     /**
@@ -52,45 +51,45 @@ public:
      * @param onChunk 每个 chunk 的回调，返回 false 终止流
      * @return 完整的 AI 回复内容（用于持久化）
      */
-    std::string chatStream(int userId, std::string userName, std::string sessionId,
-                           std::string userQuestion, std::string modelType,
-                           std::string apiKey, std::string ragId, StreamCallback onChunk,
+    std::string chatStream(int userId, std::string userName, std::string sessionId, std::string userQuestion,
+                           std::string modelType, std::string apiKey, std::string ragId, StreamCallback onChunk,
                            std::string endpointId = "");
 
-    json request(const json &payload);
+    json request(const json& payload);
 
     std::vector<Message> GetMessages() const;
 
     bool isProcessing() const { return processing_.load(); }
 
 private:
-    std::string escapeString(const std::string &input);
-    void pushMessageToMysql(int userId, const std::string &userName, bool is_user,
-                            const std::string &userInput, long long ms, std::string sessionId);
-    json executeCurl(const json &payload);
+    std::string escapeString(const std::string& input);
+    void pushMessageToMysql(int userId, const std::string& userName, bool is_user, const std::string& userInput,
+                            long long ms, std::string sessionId);
+    json executeCurl(const json& payload);
 
     /**
      * @brief 流式 curl 请求，每收到数据块调用 onChunk
      * @return 完整响应字符串
      */
-    std::string executeCurlStream(const json &payload, StreamCallback onChunk);
+    std::string executeCurlStream(const json& payload, StreamCallback onChunk);
 
-    static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
+    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
     /// SSE 流式回调的 userdata 结构
-    struct StreamContext {
-        std::string    buffer;      ///< 未处理的数据缓冲
-        std::string    fullContent; ///< 累积的完整内容（用于最终持久化）
+    struct StreamContext
+    {
+        std::string buffer;       ///< 未处理的数据缓冲
+        std::string fullContent;  ///< 累积的完整内容（用于最终持久化）
         StreamCallback callback;
-        bool           aborted = false;
+        bool aborted = false;
     };
-    static size_t StreamWriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
+    static size_t StreamWriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
-    json buildMessagesPayload(const std::vector<Message> &msgs) const;
+    json buildMessagesPayload(const std::vector<Message>& msgs) const;
 
 private:
     std::shared_ptr<AIStrategy> strategy;
-    mutable std::mutex      msgMutex_;
-    std::vector<Message>    messages_;
-    std::atomic<bool>       processing_;
+    mutable std::mutex msgMutex_;
+    std::vector<Message> messages_;
+    std::atomic<bool> processing_;
 };

@@ -1,28 +1,29 @@
 #pragma once
 
+#include <muduo/base/Timestamp.h>
+
 #include <map>
 #include <string>
 #include <unordered_map>
 
-#include <muduo/base/Timestamp.h>
-
-namespace http
-{
+namespace http {
 
 class HttpRequest
 {
 public:
     enum Method
     {
-        kInvalid, kGet, kPost, kHead, kPut, kDelete, kOptions
+        kInvalid,
+        kGet,
+        kPost,
+        kHead,
+        kPut,
+        kDelete,
+        kOptions
     };
-    
-    HttpRequest()
-        : method_(kInvalid)
-        , version_("Unknown")
-    {
-    }
-    
+
+    HttpRequest() : method_(kInvalid), version_("Unknown") {}
+
     // 设置请求的接收时间。
     // 参数：
     // - t：请求数据接收时间。
@@ -31,7 +32,7 @@ public:
     // 获取请求的接收时间。
     // 返回值：请求数据接收时间。
     muduo::Timestamp receiveTime() const { return receiveTime_; }
-    
+
     // 设置请求方法。
     // 参数：
     // - start：方法字符串起始指针。
@@ -57,13 +58,13 @@ public:
     // 参数：
     // - key：参数名。
     // - value：参数值。
-    void setPathParameters(const std::string &key, const std::string &value);
+    void setPathParameters(const std::string& key, const std::string& value);
 
     // 获取路径参数值。
     // 参数：
     // - key：参数名。
     // 返回值：参数值，不存在时返回空字符串。
-    std::string getPathParameters(const std::string &key) const;
+    std::string getPathParameters(const std::string& key) const;
 
     // 解析并设置查询参数。
     // 参数：
@@ -75,23 +76,17 @@ public:
     // 参数：
     // - key：参数名。
     // 返回值：参数值，不存在时返回空字符串。
-    std::string getQueryParameters(const std::string &key) const;
-    
+    std::string getQueryParameters(const std::string& key) const;
+
     // 设置请求协议版本。
     // 参数：
     // - v：协议版本字符串。
-    void setVersion(std::string v)
-    {
-        version_ = v;
-    }
+    void setVersion(std::string v) { version_ = v; }
 
     // 获取请求协议版本。
     // 返回值：协议版本字符串。
-    std::string getVersion() const
-    {
-        return version_;
-    }
-    
+    std::string getVersion() const { return version_; }
+
     // 添加请求头字段。
     // 参数：
     // - start：头字段名起始指针。
@@ -107,8 +102,7 @@ public:
 
     // 获取所有请求头字段。
     // 返回值：请求头映射表的常量引用。
-    const std::map<std::string, std::string>& headers() const
-    { return headers_; }
+    const std::map<std::string, std::string>& headers() const { return headers_; }
 
     // 设置请求体内容。
     // 参数：
@@ -119,29 +113,25 @@ public:
     // 参数：
     // - start：请求体起始指针。
     // - end：请求体结束指针。
-    void setBody(const char* start, const char* end) 
-    { 
-        if (end >= start) 
-        {
-            content_.assign(start, end - start); 
+    void setBody(const char* start, const char* end)
+    {
+        if (end >= start) {
+            content_.assign(start, end - start);
         }
     }
-    
+
     // 获取请求体内容。
     // 返回值：请求体字符串。
-    std::string getBody() const
-    { return content_; }
+    std::string getBody() const { return content_; }
 
     // 设置请求体长度。
     // 参数：
     // - length：请求体长度。
-    void setContentLength(uint64_t length)
-    { contentLength_ = length; }
-    
+    void setContentLength(uint64_t length) { contentLength_ = length; }
+
     // 获取请求体长度。
     // 返回值：请求体长度。
-    uint64_t contentLength() const
-    { return contentLength_; }
+    uint64_t contentLength() const { return contentLength_; }
 
     // 交换当前对象与目标对象的内容。
     // 参数：
@@ -149,15 +139,15 @@ public:
     void swap(HttpRequest& that);
 
 private:
-    Method                                       method_; // 请求方法
-    std::string                                  version_; // http版本
-    std::string                                  path_; // 请求路径
-    std::unordered_map<std::string, std::string> pathParameters_; // 路径参数
-    std::unordered_map<std::string, std::string> queryParameters_; // 查询参数
-    muduo::Timestamp                             receiveTime_; // 接收时间
-    std::map<std::string, std::string>           headers_; // 请求头
-    std::string                                  content_; // 请求体
-    uint64_t                                     contentLength_ { 0 }; // 请求体长度
-};  
+    Method method_;                                                 // 请求方法
+    std::string version_;                                           // http版本
+    std::string path_;                                              // 请求路径
+    std::unordered_map<std::string, std::string> pathParameters_;   // 路径参数
+    std::unordered_map<std::string, std::string> queryParameters_;  // 查询参数
+    muduo::Timestamp receiveTime_;                                  // 接收时间
+    std::map<std::string, std::string> headers_;                    // 请求头
+    std::string content_;                                           // 请求体
+    uint64_t contentLength_ {0};                                    // 请求体长度
+};
 
-} // namespace http
+}  // namespace http

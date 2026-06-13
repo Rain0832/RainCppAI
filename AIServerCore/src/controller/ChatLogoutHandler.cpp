@@ -1,10 +1,9 @@
 #include "controller/ChatLogoutHandler.h"
 
-void ChatLogoutHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void ChatLogoutHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     auto contentType = req.getHeader("Content-Type");
-    if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
-    {
+    if (contentType.empty() || contentType != "application/json" || req.getBody().empty()) {
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(true);
         resp->setContentType("application/json");
@@ -13,9 +12,7 @@ void ChatLogoutHandler::handle(const http::HttpRequest &req, http::HttpResponse 
         return;
     }
 
-    try
-    {
-
+    try {
         auto session = server_->getSessionManager()->getSession(req, resp);
 
         int userId = std::stoi(session->getValue("userId"));
@@ -40,9 +37,7 @@ void ChatLogoutHandler::handle(const http::HttpRequest &req, http::HttpResponse 
         resp->setContentLength(responseBody.size());
         resp->setBody(responseBody);
     }
-    catch (const std::exception &e)
-    {
-
+    catch (const std::exception& e) {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

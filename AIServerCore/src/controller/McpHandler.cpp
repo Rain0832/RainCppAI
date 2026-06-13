@@ -1,13 +1,13 @@
 #include "controller/McpHandler.h"
 
-void McpHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void McpHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try
-    {
+    try {
         // MCP 接口可选鉴权（目前开放，后续可加 API Key 校验）
         auto body = req.getBody();
         if (body.empty()) {
-            json e; e["error"] = "Empty request body";
+            json e;
+            e["error"] = "Empty request body";
             std::string b = e.dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
             resp->setCloseConnection(false);
@@ -25,9 +25,10 @@ void McpHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
         resp->setContentLength(responseBody.size());
         resp->setBody(responseBody);
     }
-    catch (const std::exception &e)
-    {
-        json f; f["status"] = "error"; f["message"] = e.what();
+    catch (const std::exception& e) {
+        json f;
+        f["status"] = "error";
+        f["message"] = e.what();
         std::string b = f.dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
         resp->setCloseConnection(true);

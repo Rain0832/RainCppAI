@@ -1,17 +1,15 @@
 #pragma once
 #include <chrono>
-#include <random>
 #include <cstdlib>
 #include <ctime>
+#include <random>
 #include <string>
 
 
-class AISessionIdGenerator {
+class AISessionIdGenerator
+{
 public:
-    AISessionIdGenerator() {
-        
-        std::srand(static_cast<unsigned>(std::time(nullptr)));
-    }
-    
+    AISessionIdGenerator() { std::srand(static_cast<unsigned>(std::time(nullptr))); }
+
     std::string generate();
 };

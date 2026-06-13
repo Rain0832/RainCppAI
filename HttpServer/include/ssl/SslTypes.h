@@ -1,11 +1,10 @@
 #pragma once
 #include <string>
 
-namespace ssl 
-{
+namespace ssl {
 
 // SSL/TLS 协议版本
-enum class SSLVersion 
+enum class SSLVersion
 {
     TLS_1_0,
     TLS_1_1,
@@ -14,7 +13,7 @@ enum class SSLVersion
 };
 
 // SSL 错误类型
-enum class SSLError 
+enum class SSLError
 {
     NONE,
     WANT_READ,
@@ -25,7 +24,7 @@ enum class SSLError
 };
 
 // SSL 状态
-enum class SSLState 
+enum class SSLState
 {
     HANDSHAKE,
     ESTABLISHED,
@@ -33,4 +32,4 @@ enum class SSLState
     ERROR
 };
 
-} // namespace ssl
+}  // namespace ssl

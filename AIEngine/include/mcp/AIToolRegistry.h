@@ -1,14 +1,17 @@
 #pragma once
+#include <curl/curl.h>
+
+#include <ctime>
+#include <functional>
+#include <iostream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <functional>
-#include <stdexcept>
-#include <iostream>
-#include <ctime>
-#include <curl/curl.h>
+
 #include "3rdparty/JsonUtil.h"
 
-class AIToolRegistry {
+class AIToolRegistry
+{
 public:
     using ToolFunc = std::function<json(const json&)>;
 

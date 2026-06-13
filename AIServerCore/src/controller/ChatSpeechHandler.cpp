@@ -1,23 +1,18 @@
 #include "controller/ChatSpeechHandler.h"
 
-void ChatSpeechHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void ChatSpeechHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try
-    {
-
+    try {
         auto session = server_->getSessionManager()->getSession(req, resp);
         LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
-        if (session->getValue("isLoggedIn") != "true")
-        {
-
+        if (session->getValue("isLoggedIn") != "true") {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
             std::string errorBody = errorResp.dump(4);
 
-            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                                 "Unauthorized", true, "application/json", errorBody.size(),
-                                 errorBody, resp);
+            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
+                                 "application/json", errorBody.size(), errorBody, resp);
             return;
         }
 
@@ -27,15 +22,14 @@ void ChatSpeechHandler::handle(const http::HttpRequest &req, http::HttpResponse 
         std::string text;
 
         auto body = req.getBody();
-        if (!body.empty())
-        {
+        if (!body.empty()) {
             auto j = json::parse(body);
             if (j.contains("text"))
                 text = j["text"];
         }
 
-        const char *secretEnv = std::getenv("BAIDU_CLIENT_SECRET");
-        const char *idEnv = std::getenv("BAIDU_CLIENT_ID");
+        const char* secretEnv = std::getenv("BAIDU_CLIENT_SECRET");
+        const char* idEnv = std::getenv("BAIDU_CLIENT_ID");
 
         if (!secretEnv)
             throw std::runtime_error("BAIDU_CLIENT_SECRET not found!");
@@ -47,12 +41,7 @@ void ChatSpeechHandler::handle(const http::HttpRequest &req, http::HttpResponse 
 
         AISpeechProcessor speechProcessor(clientId, clientSecret);
 
-        std::string speechUrl = speechProcessor.synthesize(text,
-                                                           "mp3-16k",
-                                                           "zh",
-                                                           5,
-                                                           5,
-                                                           5);
+        std::string speechUrl = speechProcessor.synthesize(text, "mp3-16k", "zh", 5, 5, 5);
 
         json successResp;
         successResp["success"] = true;
@@ -65,8 +54,7 @@ void ChatSpeechHandler::handle(const http::HttpRequest &req, http::HttpResponse 
         resp->setBody(successBody);
         return;
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception& e) {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

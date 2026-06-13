@@ -2,17 +2,15 @@
 
 void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    try
-    {
+    try {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true")
-        {
+        if (session->getValue("isLoggedIn") != "true") {
             json errorResp;
             errorResp["status"] = "error";
             errorResp["message"] = "Unauthorized";
             std::string errorBody = errorResp.dump(4);
-            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized,
-                "Unauthorized", true, "application/json", errorBody.size(), errorBody, resp);
+            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
+                                 "application/json", errorBody.size(), errorBody, resp);
             return;
         }
 
@@ -22,7 +20,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         auto body = req.getBody();
         if (!body.empty()) {
             auto j = json::parse(body);
-            if (j.contains("sessionId")) sessionId = j["sessionId"];
+            if (j.contains("sessionId"))
+                sessionId = j["sessionId"];
         }
 
         // ★ 先取到 AIHelperPtr（最小化锁范围），再在锁外调用 GetMessages()
@@ -36,7 +35,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     AIHelperPtr = sit->second;
                 }
             }
-        } // 读锁释放
+        }  // 读锁释放
 
         if (!AIHelperPtr) {
             std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
@@ -45,7 +44,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                 userSessions.emplace(sessionId, std::make_shared<AIHelper>());
             }
             AIHelperPtr = userSessions[sessionId];
-        } // 写锁释放
+        }  // 写锁释放
 
         // ★ 在 chatInformation 锁完全释放后，通过 AIHelper 自身的 msgMutex_ 安全读取
         std::vector<Message> messages = AIHelperPtr->GetMessages();
@@ -54,9 +53,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         if (messages.empty()) {
             try {
                 http::MysqlUtil mu;
-                std::string sql = "SELECT role, content FROM messages WHERE session_id = '"
-                    + sessionId + "' AND user_id = " + std::to_string(userId)
-                    + " ORDER BY created_at ASC, id ASC";
+                std::string sql = "SELECT role, content FROM messages WHERE session_id = '" + sessionId +
+                                  "' AND user_id = " + std::to_string(userId) + " ORDER BY created_at ASC, id ASC";
                 auto res = mu.executeQuery(sql);
                 while (res && res->next()) {
                     std::string role = res->getString("role");
@@ -65,7 +63,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     // 同时恢复到内存中
                     AIHelperPtr->restoreMessage(content, 0, role);
                 }
-            } catch (const std::exception& dbErr) {
+            }
+            catch (const std::exception& dbErr) {
                 // DB 查询失败则返回空历史，不影响主流程
                 LOG_ERROR << "DB fallback failed: " << dbErr.what();
             }
@@ -90,8 +89,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         resp->setContentLength(successBody.size());
         resp->setBody(successBody);
     }
-    catch (const std::exception& e)
-    {
+    catch (const std::exception& e) {
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = e.what();

@@ -1,9 +1,11 @@
 #include "llm/AIStrategy.h"
-#include "llm/AIFactory.h"
+
 #include "common/Message.h"
+#include "llm/AIFactory.h"
 
 // ─── Helper: Message 向量转 OpenAI messages 格式 ────────────────
-static json messagesToJsonArray(const std::vector<Message>& messages) {
+static json messagesToJsonArray(const std::vector<Message>& messages)
+{
     json arr = json::array();
     for (const auto& m : messages) {
         json msg;
@@ -18,13 +20,21 @@ static json messagesToJsonArray(const std::vector<Message>& messages) {
 // AliyunStrategy
 // ═══════════════════════════════════════════════════════════════
 
-std::string AliyunStrategy::getApiUrl() const {
+std::string AliyunStrategy::getApiUrl() const
+{
     return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 }
-std::string AliyunStrategy::getApiKey() const { return api_key_; }
-std::string AliyunStrategy::getModel() const { return "qwen-plus"; }
+std::string AliyunStrategy::getApiKey() const
+{
+    return api_key_;
+}
+std::string AliyunStrategy::getModel() const
+{
+    return "qwen-plus";
+}
 
-json AliyunStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const {
+json AliyunStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const
+{
     json payload;
     payload["model"] = getModel();
     payload["messages"] = messagesToJsonArray(messages);
@@ -34,7 +44,8 @@ json AliyunStrategy::buildRequest(const std::vector<Message>& messages, const js
     return payload;
 }
 
-std::string AliyunStrategy::parseResponse(const json& response) const {
+std::string AliyunStrategy::parseResponse(const json& response) const
+{
     if (response.contains("choices") && !response["choices"].empty()) {
         const auto& msg = response["choices"][0]["message"];
         if (msg.contains("content") && !msg["content"].is_null())
@@ -49,15 +60,21 @@ std::string AliyunStrategy::parseResponse(const json& response) const {
 // DouBaoStrategy
 // ═══════════════════════════════════════════════════════════════
 
-std::string DouBaoStrategy::getApiUrl() const {
+std::string DouBaoStrategy::getApiUrl() const
+{
     return "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 }
-std::string DouBaoStrategy::getApiKey() const { return api_key_; }
-std::string DouBaoStrategy::getModel() const {
+std::string DouBaoStrategy::getApiKey() const
+{
+    return api_key_;
+}
+std::string DouBaoStrategy::getModel() const
+{
     return endpoint_id_.empty() ? "doubao-lite-4k" : endpoint_id_;
 }
 
-json DouBaoStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const {
+json DouBaoStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const
+{
     json payload;
     payload["model"] = getModel();
     payload["messages"] = messagesToJsonArray(messages);
@@ -67,7 +84,8 @@ json DouBaoStrategy::buildRequest(const std::vector<Message>& messages, const js
     return payload;
 }
 
-std::string DouBaoStrategy::parseResponse(const json& response) const {
+std::string DouBaoStrategy::parseResponse(const json& response) const
+{
     if (response.contains("choices") && !response["choices"].empty()) {
         const auto& msg = response["choices"][0]["message"];
         if (msg.contains("content") && !msg["content"].is_null())
@@ -84,21 +102,31 @@ std::string DouBaoStrategy::parseResponse(const json& response) const {
 // AliyunRAGStrategy
 // ═══════════════════════════════════════════════════════════════
 
-std::string AliyunRAGStrategy::getApiUrl() const {
-    if (rag_id_.empty()) throw std::runtime_error("百炼 RAG 知识库 ID 未配置，请在个人中心填写");
+std::string AliyunRAGStrategy::getApiUrl() const
+{
+    if (rag_id_.empty())
+        throw std::runtime_error("百炼 RAG 知识库 ID 未配置，请在个人中心填写");
     return "https://dashscope.aliyuncs.com/api/v1/apps/" + rag_id_ + "/completion";
 }
-std::string AliyunRAGStrategy::getApiKey() const { return api_key_; }
-std::string AliyunRAGStrategy::getModel() const { return ""; }
+std::string AliyunRAGStrategy::getApiKey() const
+{
+    return api_key_;
+}
+std::string AliyunRAGStrategy::getModel() const
+{
+    return "";
+}
 
-json AliyunRAGStrategy::buildRequest(const std::vector<Message>& messages, const json&) const {
+json AliyunRAGStrategy::buildRequest(const std::vector<Message>& messages, const json&) const
+{
     json payload;
     payload["input"]["messages"] = messagesToJsonArray(messages);
     payload["parameters"] = json::object();
     return payload;
 }
 
-std::string AliyunRAGStrategy::parseResponse(const json& response) const {
+std::string AliyunRAGStrategy::parseResponse(const json& response) const
+{
     if (response.contains("output") && response["output"].contains("text"))
         return response["output"]["text"];
     if (response.contains("message"))
@@ -112,13 +140,21 @@ std::string AliyunRAGStrategy::parseResponse(const json& response) const {
 // AliyunMcpStrategy（现在使用原生 Function Calling）
 // ═══════════════════════════════════════════════════════════════
 
-std::string AliyunMcpStrategy::getApiUrl() const {
+std::string AliyunMcpStrategy::getApiUrl() const
+{
     return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 }
-std::string AliyunMcpStrategy::getApiKey() const { return api_key_; }
-std::string AliyunMcpStrategy::getModel() const { return "qwen-plus"; }
+std::string AliyunMcpStrategy::getApiKey() const
+{
+    return api_key_;
+}
+std::string AliyunMcpStrategy::getModel() const
+{
+    return "qwen-plus";
+}
 
-json AliyunMcpStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const {
+json AliyunMcpStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const
+{
     json payload;
     payload["model"] = getModel();
     payload["messages"] = messagesToJsonArray(messages);
@@ -128,7 +164,8 @@ json AliyunMcpStrategy::buildRequest(const std::vector<Message>& messages, const
     return payload;
 }
 
-std::string AliyunMcpStrategy::parseResponse(const json& response) const {
+std::string AliyunMcpStrategy::parseResponse(const json& response) const
+{
     if (response.contains("choices") && !response["choices"].empty()) {
         const auto& msg = response["choices"][0]["message"];
         if (msg.contains("content") && !msg["content"].is_null())
