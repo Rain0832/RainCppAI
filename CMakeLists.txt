@@ -75,13 +75,18 @@ file(GLOB_RECURSE HTTP_SERVER_SRC
     ${PROJECT_SOURCE_DIR}/HttpServer/src/*.cpp
 )
 
-file(GLOB_RECURSE CHAT_SERVER_SRC
-    ${PROJECT_SOURCE_DIR}/AIApps/ChatServer/src/*.cpp
+file(GLOB_RECURSE AI_ENGINE_SRC
+    ${PROJECT_SOURCE_DIR}/AIEngine/src/*.cpp
 )
+
+file(GLOB_RECURSE AI_SERVER_CORE_SRC
+    ${PROJECT_SOURCE_DIR}/AIServerCore/src/*.cpp
+)
+list(REMOVE_ITEM AI_SERVER_CORE_SRC ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.cpp)
 
 # 主程序
 set(MAIN_SRC
-    ${PROJECT_SOURCE_DIR}/AIApps/ChatServer/src/main.cpp
+    ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.cpp
 )
 
 # -----------------------------
@@ -91,7 +96,8 @@ set(MAIN_SRC
 add_executable(http_server
     ${MAIN_SRC}
     ${HTTP_SERVER_SRC}
-    ${CHAT_SERVER_SRC}
+    ${AI_ENGINE_SRC}
+    ${AI_SERVER_CORE_SRC}
 )
 
 # -----------------------------
@@ -103,7 +109,9 @@ target_include_directories(http_server
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/HttpServer/include
-        ${PROJECT_SOURCE_DIR}/AIApps/ChatServer/include
+        ${PROJECT_SOURCE_DIR}/AIEngine/include
+        ${PROJECT_SOURCE_DIR}/AIServerCore/include
+        ${PROJECT_SOURCE_DIR}/3rdparty
         /usr/include/mysql-cppconn-8
         /usr/include/mysql
         /usr/local/include
