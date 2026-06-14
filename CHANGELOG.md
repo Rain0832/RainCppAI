@@ -178,3 +178,26 @@
 - `McpClientManager::discoverAllTools` 每次自动触发 reload + 工具发现
 - `McpClientManager::registerServer` 记录 server→client 映射，支持 unregisterServer 精确清理
 - `main.cpp` 通过 `AIToolRegistry::loadFromConfig` → 委托 `McpClientManager::registerServer` 启动子进程
+
+---
+
+##### v2.0.7 — 双向管道底层重构
+
+> **StdioClient 底层重写** — popen → pipe/fork/dup2/execvp 全双工通信
+
+- `StdioClient` 从 `popen("r+")` 重写为原生 `pipe()` + `fork()` + `dup2()` + `execvp()`
+- 两对管道实现双向 JSON-RPC（父写 stdin，父读 stdout），解决 Linux popen 不支持全双工的 POSIX 限制
+- `sendRequest` 中 `fwrite/fgets` 替换为 `write()/read()` + 非阻塞（`O_NONBLOCK`）+ 缓冲区行拼接
+- 子进程回收：`stop()` 中 `close(fd)` + `waitpid(WNOHANG)`
+- 新增头文件：`errno.h` / `fcntl.h` / `sys/wait.h` / `unistd.h`
+
+---
+
+##### v2.0.8 — MCP 标准握手协议
+
+> **FastMCP 初始化握手** — initialize → notifications/initialized
+
+- `registerServer` 在 `fork` 成功后插入 MCP 标准握手：`initialize` 请求 → 等待响应 → `notifications/initialized` 通知
+- 握手轮询 read 缓冲区行拼接 + JSON 解析，5 秒超时（500×10ms）
+- 握手失败路径：`LOG_ERROR` + `close(fd)` + `kill(SIGTERM)` + `waitpid` 回收子进程
+- 消除 2 处 `write()` 返回值未检查警告
