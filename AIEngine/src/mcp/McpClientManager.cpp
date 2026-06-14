@@ -214,6 +214,98 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
         LOG_INFO << "[McpClientManager] Forked process PID=" << pid << " command=" << command;
 
+        // ═══════════════════════════════════════════════════════
+        // MCP 初始化握手 (initialize → initialized notification)
+        // ═══════════════════════════════════════════════════════
+        {
+            // Step 1: 发送 initialize 请求
+            json initReq;
+            initReq["jsonrpc"] = "2.0";
+            initReq["id"] = "init-1";
+            initReq["method"] = "initialize";
+            initReq["params"]["protocolVersion"] = "2024-11-05";
+            initReq["params"]["capabilities"] = json::object();
+            initReq["params"]["clientInfo"]["name"] = "RainCppAI";
+            initReq["params"]["clientInfo"]["version"] = "2.1.0";
+
+            std::string initReqStr = initReq.dump() + "\n";
+            ssize_t w1 = write(write_fd, initReqStr.c_str(), initReqStr.size());
+            (void)w1;
+
+            // Step 2: 等待 initialize 响应（含 "id":"init-1"）
+            std::string buf;
+            char chunk[4096];
+            bool handshakeOk = false;
+            for (int retries = 0; retries < 500; ++retries)
+            {
+                ssize_t n = read(read_fd, chunk, sizeof(chunk) - 1);
+                if (n > 0)
+                {
+                    chunk[n] = '\0';
+                    buf += chunk;
+                    // 找到完整行 (以 \n 结尾)
+                    size_t nl = buf.find('\n');
+                    if (nl != std::string::npos)
+                    {
+                        std::string line = buf.substr(0, nl);
+                        try
+                        {
+                            json resp = json::parse(line);
+                            if (resp.value("id", "") == "init-1" && !resp.contains("error"))
+                            {
+                                handshakeOk = true;
+                                LOG_INFO << "[McpClientManager] initialize handshake OK";
+                            }
+                            else
+                            {
+                                LOG_WARN << "[McpClientManager] initialize response error: " << line;
+                            }
+                        }
+                        catch (...)
+                        {
+                            LOG_WARN << "[McpClientManager] initialize response parse failed: " << line;
+                        }
+                        break;
+                    }
+                }
+                else if (n == 0)
+                {
+                    LOG_WARN << "[McpClientManager] initialize EOF (child exited)";
+                    break;
+                }
+                else
+                {
+                    if (errno != EAGAIN && errno != EWOULDBLOCK)
+                    {
+                        LOG_WARN << "[McpClientManager] initialize read error: " << strerror(errno);
+                        break;
+                    }
+                    usleep(10000);  // 10ms
+                }
+            }
+
+            if (!handshakeOk)
+            {
+                LOG_ERROR << "[McpClientManager] MCP handshake failed for '" << name
+                          << "', terminating child PID=" << pid;
+                close(read_fd);
+                close(write_fd);
+                kill(pid, SIGTERM);
+                waitpid(pid, nullptr, 0);
+                return;
+            }
+
+            // Step 3: 发送 initialized 通知（无 id 字段，不需要响应）
+            json initDone;
+            initDone["jsonrpc"] = "2.0";
+            initDone["method"] = "notifications/initialized";
+
+            std::string initDoneStr = initDone.dump() + "\n";
+            ssize_t w2 = write(write_fd, initDoneStr.c_str(), initDoneStr.size());
+            (void)w2;
+            LOG_INFO << "[McpClientManager] Sent notifications/initialized";
+        }
+
         // 全双工 StdioClient（pipe + fork）
         struct StdioClient : McpClient
         {
