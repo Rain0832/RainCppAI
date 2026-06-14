@@ -44,8 +44,6 @@ public:
     /// 从 LLM 响应中提取 tool_calls（OpenAI 原生 Function Calling）
     /// @return 工具调用列表，无调用时返回空 vector
     virtual std::vector<ToolCallInfo> parseToolCalls(const json& response) const = 0;
-
-    bool isMCPModel = false;
 };
 
 class AliyunStrategy : public AIStrategy
@@ -56,7 +54,6 @@ public:
         const char* key = std::getenv("DASHSCOPE_API_KEY");
         if (key)
             api_key_ = key;
-        isMCPModel = false;
     }
 
     std::string getApiUrl() const override;
@@ -80,7 +77,6 @@ public:
         const char* key = std::getenv("DOUBAO_API_KEY");
         if (key)
             api_key_ = key;
-        isMCPModel = false;
     }
 
     std::string getApiUrl() const override;
@@ -109,7 +105,6 @@ public:
         const char* rid = std::getenv("Knowledge_Base_ID");
         if (rid)
             rag_id_ = rid;
-        isMCPModel = false;
     }
 
     std::string getApiUrl() const override;
@@ -126,28 +121,4 @@ public:
 private:
     std::string api_key_;
     std::string rag_id_;
-};
-
-class AliyunMcpStrategy : public AIStrategy
-{
-public:
-    AliyunMcpStrategy()
-    {
-        const char* key = std::getenv("DASHSCOPE_API_KEY");
-        if (key)
-            api_key_ = key;
-        isMCPModel = true;
-    }
-
-    std::string getApiUrl() const override;
-    std::string getApiKey() const override;
-    void setApiKey(const std::string& key) override { api_key_ = key; }
-    std::string getModel() const override;
-
-    json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
-    std::string parseResponse(const json& response) const override;
-    std::vector<ToolCallInfo> parseToolCalls(const json& response) const override;
-
-private:
-    std::string api_key_;
 };
