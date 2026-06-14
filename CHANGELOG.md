@@ -201,3 +201,17 @@
 - 握手轮询 read 缓冲区行拼接 + JSON 解析，5 秒超时（500×10ms）
 - 握手失败路径：`LOG_ERROR` + `close(fd)` + `kill(SIGTERM)` + `waitpid` 回收子进程
 - 消除 2 处 `write()` 返回值未检查警告
+
+---
+
+### v2.1
+> **前端解耦 & 流式统一**
+
+##### v2.1.0 — 前端工程化解耦与非流式 API 彻底净化
+- `web/AI.html` 大单体拆分：882 行 → 56 行 DOM 骨架 + `css/style.css` (CSS 变量+暗色主题) + `js/api.js` (网络层) + `js/ui.js` (UI 渲染层)
+- 新建 `StaticFileHandler`：基于 Router 正则匹配的通用静态文件服务，支持 MIME 映射（text/css, application/javascript, application/json, image/*, font/*）
+- ChatSseHandler 增强：不传 sessionId 时后端自动创建并通过 SSE 回传 `{"sessionId":"..."}`
+- **【破坏性】删除** `AIHelper::chat()` 非流式方法，删除 `ChatSendHandler` 和 `ChatCreateAndSendHandler`（移除路由 `/chat/send` 和 `/chat/send-new-session`）
+- `/chat/send-stream` 成为唯一 AI 对话入口，前端 regerate() 和新会话创建统一走 SSE
+- 路径安全校验：拒绝 `..` 目录穿越
+- 更新 README API 表、各模块 TECHDOC 文档同步至当前态

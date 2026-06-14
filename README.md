@@ -119,12 +119,14 @@ export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 | POST | `/user/logout` | ✓ | 登出 |
 | GET | `/menu` | ✓ | 功能菜单 |
 | GET | `/chat` | ✓ | 聊天页 |
-| POST | `/chat/send` | ✓ | 发送消息（异步 AI） |
-| POST | `/chat/send-new-session` | ✓ | 新建会话并发送 |
-| POST | `/chat/send-stream` | ✓ | SSE 流式发送 |
+| POST | `/chat/send-stream` | ✓ | SSE 流式发送（唯一对话入口，支持自动创建会话） |
 | GET | `/chat/sessions` | ✓ | 会话列表 |
 | POST | `/chat/history` | ✓ | 会话历史 |
 | POST | `/chat/tts` | ✓ | 语音合成 |
+| POST | `/chat/update-title` | ✓ | 更新会话标题 |
+| GET | `/css/*` | ✗ | 静态 CSS 资源 |
+| GET | `/js/*` | ✗ | 静态 JS 资源 |
+| GET | `/assets/*` | ✗ | 静态图片 / 字体资源 |
 | GET | `/upload` | ✓ | 图像识别页 |
 | POST | `/upload/send` | ✓ | 提交识别 |
 | POST | `/mcp` | ✗ | MCP JSON-RPC 2.0 |
