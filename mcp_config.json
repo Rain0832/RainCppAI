@@ -1,33 +1,10 @@
 {
   "mcpServers": {
-    "local_builtin": {
-      "transport": "builtin",
-      "tools": [
-        {
-          "name": "get_weather",
-          "description": "获取指定城市的实时天气信息",
-          "parameters": {
-            "type": "object",
-            "properties": {
-              "city": {
-                "type": "string",
-                "description": "城市名称，如北京、上海、广州"
-              }
-            },
-            "required": [
-              "city"
-            ]
-          }
-        },
-        {
-          "name": "get_time",
-          "description": "获取当前服务器时间",
-          "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-          }
-        }
+    "weather_agent": {
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "/root/RainCppAI/mcp_servers/weather_server.py"
       ]
     }
   }
