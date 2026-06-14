@@ -11,13 +11,13 @@
 
 ---
 
-# v1.0.0
+# v1
 
 > 初始版本
 
-### v1.0.0 — MVP
+### v1.0
 
-##### v1.0.0 (2026-04)
+##### v1.0.0 — MVP
 - 自研 HTTP 框架（muduo Reactor）
 - 多模型 LLM（Qwen / Doubao / RAG / MCP）
 - 图像识别 + 语音合成
@@ -25,52 +25,40 @@
 
 ---
 
-# v1.1.0
-
+### v1.1
 > 动态 API Key
 
-### v1.1.0 — 前端重构 + Runtime Key
-
-##### v1.1.0 (2026-04)
+##### v1.1.0 — 前端重构 + Runtime Key
 - `AIStrategy::setApiKey()` 运行时注入
 - 前端重构：明暗主题、打字机效果、API Key 面板
 - 敏感信息不入仓库
 
 ---
 
-# v1.2.0
-
+### v1.2
 > 读写锁 + LRU
 
-### v1.2.0 — shared_mutex & LRU
-
-##### v1.2.0 (2026-04)
+##### v1.2.0 — shared_mutex & LRU
 - `std::mutex` → `std::shared_mutex`（读写锁）
 - LRU 淘汰策略（`list` + `unordered_map`，O(1)）
 - 最大 500 会话内存上限
 
 ---
 
-# v1.3.0
-
+### v1.3
 > 异步线程池
 
-### v1.3.0 — ThreadPool
-
-##### v1.3.0 (2026-04)
+##### v1.3.0 — ThreadPool
 - 通用 `ThreadPool`（std::thread + queue + condition_variable）
 - `HttpResponse` deferred 异步模式
 - AI 调用提交到 8 线程池，IO 线程零阻塞
 
 ---
 
-# v1.4.0
-
+### v1.4
 > Phase 1 — 并发 Bug 修复（6 项）
 
-### v1.4.0 — 并发修复
-
-##### v1.4.0 (2026-04)
+##### v1.4.0 — 并发修复
 - `msgMutex_` 保护 `messages_`（原无锁）
 - `Message` 结构体 + 显式 `role` 字段（替代奇偶判断）
 - `atomic<bool> processing_` 串行化并发请求
@@ -80,13 +68,10 @@
 
 ---
 
-# v1.5.0
-
+### v1.5
 > Phase 2 — 数据库表结构重设计
 
-### v1.5.0 — 三高表结构
-
-##### v1.5.0 (2026-04)
+##### v1.5.0 — 三高表结构
 - 新增 `sessions` 表（会话元数据、软删除、毫秒时间戳）
 - 新增 `messages` 表（自增主键 + 显式 `role` ENUM，替代奇偶判断）
 - 新增 `user_api_keys` 表（`(user_id, provider)` 唯一索引）
@@ -95,45 +80,31 @@
 
 ---
 
-# v1.6.0
-
+### v1.6
 > SSE 流式输出 + 标准 MCP Server
 
-### v1.6.0 — SSE & MCP
-
-##### v1.6.0 (2026-04)
+##### v1.6.0 — SSE & MCP
 - `AIHelper::chatStream()` — curl WRITEFUNCTION 逐 token 实时回调
 - `ChatSseHandler` — `POST /chat/send-stream`，SSE 握手 + 流式回写
 - `McpServer` — 标准 JSON-RPC 2.0，`tools/list` + `tools/call`
 - `McpHandler` — `POST /mcp`，兼容 Claude Desktop / Cursor
 
-##### v1.6.1 (2026-04)
+##### v1.6.1
 - chatStream 支持 MCP 模式
 - 豆包 API 端点 ID 用户可配
 - ChatHistoryHandler 内存 miss 时 MySQL fallback
 - get_weather 超时 + 降级
 
----
-
-# v2.0.1
-
-> **代码格式化标准化** — 引入 Clang-Format + 全量格式化
-
-### v2.0.1 — 代码格式化
-
-##### v2.0.1 (2026-06)
-- `.clang-format`：新增 Clang-Format 配置文件，对齐 `DEVELOP_STANDARD.md` 规范
-- 全项目 `.cpp` / `.h` 文件执行 `clang-format -i` 统一格式化
 
 ---
 
-# v2.0.0
+# v2
 
+
+### v2.0
 > **架构重构** — 四模块拆分 + 代码规范标准化
 
-### v2.0.0 — 项目结构重组
-
-##### v2.0.0 (2026-06)
+##### v2.0.0 — 项目结构重组
 - **架构**：四模块拆分 — HttpServer（网络框架）、AIServerCore（业务层）、AIEngine（AI 工具库）、web（前端资源）
 - **规范**：新增 `DEVELOP_STANDARD.md`，统一命名风格（`snake_case_` 成员、`http::` / `ai::` / `chat::` 命名空间）
 - **文档**：`README.md` 重写、`CHANGELOG.md` 重新设计为三级递进格式、`TODO.md` 四象限优先级
@@ -142,13 +113,16 @@
 
 ---
 
-# v2.0.3
+##### v2.0.1 — 代码格式化
+- `.clang-format`：新增 Clang-Format 配置文件，对齐 `DEVELOP_STANDARD.md` 规范
+- 全项目 `.cpp` / `.h` 文件执行 `clang-format -i` 统一格式化
+
+---
+
+##### v2.0.3 — MCP 模块重构
 
 > **MCP 工具调用重构** — 原生 Function Calling 替代文本解析
 
-### v2.1.0 — MCP 模块重构
-
-##### v2.0.3 (2026-06)
 - `AIToolRegistry` 改为进程级单例，从 `mcp_config.json` 加载工具定义
 - `McpServer` 接入 `AIToolRegistry` 单例，移除独立实例
 - `AIStrategy` 增加 `parseToolCalls()` 方法，从 LLM 响应解析结构化 `tool_calls`
@@ -162,13 +136,10 @@
 
 ---
 
-# v2.0.4
+##### v2.0.4 - MCP 流式上线
 
 > **MCP 流式修复** — 流式 SSE 场景正式支持 Function Calling / MCP 工具调用
 
-### v2.1.2 — MCP 流式上线
-
-##### v2.0.4 (2026-06)
 - `AIToolRegistry::loadFromConfig` 在 `main.cpp` 启动时加载，修复 tools schema 未传 LLM 的问题
 - `StreamWriteCallback` 增量累积 `delta.tool_calls`（按 index 合并 id/name/arguments 片段）
 - `executeCurlStream` 流结束后构造完整 OpenAI JSON 响应，供 `chatStream` 解析 tool_calls
@@ -179,13 +150,10 @@
 
 ---
 
-# v2.0.5
+##### v2.0.5  — MCP 全量解耦 & 远端 SSE
 
 > **MCP 架构解耦** — 配置驱动路由 + McpClientManager 远端 SSE 支持
 
-### v2.0.5 — MCP 全量解耦 & 远端 SSE
-
-##### v2.0.5 (2026-06)
 - `mcp_config.json` 重构为 `mcpServers` 结构，废弃旧 `tools` 数组（保留旧格式兼容）
 - `AIToolRegistry::loadFromConfig` 移除硬编码 `if (name == "get_weather")` 分支，改为 `builtinMap` 查表 + `transport` 分发
 - `AIToolRegistry::invoke` 降级路由：本地未命中 → 转发 `McpClientManager::callTool()`
@@ -198,13 +166,10 @@
 
 ---
 
-# v2.0.6
+##### v2.0.6 — 纯血 MCP & 热插拔
 
 > **纯血 MCP 重构** — C++ 引擎大清洗，Python 微服务接管工具实现
 
-### v2.0.6 — 纯血 MCP & 热插拔
-
-##### v2.0.6 (2026-06)
 - 新建 `mcp_servers/weather_server.py`：Python FastMCP 天气服务，替代 C++ getWeather
 - `mcp_config.json` 纯血化：移除 builtin，全部指向外部 stdio/sse MCP Server
 - `AIToolRegistry` 极简化：删除 getWeather/getTime/builtinMap/registerTool/hasTool，仅作为 McpClientManager 薄层代理
