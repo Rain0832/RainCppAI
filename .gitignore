@@ -6,4 +6,7 @@
 build/
 docs/
 .clang-format
+*.db
+*.sqlite
+.env
 plan.md

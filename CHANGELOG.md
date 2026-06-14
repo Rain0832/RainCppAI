@@ -215,3 +215,12 @@
 - `/chat/send-stream` 成为唯一 AI 对话入口，前端 regerate() 和新会话创建统一走 SSE
 - 路径安全校验：拒绝 `..` 目录穿越
 - 更新 README API 表、各模块 TECHDOC 文档同步至当前态
+
+##### v2.1.1 — 全栈沉浸式交互重构 & 全页面 CSS/JS 解耦
+- `web/entry.html` / `menu.html` / `upload.html` / `NotFound.html` 内联 CSS/JS 暴力拆分为独立文件
+- 登录成功路由短路：`/menu` → 直接进入 `/chat`（沉浸式"登录即聊天"体验）
+- AI.html ChatGPT 式布局重构：Avatar 右上角下拉菜单（API Key 设置 + 退出登录）、模型选择移至输入框上方
+- 删除「同步历史」按钮，页面加载自动获取会话列表并激活最近会话
+- 前端模型列表去重：移除"百炼 MCP"冗余选项
+- 后端新增 `ApiKeyHandler`：`POST /api/user/apikey`，API Key 持久化到 MySQL `user_api_keys` 表
+- `.gitignore` 加固：追加 `*.sqlite`、`.env`
