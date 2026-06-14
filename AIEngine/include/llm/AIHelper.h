@@ -12,7 +12,6 @@
 
 #include "3rdparty/JsonUtil.h"
 #include "HttpServer/include/utils/MysqlUtil.h"
-#include "common/AIConfig.h"
 #include "common/Message.h"
 #include "llm/AIFactory.h"
 #include "mcp/AIToolRegistry.h"
