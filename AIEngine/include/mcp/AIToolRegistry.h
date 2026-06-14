@@ -1,48 +1,36 @@
 #pragma once
-#include <curl/curl.h>
 
-#include <ctime>
-#include <functional>
-#include <iostream>
 #include <mutex>
-#include <stdexcept>
 #include <string>
-#include <unordered_map>
 
 #include "3rdparty/JsonUtil.h"
 
+/**
+ * @brief 纯血 MCP 工具注册表 — 薄层代理
+ *
+ * v2.0.6 起，所有工具调用均通过 McpClientManager 路由到外部 MCP Server。
+ * AIToolRegistry 仅作为 McpClientManager 的薄层代理，不再持有任何 C++ 工具实现。
+ */
 class AIToolRegistry
 {
 public:
-    using ToolFunc = std::function<json(const json&)>;
-
     /// 进程级单例
     static AIToolRegistry& instance();
 
-    /// 从 mcp_config.json 加载工具定义并自动注册内置实现
+    /// 从 mcp_config.json 加载 mcpServers，委托给 McpClientManager
     void loadFromConfig(const std::string& configPath);
 
-    /// 手动注册工具（供 McpServer / 动态加载使用）
-    void registerTool(const std::string& name, ToolFunc func);
-
-    /// 调用工具：name → func(args)
+    /// 调用工具 → 直接转发 McpClientManager
     json invoke(const std::string& name, const json& args) const;
-
-    bool hasTool(const std::string& name) const;
 
     /**
      * @brief 返回 OpenAI 兼容的 tools[] 数组（用于 Function Calling）
      *
-     * 融合本地内置工具 + McpClientManager 远端工具 schema
+     * 直接委托 McpClientManager::discoverAllTools()，零本地缓存。
      */
     json getToolsSchema() const;
 
-    /**
-     * @brief 设置 McpClientManager 引用（Phase 3 注入）
-     *
-     * 由 main.cpp 在 McpClientManager 初始化后调用，
-     * 使 invoke() / getToolsSchema() 可路由到远端工具。
-     */
+    /// 设置 McpClientManager 引用
     void setMcpClientManager(class McpClientManager* mgr);
 
 private:
@@ -50,16 +38,6 @@ private:
     AIToolRegistry(const AIToolRegistry&) = delete;
     AIToolRegistry& operator=(const AIToolRegistry&) = delete;
 
-    std::unordered_map<std::string, ToolFunc> tools_;
     mutable std::mutex mutex_;
-
-    /// 工具参数 schema（从 config 读取，供 getToolsSchema 用）
-    std::vector<json> toolSchemas_;
-
-    /// McpClientManager 指针（Phase 3 注入，nullptr = 未注入）
     class McpClientManager* mcpManager_ = nullptr;
-
-    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output);
-    static json getWeather(const json& args);
-    static json getTime(const json& args);
 };

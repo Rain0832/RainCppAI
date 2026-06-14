@@ -34,14 +34,6 @@ public:
      */
     std::string handleRequest(const std::string& requestBody);
 
-    /**
-     * @brief 注册额外工具（工具名 + 描述 + 参数 schema + 执行函数）
-     *
-     * 该方法同时向 AIToolRegistry 单例和本地的 toolMetas_ 注册
-     */
-    void registerTool(const std::string& name, const std::string& description, const json& inputSchema,
-                      AIToolRegistry::ToolFunc func);
-
 private:
     json handleToolsList(const json& params);
     json handleToolsCall(const json& params);

@@ -6,14 +6,6 @@ McpServer::McpServer()
     syncMetasFromRegistry();
 }
 
-void McpServer::registerTool(const std::string& name, const std::string& description, const json& inputSchema,
-                             AIToolRegistry::ToolFunc func)
-{
-    // 同时向单例和本地 toolMetas_ 注册
-    AIToolRegistry::instance().registerTool(name, std::move(func));
-    toolMetas_.push_back({name, description, inputSchema});
-}
-
 void McpServer::syncMetasFromRegistry()
 {
     toolMetas_.clear();
