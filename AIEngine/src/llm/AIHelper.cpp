@@ -24,7 +24,7 @@ void AIHelper::addMessage(int userId, const std::string& userName, bool is_user,
 
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        messages_.push_back({is_user ? "user" : "assistant", userInput, ms});
+        messages_.push_back({is_user ? "user" : "assistant", userInput, "", ms});
     }
     pushMessageToMysql(userId, userName, is_user, userInput, ms, sessionId);
 }
@@ -33,7 +33,7 @@ void AIHelper::addMessage(int userId, const std::string& userName, bool is_user,
 void AIHelper::restoreMessage(const std::string& content, long long ms, const std::string& role)
 {
     std::lock_guard<std::mutex> lock(msgMutex_);
-    messages_.push_back({role, content, ms});
+    messages_.push_back({role, content, "", ms});
 }
 
 // ─── 获取历史副本（线程安全）────────────────────────────────────────
@@ -66,15 +66,25 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
         strategy->setRagId(ragId);
+    if (!endpointId.empty())
+        strategy->setEndpointId(endpointId);
     if (strategy->getApiKey().empty())
     {
         return "[错误] 未配置 API Key，请在个人中心设置对应模型的 API Key";
     }
 
-    if (!strategy->isMCPModel)
-    {
-        addMessage(userId, userName, true, userQuestion, sessionId);
+    // 记录用户消息到历史
+    addMessage(userId, userName, true, userQuestion, sessionId);
 
+    // 获取工具 schema（如果注册了工具）
+    auto& registry = AIToolRegistry::instance();
+    json toolsSchema = registry.getToolsSchema();
+
+    // 最大递归深度（防止工具调用循环超过 5 次）
+    const int MAX_TOOL_ROUNDS = 5;
+
+    for (int round = 0; round < MAX_TOOL_ROUNDS; ++round)
+    {
         // 持锁拷贝快照，然后解锁，避免 curl 期间长时间持锁
         std::vector<Message> snapshot;
         {
@@ -82,69 +92,75 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
             snapshot = messages_;
         }
 
-        json payload = strategy->buildRequest(snapshot);
+        // 构建请求 payload（★ 真正传入 tools 参数）
+        json payload = strategy->buildRequest(snapshot, toolsSchema);
 
         json response = executeCurl(payload);
-        std::string answer = strategy->parseResponse(response);
-        addMessage(userId, userName, false, answer, sessionId);
-        return answer.empty() ? "[Error] 无法解析响应" : answer;
+
+        // 检查 API 错误
+        if (response.contains("error"))
+        {
+            std::string errMsg = response["error"].value("message", "API error");
+            addMessage(userId, userName, false, "[API 错误] " + errMsg, sessionId);
+            return "[API 错误] " + errMsg;
+        }
+
+        // 解析 tool_calls
+        auto toolCalls = strategy->parseToolCalls(response);
+
+        if (toolCalls.empty())
+        {
+            // 无工具调用：提取文本回复并持久化
+            std::string answer = strategy->parseResponse(response);
+            if (answer.empty())
+                answer = "[Error] 无法解析响应或响应为空";
+            addMessage(userId, userName, false, answer, sessionId);
+            return answer;
+        }
+
+        // ── 有工具调用：将 assistant 回复（含 tool_calls）加入历史 ──
+        {
+            std::lock_guard<std::mutex> lock(msgMutex_);
+            // 保存原始 tool_calls JSON 以便后续 messagesToJsonArray 能重建
+            json tcArr = json::array();
+            for (auto& tc : toolCalls)
+            {
+                json obj;
+                obj["id"] = tc.id;
+                obj["type"] = "function";
+                obj["function"]["name"] = tc.name;
+                obj["function"]["arguments"] = tc.arguments.dump();
+                tcArr.push_back(std::move(obj));
+            }
+            messages_.push_back({"assistant", tcArr.dump(), "tool_calls", 0});
+        }
+
+        // ── 执行所有工具并加入历史 ──
+        for (auto& tc : toolCalls)
+        {
+            json toolResult;
+            try
+            {
+                toolResult = registry.invoke(tc.name, tc.arguments);
+            }
+            catch (const std::exception& e)
+            {
+                toolResult = json {{"error", std::string(e.what())}};
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(msgMutex_);
+                messages_.push_back({"tool", toolResult.dump(), tc.id, 0});
+            }
+        }
+
+        // 继续循环，发起第二次请求（带 tool 结果）
     }
 
-    // ─── MCP 两段式推理 ───────────────────────────────────────────
-    AIConfig config;
-    config.loadFromFile("../web/config.json");
-    std::string tempPrompt = config.buildPrompt(userQuestion);
-
-    // 第一次调用：意图识别（临时追加 prompt，不持久化）
-    std::vector<Message> firstMsgs;
-    {
-        std::lock_guard<std::mutex> lock(msgMutex_);
-        firstMsgs = messages_;
-    }
-    firstMsgs.push_back({"system", tempPrompt, 0});
-
-    json firstResp = executeCurl(strategy->buildRequest(firstMsgs));
-    std::string aiResult = strategy->parseResponse(firstResp);
-    AIToolCall call = config.parseAIResponse(aiResult);
-
-    // 情况1：不调用工具
-    if (!call.isToolCall)
-    {
-        addMessage(userId, userName, true, userQuestion, sessionId);
-        addMessage(userId, userName, false, aiResult, sessionId);
-        return aiResult;
-    }
-
-    // 情况2：调用工具
-    json toolResult;
-    AIToolRegistry registry;
-    try
-    {
-        toolResult = registry.invoke(call.toolName, call.args);
-    }
-    catch (const std::exception& e)
-    {
-        std::string err = "[工具调用失败] " + std::string(e.what());
-        addMessage(userId, userName, true, userQuestion, sessionId);
-        addMessage(userId, userName, false, err, sessionId);
-        return err;
-    }
-
-    // 第二次调用：综合工具结果
-    std::string secondPrompt = config.buildToolResultPrompt(userQuestion, call.toolName, call.args, toolResult);
-    std::vector<Message> secondMsgs;
-    {
-        std::lock_guard<std::mutex> lock(msgMutex_);
-        secondMsgs = messages_;
-    }
-    secondMsgs.push_back({"system", secondPrompt, 0});
-
-    json secondResp = executeCurl(strategy->buildRequest(secondMsgs));
-    std::string finalAnswer = strategy->parseResponse(secondResp);
-
-    addMessage(userId, userName, true, userQuestion, sessionId);
-    addMessage(userId, userName, false, finalAnswer, sessionId);
-    return finalAnswer;
+    // 超出最大轮次
+    std::string msg = "[提示] 工具调用次数过多，请简化您的请求";
+    addMessage(userId, userName, false, msg, sessionId);
+    return msg;
 }
 
 json AIHelper::request(const json& payload)
@@ -180,24 +196,30 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         return "";
     }
 
-    // 记录用户消息到内存（不调用 addMessage，避免重复 push_back；后面统一处理）
+    // 记录用户消息到内存
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
                       .count();
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        messages_.push_back({"user", userQuestion, ms});
+        messages_.push_back({"user", userQuestion, "", ms});
     }
     pushMessageToMysql(userId, userName, true, userQuestion, ms, sessionId);
 
-    // 构建请求 payload，加 stream=true
+    // 获取工具 schema
+    auto& registry = AIToolRegistry::instance();
+    json toolsSchema = registry.getToolsSchema();
+
+    // 构建请求 payload
     std::vector<Message> snapshot;
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
         snapshot = messages_;
     }
-    json payload = strategy->buildRequest(snapshot);
-    payload["stream"] = true;  // 启用 OpenAI 兼容流式接口
+    json payload = strategy->buildRequest(snapshot, toolsSchema);
+    payload["stream"] = true;
 
+    // ★ 目前流式模式暂不支持工具调用：流式请求后不处理 tool_calls
+    // TODO: Commit 5 实现流式 tool_calls 处理
     std::string fullAnswer = executeCurlStream(payload, onChunk);
 
     // 将完整回复加入历史
@@ -206,7 +228,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                     .count();
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        messages_.push_back({"assistant", fullAnswer, ms2});
+        messages_.push_back({"assistant", fullAnswer, "", ms2});
     }
     pushMessageToMysql(userId, userName, false, fullAnswer, ms2, sessionId);
 
@@ -248,7 +270,7 @@ size_t AIHelper::StreamWriteCallback(void* contents, size_t size, size_t nmemb, 
     size_t total = size * nmemb;
     auto* ctx = static_cast<StreamContext*>(userp);
     if (ctx->aborted)
-        return 0;  // 返回 0 让 curl 中止
+        return 0;
 
     ctx->buffer.append(static_cast<char*>(contents), total);
 
@@ -305,7 +327,7 @@ size_t AIHelper::StreamWriteCallback(void* contents, size_t size, size_t nmemb, 
             }
         }
     }
-    buf = buf.substr(pos);  // 保留未处理的数据
+    buf = buf.substr(pos);
     return total;
 }
 

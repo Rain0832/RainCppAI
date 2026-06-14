@@ -11,7 +11,22 @@ static json messagesToJsonArray(const std::vector<Message>& messages)
     {
         json msg;
         msg["role"] = m.role;
-        msg["content"] = m.content;
+        // role="tool" 的消息内容是 tool 执行结果
+        if (m.role == "tool")
+        {
+            msg["content"] = m.content;
+            msg["tool_call_id"] = m.tool_call_id;
+        }
+        // role="assistant" 且携带 tool_call_id 表示这是一条带 tool_calls 的助理回复
+        else if (m.role == "assistant" && !m.tool_call_id.empty())
+        {
+            msg["content"] = nullptr;                    // OpenAI 要求 content=null
+            msg["tool_calls"] = json::parse(m.content);  // 存储为 JSON 数组
+        }
+        else
+        {
+            msg["content"] = m.content;
+        }
         arr.push_back(msg);
     }
     return arr;
