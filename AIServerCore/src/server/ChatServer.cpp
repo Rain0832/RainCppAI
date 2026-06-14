@@ -5,19 +5,18 @@
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
-#include "controller/ChatCreateAndSendHandler.h"
 #include "controller/ChatEntryHandler.h"
 #include "controller/ChatHandler.h"
 #include "controller/ChatHistoryHandler.h"
 #include "controller/ChatLoginHandler.h"
 #include "controller/ChatLogoutHandler.h"
 #include "controller/ChatRegisterHandler.h"
-#include "controller/ChatSendHandler.h"
 #include "controller/ChatSessionsHandler.h"
 #include "controller/ChatSpeechHandler.h"
 #include "controller/ChatSseHandler.h"
 #include "controller/ChatUpdateTitleHandler.h"
 #include "controller/McpHandler.h"
+#include "controller/StaticFileHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "http/HttpServer.h"
@@ -200,9 +199,7 @@ void ChatServer::initializeRouter()
 
     // 聊天功能路由
     httpServer_.Get("/chat", std::make_shared<ChatHandler>(this));
-    httpServer_.Post("/chat/send", std::make_shared<ChatSendHandler>(this));
-    httpServer_.Post("/chat/send-new-session", std::make_shared<ChatCreateAndSendHandler>(this));
-    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this));  // SSE 流式
+    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this));  // SSE 流式（唯一对话入口）
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
@@ -212,6 +209,12 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
     httpServer_.Get("/upload", std::make_shared<AIUploadHandler>(this));
     httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
+
+    // 静态文件路由（CSS / JS / 图片 / 字体 — 动态正则匹配）
+    auto staticFileHandler = std::make_shared<StaticFileHandler>(this);
+    httpServer_.addRoute(http::HttpRequest::kGet, "/css/:file", staticFileHandler);
+    httpServer_.addRoute(http::HttpRequest::kGet, "/js/:file", staticFileHandler);
+    httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
 
     // MCP Server 路由（标准 JSON-RPC 2.0）
     httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));

@@ -1,10 +1,10 @@
 #include "controller/ChatSseHandler.h"
 
+#include "common/AISessionIdGenerator.h"
 #include "llm/AIHelper.h"
 
 static void sendSseChunk(const muduo::net::TcpConnectionPtr& conn, const std::string& data)
 {
-    // SSE 帧格式：data: <payload>\n\n
     std::string frame = "data: " + data + "\n\n";
     conn->getLoop()->runInLoop(
             [conn, frame]()
@@ -61,6 +61,14 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
         }
 
+        // 新会话：前端不传 sessionId，后端自动生成
+        bool isNewSession = sessionId.empty();
+        if (isNewSession)
+        {
+            AISessionIdGenerator generator;
+            sessionId = generator.generate();
+        }
+
         // 获取/创建 AIHelperPtr（读写锁）
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
@@ -78,7 +86,14 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
             auto& us = server_->chatInformation[userId];
             if (!us.count(sessionId))
+            {
                 us.emplace(sessionId, std::make_shared<AIHelper>());
+                // 同步记录 sessionId 到列表中
+                {
+                    std::unique_lock<std::shared_mutex> slock(server_->rwMutexForSessionsId);
+                    server_->sessionsIdsMap[userId].push_back(sessionId);
+                }
+            }
             AIHelperPtr = us[sessionId];
             server_->touchSession(userId, sessionId);
             server_->evictIfNeeded();
@@ -105,17 +120,25 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
 
         // 提交流式 AI 调用到线程池
         server_->aiThreadPool_.submit(
-                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId]()
+                [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId,
+                 isNewSession]()
                 {
                     try
                     {
+                        // 新会话：先发送 sessionId 事件让前端知道
+                        if (isNewSession)
+                        {
+                            json sidEvent;
+                            sidEvent["sessionId"] = sessionId;
+                            sendSseChunk(conn, sidEvent.dump());
+                        }
+
                         AIHelperPtr->chatStream(
                                 userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
                                 [&conn](const std::string& token) -> bool
                                 {
                                     if (!conn->connected())
                                         return false;
-                                    // 将 token 包装为 JSON 发送
                                     json data;
                                     data["token"] = token;
                                     sendSseChunk(conn, data.dump());

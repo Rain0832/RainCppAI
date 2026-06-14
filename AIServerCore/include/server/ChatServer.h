@@ -49,14 +49,12 @@ class ChatRegisterHandler;
 class ChatLogoutHandler;
 class ChatHandler;
 class ChatEntryHandler;
-class ChatSendHandler;
 class ChatHistoryHandler;
 
 class AIMenuHandler;
 class AIUploadHandler;
 class AIUploadSendHandler;
 
-class ChatCreateAndSendHandler;
 class ChatSessionsHandler;
 class ChatSpeechHandler;
 class ChatSseHandler;
@@ -112,17 +110,16 @@ private:
     friend ChatLogoutHandler;
     friend class ChatHandler;
     friend class ChatEntryHandler;
-    friend class ChatSendHandler;
     friend class AIMenuHandler;
     friend class AIUploadHandler;
     friend class AIUploadSendHandler;
     friend class ChatHistoryHandler;
 
-    friend class ChatCreateAndSendHandler;
     friend class ChatSessionsHandler;
     friend class ChatSpeechHandler;
     friend class ChatSseHandler;
     friend class ChatUpdateTitleHandler;
+    friend class StaticFileHandler;
 
 private:
     /**
