@@ -4,6 +4,7 @@
 #include <muduo/base/Logging.h>
 
 #include <fstream>
+#include <set>
 #include <sstream>
 
 #include "JsonUtil.h"
@@ -22,6 +23,8 @@ McpClientManager& McpClientManager::instance()
 // ═══════════════════════════════════════════════════════════════
 void McpClientManager::loadFromConfig(const std::string& configPath)
 {
+    configPath_ = configPath;
+
     std::ifstream file(configPath);
     if (!file.is_open())
     {
@@ -40,12 +43,89 @@ void McpClientManager::loadFromConfig(const std::string& configPath)
 
     for (auto& [name, serverDef] : config["mcpServers"].items())
     {
-        std::string transport = serverDef.value("transport", "");
-        if (transport == "builtin")
-            continue;  // builtin 由 AIToolRegistry 直接处理
-
         registerServer(name, serverDef);
     }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 热插拔：对比新旧配置，增量启停 server
+// ═══════════════════════════════════════════════════════════════
+void McpClientManager::reloadFromConfig(const std::string& configPath)
+{
+    std::ifstream file(configPath);
+    if (!file.is_open())
+    {
+        LOG_WARN << "[McpClientManager] reload: Cannot open config: " << configPath;
+        return;
+    }
+
+    json config;
+    file >> config;
+
+    if (!config.contains("mcpServers"))
+    {
+        LOG_WARN << "[McpClientManager] reload: No 'mcpServers' section";
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // 收集新配置中的 server 名集合
+    std::set<std::string> newNames;
+    for (auto& [name, serverDef] : config["mcpServers"].items())
+    {
+        newNames.insert(name);
+    }
+
+    // 移除已不在配置中的 server
+    std::vector<std::string> toRemove;
+    for (auto& [name, idx] : serverToClient_)
+    {
+        if (!newNames.count(name))
+            toRemove.push_back(name);
+    }
+    for (auto& name : toRemove)
+        unregisterServer(name);
+
+    // 新增或更新 server
+    for (auto& [name, serverDef] : config["mcpServers"].items())
+    {
+        if (!serverToClient_.count(name))
+        {
+            // 解锁后调用 registerServer（registerServer 内部会加锁）
+            mutex_.unlock();
+            registerServer(name, serverDef);
+            mutex_.lock();
+        }
+    }
+
+    LOG_INFO << "[McpClientManager] reload complete, active servers: " << serverToClient_.size();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 停止指定 server 并清理缓存
+// ═══════════════════════════════════════════════════════════════
+void McpClientManager::unregisterServer(const std::string& name)
+{
+    auto it = serverToClient_.find(name);
+    if (it == serverToClient_.end())
+        return;
+
+    size_t idx = it->second;
+    LOG_INFO << "[McpClientManager] Shutting down server '" << name << "' (client[" << idx << "])";
+
+    clients_[idx]->stop();
+
+    // 清除该 server 关联的工具缓存
+    for (auto ti = toolToClient_.begin(); ti != toolToClient_.end();)
+    {
+        if (ti->second == idx)
+            ti = toolToClient_.erase(ti);
+        else
+            ++ti;
+    }
+
+    serverToClient_.erase(it);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -367,7 +447,10 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
     if (client)
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        size_t idx = clients_.size();
         clients_.push_back(client);
+        serverToClient_[name] = idx;
+        LOG_INFO << "[McpClientManager] Server '" << name << "' registered at client[" << idx << "]";
     }
 }
 
@@ -376,8 +459,18 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 // ═══════════════════════════════════════════════════════════════
 json McpClientManager::discoverAllTools()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // 热插拔：每次获取工具列表前先 reload、检测配置变更
+    {
+        std::string cfg;
+        {
+            std::lock_guard<std::mutex> lk(mutex_);
+            cfg = configPath_;
+        }
+        if (!cfg.empty())
+            reloadFromConfig(cfg);
+    }
 
+    std::lock_guard<std::mutex> lock(mutex_);
     json allTools = json::array();
     toolToClient_.clear();
 

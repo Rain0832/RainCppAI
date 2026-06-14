@@ -46,8 +46,11 @@ class McpClientManager
 public:
     static McpClientManager& instance();
 
-    /// 从 mcpServers 配置加载并启动所有 client
+    /// 从 mcpServers 配置加载并启动所有 client（仅首次）
     void loadFromConfig(const std::string& configPath);
+
+    /// 热插拔：对比新旧配置，增量启停 server
+    void reloadFromConfig(const std::string& configPath);
 
     /// 注册并启动单个 server
     void registerServer(const std::string& name, const json& serverDef);
@@ -63,9 +66,18 @@ private:
     McpClientManager(const McpClientManager&) = delete;
     McpClientManager& operator=(const McpClientManager&) = delete;
 
+    /// 停止指定 server 并清除其关联的工具缓存
+    void unregisterServer(const std::string& name);
+
     std::mutex mutex_;
     std::vector<std::shared_ptr<McpClient>> clients_;
 
     /// tool name → client index 缓存（加速 callTool 查找）
     std::unordered_map<std::string, size_t> toolToClient_;
+
+    /// server name → client index 映射
+    std::unordered_map<std::string, size_t> serverToClient_;
+
+    /// 上次加载的配置文件路径（供热插拔使用）
+    std::string configPath_;
 };
