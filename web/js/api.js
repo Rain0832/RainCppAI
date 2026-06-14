@@ -1,6 +1,6 @@
 // ==========================================================================
 // api.js — RainCppAI 前端网络层
-// 负责所有 HTTP 请求：SSE 流式对话、会话管理、TTS、历史记录
+// 负责所有 HTTP 请求：SSE 流式对话、会话管理、TTS、历史记录、登出、API Key
 // ==========================================================================
 
 // ---- helpers ----
@@ -11,7 +11,7 @@ export function getModelName() {
 }
 
 export function getApiKey(mt) {
-    const m = { '1': 'rain-key-dashscope', '2': 'rain-key-doubao', '3': 'rain-key-dashscope', '4': 'rain-key-dashscope' };
+    const m = { '1': 'rain-key-dashscope', '2': 'rain-key-doubao', '3': 'rain-key-dashscope' };
     return localStorage.getItem(m[mt] || '') || '';
 }
 
@@ -30,6 +30,51 @@ export function showToast(msg) {
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ---- 登出 ----
+
+export async function logout() {
+    const userId = sessionStorage.getItem('userId');
+    try {
+        await fetch('/user/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, type: 'manual', gameType: 0 })
+        });
+    } catch (_) { }
+    sessionStorage.clear();
+    window.location.href = '/entry';
+}
+
+// ---- API Key 管理 ----
+
+const KM = {
+    dashscope: 'rain-key-dashscope',
+    'rag-id': 'rain-key-rag-id',
+    doubao: 'rain-key-doubao',
+    'doubao-ep': 'rain-key-doubao-ep',
+    'baidu-id': 'rain-key-baidu-id',
+    'baidu-secret': 'rain-key-baidu-secret'
+};
+
+export function saveApiKey(n) {
+    const v = document.querySelector(`#key-${n}`).value.trim();
+    if (!v) { showToast('请输入有效的 Key'); return; }
+    localStorage.setItem(KM[n], v);
+    document.querySelector(`#key-${n}`).value = '';
+    showToast('已保存');
+    updateKeyStatus();
+}
+
+export function updateKeyStatus() {
+    Object.keys(KM).forEach(n => {
+        const el = document.querySelector(`#st-${n}`);
+        if (!el) return;
+        const set = !!localStorage.getItem(KM[n]);
+        el.textContent = set ? '已配置' : '未配置';
+        el.className = 'key-status ' + (set ? 'set' : 'unset');
+    });
 }
 
 // ---- 会话标题更新 ----
@@ -96,8 +141,10 @@ export async function fetchSessions(sessions, renderSessions) {
                 sessions[sid] = { name: s.name || `会话 ${sid.slice(0, 8)}`, messages: [] };
             });
             renderSessions();
+            return d.sessions;
         }
     } catch (e) { console.error(e); }
+    return null;
 }
 
 // ---- SSE 流式发送 ----
@@ -115,7 +162,7 @@ export async function sendWithSSE(question, modelType, apiKey, modelName, sessio
     const span = d.querySelector('.sseContent');
 
     let fullContent = '';
-    let resolvedSid = sessionId;  // 可能被后端的 sidEvent 覆盖
+    let resolvedSid = sessionId;
 
     try {
         const response = await fetch('/chat/send-stream', {
@@ -142,7 +189,6 @@ export async function sendWithSSE(question, modelType, apiKey, modelName, sessio
                 if (trimmed.startsWith('data: ')) {
                     try {
                         const payload = JSON.parse(trimmed.slice(6));
-                        // 新会话：后端先发送 sessionId 事件
                         if (payload.sessionId && !resolvedSid) {
                             resolvedSid = String(payload.sessionId);
                             sessions[resolvedSid] = {
@@ -167,7 +213,6 @@ export async function sendWithSSE(question, modelType, apiKey, modelName, sessio
         span.textContent = '无法连接到服务器';
     }
 
-    // 追加操作按钮
     const esc = fullContent.replace(/`/g, '\\`').replace(/\$/g, '\\$');
     const acts = document.createElement('div');
     acts.className = 'msg-actions';

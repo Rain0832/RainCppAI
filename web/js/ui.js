@@ -5,7 +5,7 @@
 
 import {
     getModelName, getApiKey, getRagId, getEndpointId,
-    showToast, summarizeTitle, playTTS,
+    showToast, summarizeTitle, playTTS, logout, saveApiKey, updateKeyStatus,
     fetchHistory, fetchSessions, sendWithSSE
 } from './api.js';
 
@@ -25,6 +25,7 @@ function $(s) { return document.querySelector(s); }
 window.__playTTS = playTTS;
 window.__deleteMsg = deleteMsg;
 window.__regenerate = regenerate;
+window.__saveKey = saveApiKey;
 
 // ---- 主题 ----
 
@@ -89,38 +90,6 @@ function showThinking() {
     $('#chatArea').scrollTop = $('#chatArea').scrollHeight;
 }
 
-function typewriterMsg(content, modelName) {
-    const tk = $('#thinkingMsg');
-    if (tk) tk.remove();
-    const d = document.createElement('div');
-    d.className = 'msg assistant';
-    const tag = modelName ? `<div class="model-tag">${modelName}</div>` : '';
-    d.innerHTML = tag + '<div class="msg-content"><span></span></div>';
-    $('#chatArea').appendChild(d);
-    const span = d.querySelector('.msg-content span');
-    return new Promise(resolve => {
-        let i = 0;
-        const speed = Math.max(8, Math.min(25, 1500 / content.length));
-        const timer = setInterval(() => {
-            i += Math.ceil(content.length / 150);
-            if (i > content.length) i = content.length;
-            span.innerHTML = DOMPurify.sanitize(marked.parse(content.slice(0, i)));
-            $('#chatArea').scrollTop = $('#chatArea').scrollHeight;
-            if (i >= content.length) {
-                clearInterval(timer);
-                const esc = content.replace(/`/g, '\\`').replace(/\$/g, '\\$');
-                const acts = document.createElement('div');
-                acts.className = 'msg-actions';
-                acts.innerHTML = `<button class="action-btn" onclick="window.__playTTS(\`${esc}\`)">🔊 朗读</button>`
-                    + `<button class="action-btn" onclick="window.__regenerate()">🔄 重新生成</button>`
-                    + `<button class="del-btn" onclick="window.__deleteMsg(this)">✕ 删除</button>`;
-                d.appendChild(acts);
-                resolve();
-            }
-        }, speed);
-    });
-}
-
 // ---- 删除消息 ----
 
 function deleteMsg(btn) {
@@ -145,7 +114,6 @@ async function regenerate() {
     const msgs = sessions[currentSessionId]?.messages;
     if (!msgs || msgs.length < 2) return;
 
-    // 移除最后一条 AI 回复（DOM + 内存）
     const allMsgs = [...document.querySelectorAll('#chatArea .msg')];
     const lastAiDom = allMsgs[allMsgs.length - 1];
     if (lastAiDom) lastAiDom.remove();
@@ -197,6 +165,7 @@ async function switchSession(id) {
 // ---- 事件绑定 ----
 
 function bindEvents() {
+    // 主题
     $('#themeToggle').onclick = () => {
         const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
@@ -204,6 +173,28 @@ function bindEvents() {
         $('#themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
     };
 
+    // Avatar 下拉菜单
+    $('#avatarBtn').onclick = e => {
+        e.stopPropagation();
+        $('#avatarMenu').classList.toggle('show');
+    };
+    document.addEventListener('click', () => $('#avatarMenu').classList.remove('show'));
+
+    // 退出登录
+    $('#ddLogout').onclick = () => logout();
+
+    // API Key 弹窗
+    $('#ddApiKey').onclick = () => {
+        $('#avatarMenu').classList.remove('show');
+        $('#apiKeyModal').classList.add('show');
+        updateKeyStatus();
+    };
+    $('#modalClose').onclick = () => $('#apiKeyModal').classList.remove('show');
+    $('#apiKeyModal').onclick = e => {
+        if (e.target === $('#apiKeyModal')) $('#apiKeyModal').classList.remove('show');
+    };
+
+    // 新建对话
     $('#newChatBtn').onclick = () => {
         currentSessionId = 'temp';
         tempSession = true;
@@ -217,6 +208,7 @@ function bindEvents() {
         $('#question').focus();
     };
 
+    // Textarea 自适应高度 + Enter 发送
     const ta = $('#question');
     ta.oninput = () => {
         ta.style.height = 'auto';
@@ -229,6 +221,7 @@ function bindEvents() {
         }
     };
 
+    // 发送消息
     $('#chatForm').onsubmit = async e => {
         e.preventDefault();
         const q = ta.value.trim();
@@ -252,7 +245,6 @@ function bindEvents() {
 
         try {
             if (tempSession) {
-                // 新建会话：直接走 SSE，后端自动创建 sessionId
                 const result = await sendWithSSE(q, mt, ak, mn, '', ragId, endpointId, sessions, appendMsg);
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
@@ -261,7 +253,6 @@ function bindEvents() {
                     summarizeTitle(result.sessionId, q, sessions, renderSessions);
                 }
             } else {
-                // 已有会话：使用 SSE 流式接口
                 if (!sessions[currentSessionId]) {
                     const tk = $('#thinkingMsg');
                     if (tk) tk.remove();
@@ -279,33 +270,6 @@ function bindEvents() {
         }
         $('#sendBtn').disabled = false;
     };
-
-    $('#syncBtn').onclick = async () => {
-        if (!currentSessionId || tempSession) {
-            showToast('请选择已有会话');
-            return;
-        }
-        try {
-            const r = await fetch('/chat/history', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: currentSessionId })
-            });
-            const d = await r.json();
-            if (d.success && Array.isArray(d.history)) {
-                sessions[currentSessionId].messages = [];
-                clearChat();
-                d.history.forEach((m, i) => {
-                    const role = m.is_user ? 'user' : 'assistant';
-                    appendMsg(role, m.content, null, i);
-                    sessions[currentSessionId].messages.push({ role, content: m.content });
-                });
-                showToast('同步完成');
-            }
-        } catch (e) {
-            showToast('同步失败');
-        }
-    };
 }
 
 // ---- 初始化 ----
@@ -313,5 +277,22 @@ function bindEvents() {
 (async () => {
     initTheme();
     bindEvents();
-    await fetchSessions(sessions, renderSessions);
+
+    // 自动加载会话列表
+    const result = await fetchSessions(sessions, renderSessions);
+    if (result && result.length > 0) {
+        // 自动激活第一个会话（最近使用的）
+        const firstSid = String(result[0].sessionId);
+        await switchSession(firstSid);
+    } else {
+        // 无会话：自动触发新建
+        currentSessionId = 'temp';
+        tempSession = true;
+        $('#chatForm').style.display = 'flex';
+        const hint = document.createElement('div');
+        hint.className = 'welcome-hint';
+        hint.innerHTML = '<span class="emoji">✨</span>输入你的第一条消息';
+        $('#chatArea').appendChild(hint);
+        $('#question').focus();
+    }
 })();

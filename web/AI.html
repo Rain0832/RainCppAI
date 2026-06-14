@@ -12,28 +12,77 @@
 
 <body>
     <div class="toast" id="toast"></div>
+
+    <!-- Avatar Dropdown Menu -->
+    <div class="dropdown-menu" id="avatarMenu">
+        <div class="dropdown-item" id="ddApiKey">⚙️ API Key 设置</div>
+        <div class="dropdown-item danger" id="ddLogout">🚪 退出登录</div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div class="modal-overlay" id="apiKeyModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>API Key 设置</h2><button class="modal-close" id="modalClose">✕</button>
+            </div>
+            <div class="key-section">
+                <label>阿里百炼 API Key <span class="key-status" id="st-dashscope"></span></label>
+                <div class="key-row"><input type="password" id="key-dashscope" placeholder="sk-xxxx...">
+                    <button class="key-save" onclick="window.__saveKey('dashscope')">保存</button>
+                </div>
+                <div class="key-hint">用于阿里百炼 / 百炼RAG 模型</div>
+            </div>
+            <div class="key-section">
+                <label>百炼 RAG 知识库 ID <span class="key-status" id="st-rag-id"></span></label>
+                <div class="key-row"><input type="text" id="key-rag-id" placeholder="9262z3h3py...">
+                    <button class="key-save" onclick="window.__saveKey('rag-id')">保存</button>
+                </div>
+                <div class="key-hint">在阿里云百炼控制台「知识库」页面获取 App ID</div>
+            </div>
+            <div class="key-section">
+                <label>豆包 API Key <span class="key-status" id="st-doubao"></span></label>
+                <div class="key-row"><input type="password" id="key-doubao" placeholder="sk-xxxx...">
+                    <button class="key-save" onclick="window.__saveKey('doubao')">保存</button>
+                </div>
+                <div class="key-hint">用于豆包（火山引擎）模型鉴权</div>
+            </div>
+            <div class="key-section">
+                <label>豆包 Endpoint ID <span class="key-status" id="st-doubao-ep"></span></label>
+                <div class="key-row"><input type="text" id="key-doubao-ep" placeholder="ep-xxxxx...">
+                    <button class="key-save" onclick="window.__saveKey('doubao-ep')">保存</button>
+                </div>
+                <div class="key-hint">在火山方舟控制台创建接入点后获取 ep-xxxxx</div>
+            </div>
+            <div class="key-section">
+                <label>百度语音 Client ID <span class="key-status" id="st-baidu-id"></span></label>
+                <div class="key-row"><input type="password" id="key-baidu-id" placeholder="Client ID">
+                    <button class="key-save" onclick="window.__saveKey('baidu-id')">保存</button>
+                </div>
+            </div>
+            <div class="key-section">
+                <label>百度语音 Client Secret <span class="key-status" id="st-baidu-secret"></span></label>
+                <div class="key-row"><input type="password" id="key-baidu-secret" placeholder="Client Secret">
+                    <button class="key-save" onclick="window.__saveKey('baidu-secret')">保存</button>
+                </div>
+                <div class="key-hint">用于语音合成 (TTS) 功能</div>
+            </div>
+        </div>
+    </div>
+
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>会话列表</h2>
             <button class="new-chat-btn" id="newChatBtn">+ 新建对话</button>
         </div>
         <div class="session-list" id="sessionList"></div>
-        <div class="sidebar-footer">
-            <button id="syncBtn">同步历史</button>
-            <button onclick="location.href='/menu'">返回主页</button>
-        </div>
     </div>
     <div class="main">
         <div class="topbar">
-            <a class="back-btn" href="/menu">← 返回</a>
-            <label>模型</label>
-            <select id="modelType">
-                <option value="1" selected>阿里百炼</option>
-                <option value="2">豆包</option>
-                <option value="3">百炼 RAG</option>
-                <option value="4">百炼 MCP</option>
-            </select>
-            <button class="theme-btn" id="themeToggle">☀️</button>
+            <h2 class="brand">Rain AI</h2>
+            <div class="topbar-right">
+                <button class="theme-btn" id="themeToggle">☀️</button>
+                <button class="avatar-btn" id="avatarBtn">👤</button>
+            </div>
         </div>
         <div class="chat-area" id="chatArea">
             <div class="welcome-hint" id="welcomeHint">
@@ -43,8 +92,17 @@
             </div>
         </div>
         <form class="input-area" id="chatForm" style="display:none">
-            <textarea id="question" placeholder="输入消息..." rows="1"></textarea>
-            <button type="submit" class="send-btn" id="sendBtn">发送</button>
+            <div class="input-top-row">
+                <select id="modelType">
+                    <option value="1" selected>阿里百炼</option>
+                    <option value="2">豆包</option>
+                    <option value="3">百炼 RAG</option>
+                </select>
+            </div>
+            <div class="input-bottom-row">
+                <textarea id="question" placeholder="输入消息..." rows="1"></textarea>
+                <button type="submit" class="send-btn" id="sendBtn">发送</button>
+            </div>
         </form>
     </div>
     <script type="module" src="/js/ui.js"></script>
