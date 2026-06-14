@@ -159,3 +159,20 @@
 - `web/config.json` 清空旧 `prompt_template` 和 `tools` 字段
 - 移除 `AIStrategy::isMCPModel` 标志和 `AliyunMcpStrategy` 类（合并入 `AliyunStrategy`）
 - 新增 `mcp_config.json`：标准 OpenAI tools schema 格式的工具配置文件
+
+---
+
+# v2.1.2
+
+> **MCP 流式修复** — 流式 SSE 场景正式支持 Function Calling / MCP 工具调用
+
+### v2.1.2 — MCP 流式上线
+
+##### v2.0.4 (2026-06)
+- `AIToolRegistry::loadFromConfig` 在 `main.cpp` 启动时加载，修复 tools schema 未传 LLM 的问题
+- `StreamWriteCallback` 增量累积 `delta.tool_calls`（按 index 合并 id/name/arguments 片段）
+- `executeCurlStream` 流结束后构造完整 OpenAI JSON 响应，供 `chatStream` 解析 tool_calls
+- `StreamContext` 新增 `std::map<int, json> toolCalls` 累积字段
+- MCP 工具调用增加 `LOG_INFO` 级别日志，调试信息 `LOG_DEBUG` 全部移除
+- 日志级别默认 `INFO`（原 `DEBUG`）
+- `HttpRequest.cpp` 补充 `#include <cassert>`

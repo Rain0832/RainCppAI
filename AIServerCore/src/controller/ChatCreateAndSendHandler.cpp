@@ -75,7 +75,7 @@ void ChatCreateAndSendHandler::handle(const http::HttpRequest& req, http::HttpRe
             server_->evictIfNeeded();
         }
 
-        // ★ 异步模式：提交 AI 调用到线程池
+        // 异步模式：提交 AI 调用到线程池
         resp->setDeferred(true);
         auto conn = resp->getConnection();
 

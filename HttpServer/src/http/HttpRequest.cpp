@@ -1,4 +1,6 @@
-#include "../../include/http/HttpRequest.h"
+#include "http/HttpRequest.h"
+
+#include <cassert>
 
 namespace http
 {

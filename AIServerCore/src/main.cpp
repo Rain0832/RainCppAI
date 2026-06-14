@@ -7,6 +7,7 @@
 #include <string>
 #include <thread>
 
+#include "mcp/AIToolRegistry.h"
 #include "server/ChatServer.h"
 
 const std::string RABBITMQ_HOST = "localhost";
@@ -40,11 +41,14 @@ int main(int argc, char* argv[])
             break;
         }
     }
-    muduo::Logger::setLogLevel(muduo::Logger::WARN);
+    muduo::Logger::setLogLevel(muduo::Logger::INFO);
     ChatServer server(port, serverName);
     server.setThreadNum(4);
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // 加载 MCP 工具配置（必须在 initChatMessage / 处理请求之前）
+    AIToolRegistry::instance().loadFromConfig("../mcp_config.json");
 
     server.initChatMessage();
 

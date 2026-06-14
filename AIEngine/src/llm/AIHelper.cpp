@@ -47,7 +47,7 @@ std::vector<Message> AIHelper::GetMessages() const
 std::string AIHelper::chat(int userId, std::string userName, std::string sessionId, std::string userQuestion,
                            std::string modelType, std::string apiKey, std::string ragId, std::string endpointId)
 {
-    // ★ 同一 session 并发保护：若上一条消息还在处理，立即拒绝
+    // 同一 session 并发保护：若上一条消息还在处理，立即拒绝
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true))
     {
@@ -79,7 +79,6 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
     // 获取工具 schema（如果注册了工具）
     auto& registry = AIToolRegistry::instance();
     json toolsSchema = registry.getToolsSchema();
-
     // 最大递归深度（防止工具调用循环超过 5 次）
     const int MAX_TOOL_ROUNDS = 5;
 
@@ -92,7 +91,7 @@ std::string AIHelper::chat(int userId, std::string userName, std::string session
             snapshot = messages_;
         }
 
-        // 构建请求 payload（★ 真正传入 tools 参数）
+        // 构建请求 payload（真正传入 tools 参数）
         json payload = strategy->buildRequest(snapshot, toolsSchema);
 
         json response = executeCurl(payload);
@@ -229,7 +228,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         json payload = strategy->buildRequest(snapshot, toolsSchema);
         payload["stream"] = true;
 
-        // ★ 流式请求：累积完整响应 + SSE 回调给前端
+        // 流式请求：累积完整响应 + SSE 回调给前端
         auto roundStreamCb = onChunk;  // 复用前端回调
         std::string roundResponse = executeCurlStream(payload, roundStreamCb);
 
@@ -279,6 +278,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
             // ── 执行所有工具并加入历史 ──
             for (auto& tc : toolCalls)
             {
+                LOG_INFO << "MCP tool call: " << tc.name << " args=" << tc.arguments.dump();
                 json toolResult;
                 try
                 {
@@ -345,7 +345,28 @@ std::string AIHelper::executeCurlStream(const json& payload, StreamCallback onCh
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
-    return ctx.fullContent;
+    // 流结束后，构造完整的 JSON 响应给 chatStream 解析
+    json fakeResponse;
+    fakeResponse["choices"] = json::array({json::object()});
+    auto& msg = fakeResponse["choices"][0]["message"];
+    msg["role"] = "assistant";
+    if (ctx.fullContent.empty())
+        msg["content"] = nullptr;
+    else
+        msg["content"] = ctx.fullContent;
+
+    // 将累积的 tool_calls map 转成 json 数组
+    if (!ctx.toolCalls.empty())
+    {
+        json tcArr = json::array();
+        for (auto& kv : ctx.toolCalls)
+        {
+            tcArr.push_back(kv.second);
+        }
+        msg["tool_calls"] = std::move(tcArr);
+    }
+
+    return fakeResponse.dump();
 }
 
 // ─── SSE 流式回调 ────────────────────────────────────────────────────
@@ -385,24 +406,62 @@ size_t AIHelper::StreamWriteCallback(void* contents, size_t size, size_t nmemb, 
             try
             {
                 json chunk = json::parse(jsonStr);
-                std::string token;
                 // OpenAI 兼容格式
                 if (chunk.contains("choices") && !chunk["choices"].empty())
                 {
                     auto& delta = chunk["choices"][0]["delta"];
+
+                    // 1) 累积文本 token
                     if (delta.contains("content") && !delta["content"].is_null())
                     {
-                        token = delta["content"].get<std::string>();
+                        std::string token = delta["content"].get<std::string>();
+                        if (!token.empty())
+                        {
+                            ctx->fullContent += token;
+                            if (!ctx->callback(token))
+                            {
+                                ctx->aborted = true;
+                                buf = buf.substr(pos);
+                                return 0;
+                            }
+                        }
                     }
-                }
-                if (!token.empty())
-                {
-                    ctx->fullContent += token;
-                    if (!ctx->callback(token))
+
+                    // 2) 累积 tool_calls 增量
+                    if (delta.contains("tool_calls") && delta["tool_calls"].is_array())
                     {
-                        ctx->aborted = true;
-                        buf = buf.substr(pos);
-                        return 0;
+                        for (const auto& tc : delta["tool_calls"])
+                        {
+                            int idx = tc.value("index", -1);
+                            if (idx < 0)
+                                continue;
+
+                            auto& merged = ctx->toolCalls[idx];
+                            // 首次出现：设置 index
+                            if (!merged.contains("index"))
+                                merged["index"] = idx;
+                            // 增量合并 id
+                            if (tc.contains("id") && !tc["id"].is_null())
+                                merged["id"] = tc["id"];
+                            // 增量合并 type
+                            if (tc.contains("type") && !tc["type"].is_null())
+                                merged["type"] = tc["type"];
+                            // 增量合并 function name + arguments 片段
+                            if (tc.contains("function"))
+                            {
+                                auto& fn = tc["function"];
+                                if (!merged.contains("function"))
+                                    merged["function"] = json::object();
+                                if (fn.contains("name") && !fn["name"].is_null())
+                                    merged["function"]["name"] = fn["name"];
+                                if (fn.contains("arguments"))
+                                {
+                                    std::string argsPiece = fn["arguments"].get<std::string>();
+                                    merged["function"]["arguments"] =
+                                            merged["function"].value("arguments", "") + argsPiece;
+                                }
+                            }
+                        }
                     }
                 }
             }

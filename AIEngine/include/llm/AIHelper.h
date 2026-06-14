@@ -4,6 +4,7 @@
 #include <atomic>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -77,8 +78,9 @@ private:
     /// SSE 流式回调的 userdata 结构
     struct StreamContext
     {
-        std::string buffer;       ///< 未处理的数据缓冲
-        std::string fullContent;  ///< 累积的完整内容（用于最终持久化）
+        std::string buffer;             ///< 未处理的数据缓冲
+        std::string fullContent;        ///< 累积的文本 token（拼成 choices[0].message.content）
+        std::map<int, json> toolCalls;  ///< 按 index 累积 tool_calls 增量（id/type/function.name/function.arguments）
         StreamCallback callback;
         bool aborted = false;
     };

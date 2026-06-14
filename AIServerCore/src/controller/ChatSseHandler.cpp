@@ -84,7 +84,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             server_->evictIfNeeded();
         }
 
-        // ★ 标记 deferred，发送 SSE 握手头
+        // 标记 deferred，发送 SSE 握手头
         resp->setDeferred(true);
         auto conn = resp->getConnection();
 

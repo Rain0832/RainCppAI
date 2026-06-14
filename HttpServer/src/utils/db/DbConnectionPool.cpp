@@ -58,7 +58,7 @@ std::shared_ptr<DbConnection> DbConnectionPool::getConnection()
     {
         std::unique_lock<std::mutex> lock(mutex_);
 
-        // ★ 等待超时 3 秒，防止高并发时线程池全部阻塞在此
+        // 等待超时 3 秒，防止高并发时线程池全部阻塞在此
         const auto timeout = std::chrono::seconds(3);
         bool acquired = cv_.wait_for(lock, timeout, [this] { return !connections_.empty(); });
 

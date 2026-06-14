@@ -1,5 +1,7 @@
 #include "mcp/AIToolRegistry.h"
 
+#include <JsonUtil.h>
+
 #include <fstream>
 #include <sstream>
 

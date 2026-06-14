@@ -89,7 +89,7 @@ void ChatSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
             }
         }
 
-        // ★ 异步模式：标记 deferred，提交 AI 调用到线程池
+        // 异步模式：标记 deferred，提交 AI 调用到线程池
         resp->setDeferred(true);
         auto conn = resp->getConnection();
 
