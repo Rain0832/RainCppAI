@@ -195,3 +195,21 @@
 - 新增 `McpSseClient`（libcurl GET SSE + POST JSON-RPC 2.0）
 - `main.cpp` 启动时初始化 McpClientManager 并注入 AIToolRegistry
 - `chatStream` / `StreamContext` 零修改保护
+
+---
+
+# v2.0.6
+
+> **纯血 MCP 重构** — C++ 引擎大清洗，Python 微服务接管工具实现
+
+### v2.0.6 — 纯血 MCP & 热插拔
+
+##### v2.0.6 (2026-06)
+- 新建 `mcp_servers/weather_server.py`：Python FastMCP 天气服务，替代 C++ getWeather
+- `mcp_config.json` 纯血化：移除 builtin，全部指向外部 stdio/sse MCP Server
+- `AIToolRegistry` 极简化：删除 getWeather/getTime/builtinMap/registerTool/hasTool，仅作为 McpClientManager 薄层代理
+- `McpServer` 移除 registerTool（ToolFunc 已不存在）
+- `McpClientManager` 新增 `reloadFromConfig`：增量对比启停 server，修改 config 无需重启 C++
+- `McpClientManager::discoverAllTools` 每次自动触发 reload + 工具发现
+- `McpClientManager::registerServer` 记录 server→client 映射，支持 unregisterServer 精确清理
+- `main.cpp` 通过 `AIToolRegistry::loadFromConfig` → 委托 `McpClientManager::registerServer` 启动子进程
