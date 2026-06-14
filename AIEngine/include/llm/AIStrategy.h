@@ -9,6 +9,14 @@
 #include "3rdparty/JsonUtil.h"
 #include "common/Message.h"
 
+/// OpenAI tool_calls 中的单个调用信息
+struct ToolCallInfo
+{
+    std::string id;    ///< tool_call_id，用于回传 role:"tool" 消息
+    std::string name;  ///< function.name
+    json arguments;    ///< function.arguments (已解析的 JSON 对象)
+};
+
 class AIStrategy
 {
 public:
@@ -30,7 +38,12 @@ public:
     // buildRequest: Message 向量 + 可选的 tools JSON
     virtual json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const = 0;
 
+    /// 从 LLM 响应中提取文本内容（兼容现有代码）
     virtual std::string parseResponse(const json& response) const = 0;
+
+    /// 从 LLM 响应中提取 tool_calls（OpenAI 原生 Function Calling）
+    /// @return 工具调用列表，无调用时返回空 vector
+    virtual std::vector<ToolCallInfo> parseToolCalls(const json& response) const = 0;
 
     bool isMCPModel = false;
 };
@@ -53,6 +66,7 @@ public:
 
     json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
+    std::vector<ToolCallInfo> parseToolCalls(const json& response) const override;
 
 private:
     std::string api_key_;
@@ -77,6 +91,7 @@ public:
 
     json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
+    std::vector<ToolCallInfo> parseToolCalls(const json& response) const override;
 
 private:
     std::string api_key_;
@@ -106,6 +121,7 @@ public:
 
     json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
+    std::vector<ToolCallInfo> parseToolCalls(const json& response) const override;
 
 private:
     std::string api_key_;
@@ -130,6 +146,7 @@ public:
 
     json buildRequest(const std::vector<Message>& messages, const json& tools = json::object()) const override;
     std::string parseResponse(const json& response) const override;
+    std::vector<ToolCallInfo> parseToolCalls(const json& response) const override;
 
 private:
     std::string api_key_;

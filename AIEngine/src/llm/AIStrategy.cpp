@@ -59,6 +59,37 @@ std::string AliyunStrategy::parseResponse(const json& response) const
     return {};
 }
 
+std::vector<ToolCallInfo> AliyunStrategy::parseToolCalls(const json& response) const
+{
+    std::vector<ToolCallInfo> result;
+    if (!response.contains("choices") || response["choices"].empty())
+        return result;
+    const auto& msg = response["choices"][0]["message"];
+    if (!msg.contains("tool_calls") || !msg["tool_calls"].is_array())
+        return result;
+    for (const auto& tc : msg["tool_calls"])
+    {
+        ToolCallInfo info;
+        info.id = tc.value("id", "");
+        if (tc.contains("function"))
+        {
+            info.name = tc["function"].value("name", "");
+            std::string argsStr = tc["function"].value("arguments", "{}");
+            try
+            {
+                info.arguments = json::parse(argsStr);
+            }
+            catch (...)
+            {
+                info.arguments = json::object();
+            }
+        }
+        if (!info.name.empty())
+            result.push_back(std::move(info));
+    }
+    return result;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DouBaoStrategy
 // ═══════════════════════════════════════════════════════════════
@@ -103,6 +134,37 @@ std::string DouBaoStrategy::parseResponse(const json& response) const
     return {};
 }
 
+std::vector<ToolCallInfo> DouBaoStrategy::parseToolCalls(const json& response) const
+{
+    std::vector<ToolCallInfo> result;
+    if (!response.contains("choices") || response["choices"].empty())
+        return result;
+    const auto& msg = response["choices"][0]["message"];
+    if (!msg.contains("tool_calls") || !msg["tool_calls"].is_array())
+        return result;
+    for (const auto& tc : msg["tool_calls"])
+    {
+        ToolCallInfo info;
+        info.id = tc.value("id", "");
+        if (tc.contains("function"))
+        {
+            info.name = tc["function"].value("name", "");
+            std::string argsStr = tc["function"].value("arguments", "{}");
+            try
+            {
+                info.arguments = json::parse(argsStr);
+            }
+            catch (...)
+            {
+                info.arguments = json::object();
+            }
+        }
+        if (!info.name.empty())
+            result.push_back(std::move(info));
+    }
+    return result;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // AliyunRAGStrategy
 // ═══════════════════════════════════════════════════════════════
@@ -122,7 +184,7 @@ std::string AliyunRAGStrategy::getModel() const
     return "";
 }
 
-json AliyunRAGStrategy::buildRequest(const std::vector<Message>& messages, const json&) const
+json AliyunRAGStrategy::buildRequest(const std::vector<Message>& messages, const json& tools) const
 {
     json payload;
     payload["input"]["messages"] = messagesToJsonArray(messages);
@@ -139,6 +201,12 @@ std::string AliyunRAGStrategy::parseResponse(const json& response) const
     if (response.contains("code"))
         return "[RAG 错误] code=" + response["code"].get<std::string>();
     return {};
+}
+
+std::vector<ToolCallInfo> AliyunRAGStrategy::parseToolCalls(const json& response) const
+{
+    (void)response;
+    return {};  // RAG 策略不支持 Function Calling
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -181,6 +249,37 @@ std::string AliyunMcpStrategy::parseResponse(const json& response) const
     if (response.contains("message"))
         return "[MCP 错误] " + response["message"].get<std::string>();
     return {};
+}
+
+std::vector<ToolCallInfo> AliyunMcpStrategy::parseToolCalls(const json& response) const
+{
+    std::vector<ToolCallInfo> result;
+    if (!response.contains("choices") || response["choices"].empty())
+        return result;
+    const auto& msg = response["choices"][0]["message"];
+    if (!msg.contains("tool_calls") || !msg["tool_calls"].is_array())
+        return result;
+    for (const auto& tc : msg["tool_calls"])
+    {
+        ToolCallInfo info;
+        info.id = tc.value("id", "");
+        if (tc.contains("function"))
+        {
+            info.name = tc["function"].value("name", "");
+            std::string argsStr = tc["function"].value("arguments", "{}");
+            try
+            {
+                info.arguments = json::parse(argsStr);
+            }
+            catch (...)
+            {
+                info.arguments = json::object();
+            }
+        }
+        if (!info.name.empty())
+            result.push_back(std::move(info));
+    }
+    return result;
 }
 
 static StrategyRegister<AliyunStrategy> regAliyun("1");
