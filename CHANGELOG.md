@@ -3,6 +3,12 @@
 本文档遵循**三级递进**格式：`# 大版本` → `### 中版本` → `##### 小版本`。
 版本按时间正序排列，新版本追加在末尾。
 
+**格式规则**：
+- `# vX.0.0` — 大版本标题（破坏性变更、架构重构）
+- `### vX.Y.0` — 中版本标题（功能新增、模块重构）
+- `##### vX.Y.Z` — 小版本标题（Bug 修复、细节优化）
+- 每个小版本条目以 `-` 开头，一行一条变更
+
 ---
 
 # v1.0.0
@@ -133,3 +139,23 @@
 - **文档**：`README.md` 重写、`CHANGELOG.md` 重新设计为三级递进格式、`TODO.md` 四象限优先级
 - **清理**：删除 `Internview/` 目录、各子模块 `CHANGELOG.md` 替换为 `TECHDOC.md`
 - **流程**：新增 `AGENT.md` 规范 AI Agent 开发流程
+
+---
+
+# v2.1.0
+
+> **MCP 工具调用重构** — 原生 Function Calling 替代文本解析
+
+### v2.1.0 — MCP 模块重构
+
+##### v2.0.3 (2026-06)
+- `AIToolRegistry` 改为进程级单例，从 `mcp_config.json` 加载工具定义
+- `McpServer` 接入 `AIToolRegistry` 单例，移除独立实例
+- `AIStrategy` 增加 `parseToolCalls()` 方法，从 LLM 响应解析结构化 `tool_calls`
+- `AIHelper::chat()` 重写为原生 Function Calling：`payload["tools"]` 传入 schema，解析 `tool_calls` 而非文本 JSON
+- `AIHelper::chatStream()` 支持流式工具调用（循环模式，MAX 5 轮）
+- `Message` 结构体增加 `tool_call_id` 字段，`messagesToJsonArray` 支持 `role:"tool"` 回传
+- `AIConfig` 废弃 `buildPrompt`/`parseAIResponse`/`buildToolResultPrompt`
+- `web/config.json` 清空旧 `prompt_template` 和 `tools` 字段
+- 移除 `AIStrategy::isMCPModel` 标志和 `AliyunMcpStrategy` 类（合并入 `AliyunStrategy`）
+- 新增 `mcp_config.json`：标准 OpenAI tools schema 格式的工具配置文件

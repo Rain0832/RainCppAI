@@ -16,7 +16,7 @@
 ## 🟠 P1 — 功能完善
 
 - [ ] **天气工具替换**：`get_weather` OpenWeather → 和风天气国内 API
-- [ ] **AliyunMcpStrategy 与 AliyunStrategy 去重**：提取公共基类
+- [x] **AliyunMcpStrategy 与 AliyunStrategy 去重**：已合并为 AliyunStrategy（Commit 7）
 - [ ] **ASR 语音识别**：前端录音 → 后端转发 → 百度 ASR API
 - [ ] **TTS 多供应商**：百度 / Edge-TTS / 阿里云 可选
 - [ ] **`user_api_keys` 表服务端读取**：替代 localStorage 透传
