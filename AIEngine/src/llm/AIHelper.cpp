@@ -190,6 +190,8 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
         strategy->setRagId(ragId);
+    if (!endpointId.empty())
+        strategy->setEndpointId(endpointId);
     if (strategy->getApiKey().empty())
     {
         onChunk("[错误] 未配置 API Key");
@@ -209,30 +211,112 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
     auto& registry = AIToolRegistry::instance();
     json toolsSchema = registry.getToolsSchema();
 
-    // 构建请求 payload
-    std::vector<Message> snapshot;
+    // 最大流式工具调用轮次
+    const int MAX_TOOL_ROUNDS = 5;
+
+    // 最终累积的 assistant 回复（不含 tool_calls 部分，仅纯文本）
+    std::string finalAnswer;
+
+    for (int round = 0; round < MAX_TOOL_ROUNDS; ++round)
     {
-        std::lock_guard<std::mutex> lock(msgMutex_);
-        snapshot = messages_;
+        std::vector<Message> snapshot;
+        {
+            std::lock_guard<std::mutex> lock(msgMutex_);
+            snapshot = messages_;
+        }
+
+        // 每次构建 payload，传 stream=true
+        json payload = strategy->buildRequest(snapshot, toolsSchema);
+        payload["stream"] = true;
+
+        // ★ 流式请求：累积完整响应 + SSE 回调给前端
+        auto roundStreamCb = onChunk;  // 复用前端回调
+        std::string roundResponse = executeCurlStream(payload, roundStreamCb);
+
+        // 检查是否包含 tool_calls（从累积的完整响应中解析）
+        try
+        {
+            json fullResp = json::parse(roundResponse);
+            auto toolCalls = strategy->parseToolCalls(fullResp);
+
+            if (toolCalls.empty())
+            {
+                // 纯文本回复：roundResponse 中只有 content
+                auto& msg = fullResp["choices"][0]["message"];
+                std::string textContent;
+                if (msg.contains("content") && !msg["content"].is_null())
+                    textContent = msg["content"].get<std::string>();
+
+                // 将完整的助理回复加入历史
+                auto tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count();
+                {
+                    std::lock_guard<std::mutex> lock(msgMutex_);
+                    messages_.push_back({"assistant", textContent, "", tsNow});
+                }
+                pushMessageToMysql(userId, userName, false, textContent, tsNow, sessionId);
+
+                return textContent;
+            }
+
+            // ── 有工具调用：保存 assistant 消息（含 tool_calls 结构） ──
+            {
+                std::lock_guard<std::mutex> lock(msgMutex_);
+                json tcArr = json::array();
+                for (auto& tc : toolCalls)
+                {
+                    json obj;
+                    obj["id"] = tc.id;
+                    obj["type"] = "function";
+                    obj["function"]["name"] = tc.name;
+                    obj["function"]["arguments"] = tc.arguments.dump();
+                    tcArr.push_back(std::move(obj));
+                }
+                messages_.push_back({"assistant", tcArr.dump(), "tool_calls", 0});
+            }
+
+            // ── 执行所有工具并加入历史 ──
+            for (auto& tc : toolCalls)
+            {
+                json toolResult;
+                try
+                {
+                    toolResult = registry.invoke(tc.name, tc.arguments);
+                }
+                catch (const std::exception& e)
+                {
+                    toolResult = json {{"error", std::string(e.what())}};
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(msgMutex_);
+                    messages_.push_back({"tool", toolResult.dump(), tc.id, 0});
+                }
+            }
+
+            // 继续循环，第二次流式请求（带工具结果）
+        }
+        catch (const std::exception&)
+        {
+            // roundResponse 不是完整 JSON（正常流式场景），按纯文本处理
+            auto tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::system_clock::now().time_since_epoch())
+                                 .count();
+            {
+                std::lock_guard<std::mutex> lock(msgMutex_);
+                messages_.push_back({"assistant", roundResponse, "", tsNow});
+            }
+            pushMessageToMysql(userId, userName, false, roundResponse, tsNow, sessionId);
+            return roundResponse;
+        }
     }
-    json payload = strategy->buildRequest(snapshot, toolsSchema);
-    payload["stream"] = true;
 
-    // ★ 目前流式模式暂不支持工具调用：流式请求后不处理 tool_calls
-    // TODO: Commit 5 实现流式 tool_calls 处理
-    std::string fullAnswer = executeCurlStream(payload, onChunk);
-
-    // 将完整回复加入历史
-    auto ms2 =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
-                    .count();
-    {
-        std::lock_guard<std::mutex> lock(msgMutex_);
-        messages_.push_back({"assistant", fullAnswer, "", ms2});
-    }
-    pushMessageToMysql(userId, userName, false, fullAnswer, ms2, sessionId);
-
-    return fullAnswer;
+    // 超出最大轮次
+    std::string msg = "[提示] 工具调用次数过多，请简化您的请求";
+    onChunk(msg);
+    addMessage(userId, userName, false, msg, sessionId);
+    return msg;
 }
 
 // ─── 流式 curl 请求 ────────────────────────────────────────────────
