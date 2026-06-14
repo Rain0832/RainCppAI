@@ -1,7 +1,11 @@
 #include "mcp/McpClientManager.h"
 
 #include <curl/curl.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <muduo/base/Logging.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <fstream>
 #include <set>
@@ -159,41 +163,102 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         for (auto& a : argsArr)
             args.push_back(a.get<std::string>());
 
-        // 构建 popen 命令
-        std::string cmdLine = command;
+        // 构建 argv for execvp
+        std::vector<char*> argv;
+        argv.push_back(const_cast<char*>(command.c_str()));
         for (auto& a : args)
-            cmdLine += " " + a;
+            argv.push_back(const_cast<char*>(a.data()));
+        argv.push_back(nullptr);
 
-        FILE* pipe = popen(cmdLine.c_str(), "r+");
-        if (!pipe)
+        // pipe + fork + dup2 全双工通信
+        int pipe_in[2], pipe_out[2];
+        if (pipe(pipe_in) != 0 || pipe(pipe_out) != 0)
         {
-            LOG_WARN << "[McpClientManager] Stdio server '" << name << "' popen failed";
+            LOG_WARN << "[McpClientManager] Stdio server '" << name << "' pipe() failed";
             return;
         }
 
-        // 创建简易 lambda client（无独立类，直接封装）
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            // ── 子进程 ──
+            close(pipe_in[1]);                 // 子进程不写 stdin 管道
+            close(pipe_out[0]);                // 子进程不读 stdout 管道
+            dup2(pipe_in[0], STDIN_FILENO);    // pipe_in[0] → stdin
+            dup2(pipe_out[1], STDOUT_FILENO);  // stdout → pipe_out[1]
+            close(pipe_in[0]);
+            close(pipe_out[1]);
+
+            execvp(command.c_str(), argv.data());
+            _exit(1);  // exec 失败
+        }
+        else if (pid < 0)
+        {
+            LOG_WARN << "[McpClientManager] Stdio server '" << name << "' fork() failed";
+            close(pipe_in[0]);
+            close(pipe_in[1]);
+            close(pipe_out[0]);
+            close(pipe_out[1]);
+            return;
+        }
+
+        // ── 父进程 ──
+        close(pipe_in[0]);
+        close(pipe_out[1]);
+        int write_fd = pipe_in[1];
+        int read_fd = pipe_out[0];
+
+        // 设置非阻塞
+        fcntl(write_fd, F_SETFL, fcntl(write_fd, F_GETFL) | O_NONBLOCK);
+        fcntl(read_fd, F_SETFL, fcntl(read_fd, F_GETFL) | O_NONBLOCK);
+
+        LOG_INFO << "[McpClientManager] Forked process PID=" << pid << " command=" << command;
+
+        // 全双工 StdioClient（pipe + fork）
         struct StdioClient : McpClient
         {
-            FILE* p;
+            int read_fd = -1;
+            int write_fd = -1;
+            pid_t child_pid = -1;
             int reqId = 0;
-            std::string cachedEndpoint;  // sse 兼容字段
 
-            explicit StdioClient(FILE* _p) : p(_p) {}
+            StdioClient(int rfd, int wfd, pid_t p) : read_fd(rfd), write_fd(wfd), child_pid(p) {}
 
-            bool start() override { return p != nullptr; }
+            bool start() override { return read_fd >= 0 && write_fd >= 0; }
 
             json sendRequest(const json& req) override
             {
                 // 写入请求
                 std::string reqStr = req.dump() + "\n";
-                fwrite(reqStr.c_str(), 1, reqStr.size(), p);
-                fflush(p);
+                ssize_t written = write(write_fd, reqStr.c_str(), reqStr.size());
+                (void)written;
 
-                // 读取响应行
-                char buf[65536];
-                if (!fgets(buf, sizeof(buf), p))
-                    throw std::runtime_error("Stdio read failed");
-                return json::parse(buf);
+                // 非阻塞循环读取，缓冲区拼接到完整行
+                std::string buf;
+                char chunk[4096];
+                for (int retries = 0; retries < 1000; ++retries)
+                {
+                    ssize_t n = read(read_fd, chunk, sizeof(chunk) - 1);
+                    if (n > 0)
+                    {
+                        chunk[n] = '\0';
+                        buf += chunk;
+                        size_t nl = buf.find('\n');
+                        if (nl != std::string::npos)
+                            return json::parse(buf.substr(0, nl));
+                    }
+                    else if (n == 0)
+                    {
+                        throw std::runtime_error("Stdio EOF (child process exited)");
+                    }
+                    else
+                    {
+                        if (errno != EAGAIN && errno != EWOULDBLOCK)
+                            throw std::runtime_error("Stdio read error: " + std::string(strerror(errno)));
+                        usleep(10000);  // 10ms 等待
+                    }
+                }
+                throw std::runtime_error("Stdio read timeout");
             }
 
             json getTools() override
@@ -241,17 +306,28 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
             void stop() override
             {
-                if (p)
+                if (read_fd >= 0)
                 {
-                    pclose(p);
-                    p = nullptr;
+                    close(read_fd);
+                    read_fd = -1;
+                }
+                if (write_fd >= 0)
+                {
+                    close(write_fd);
+                    write_fd = -1;
+                }
+                if (child_pid > 0)
+                {
+                    int status;
+                    waitpid(child_pid, &status, WNOHANG);
+                    child_pid = -1;
                 }
             }
 
             ~StdioClient() override { stop(); }
         };
 
-        client = std::make_shared<StdioClient>(pipe);
+        client = std::make_shared<StdioClient>(read_fd, write_fd, pid);
     }
     else if (transport == "sse")
     {

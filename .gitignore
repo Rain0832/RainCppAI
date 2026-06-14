@@ -1,7 +1,9 @@
 .agents/
 .clinerules/
 .codebuddy/
+.venv/
 .vscode/
 build/
 docs/
+.clang-format
 plan.md

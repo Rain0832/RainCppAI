@@ -2,7 +2,7 @@
   "mcpServers": {
     "weather_agent": {
       "transport": "stdio",
-      "command": "python3",
+      "command": "/root/RainCppAI/.venv/bin/python",
       "args": [
         "/root/RainCppAI/mcp_servers/weather_server.py"
       ]
