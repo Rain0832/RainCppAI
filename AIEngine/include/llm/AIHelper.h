@@ -22,7 +22,7 @@
  *
  * 线程安全说明：
  * - msgMutex_ 保护 messages_ 向量的所有读写
- * - processing_ 原子标志保证同一 session 同一时刻只有一个 chat() 在执行
+ * - processing_ 原子标志保证同一 session 同一时刻只有一个 chatStream() 在执行
  */
 class AIHelper
 {
@@ -40,14 +40,10 @@ public:
     void restoreMessage(const std::string& content, long long ms, const std::string& role);
 
     /**
-     * @brief 同步聊天（非 SSE）：等待完整响应后返回
-     */
-    std::string chat(int userId, std::string userName, std::string sessionId, std::string userQuestion,
-                     std::string modelType, std::string apiKey = "", std::string ragId = "",
-                     std::string endpointId = "");
-
-    /**
      * @brief 流式聊天（SSE）：每收到 token 块立即回调
+     *
+     * 作为项目唯一的 AI 对话入口函数（v2.1.0 已移除非流式 chat()）。
+     *
      * @param onChunk 每个 chunk 的回调，返回 false 终止流
      * @return 完整的 AI 回复内容（用于持久化）
      */
