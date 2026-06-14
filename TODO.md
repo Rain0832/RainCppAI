@@ -19,6 +19,7 @@
 - [x] **AliyunMcpStrategy 与 AliyunStrategy 去重**：已合并为 AliyunStrategy（Commit 7）
 - [ ] **ASR 语音识别**：前端录音 → 后端转发 → 百度 ASR API
 - [ ] **TTS 多供应商**：百度 / Edge-TTS / 阿里云 可选
+- [ ] **前端流式统一**：`/chat/send`、`/chat/send-new-session` 迁移至 `/chat/send-stream`，下线 `AIHelper::chat()` 非流式路径（`ChatSendHandler` / `ChatCreateAndSendHandler`）
 - [ ] **`user_api_keys` 表服务端读取**：替代 localStorage 透传
 
 ---
