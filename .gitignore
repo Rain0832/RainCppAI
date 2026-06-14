@@ -1,4 +1,7 @@
+.agents/
+.clinerules/
 .codebuddy/
 .vscode/
 build/
+docs/
 plan.md
