@@ -1,9 +1,12 @@
 #include "mcp/AIToolRegistry.h"
 
 #include <JsonUtil.h>
+#include <muduo/base/Logging.h>
 
 #include <fstream>
 #include <sstream>
+
+#include "mcp/McpClientManager.h"
 
 // ─── Singleton ──────────────────────────────────────────────────
 AIToolRegistry& AIToolRegistry::instance()
@@ -27,32 +30,67 @@ void AIToolRegistry::loadFromConfig(const std::string& configPath)
     json config;
     file >> config;
 
-    if (!config.contains("tools") || !config["tools"].is_array())
+    // 旧格式兼容：顶层 "tools" 数组 → 自动包装为 builtin server
+    json servers;
+    if (config.contains("mcpServers"))
     {
-        std::cerr << "[AIToolRegistry] Missing 'tools' array in config" << std::endl;
+        servers = config["mcpServers"];
+    }
+    else if (config.contains("tools") && config["tools"].is_array())
+    {
+        servers["auto_builtin"]["transport"] = "builtin";
+        servers["auto_builtin"]["tools"] = config["tools"];
+    }
+    else
+    {
+        std::cerr << "[AIToolRegistry] No valid 'mcpServers' or 'tools' in config" << std::endl;
         return;
     }
 
-    for (auto& toolDef : config["tools"])
+    for (auto& [serverName, serverDef] : servers.items())
     {
-        std::string name = toolDef.value("name", "");
-        if (name.empty())
+        std::string transport = serverDef.value("transport", "");
+        if (!serverDef.contains("tools") || !serverDef["tools"].is_array())
             continue;
 
-        // 注册已知的内置实现
-        if (name == "get_weather")
-            tools_[name] = getWeather;
-        else if (name == "get_time")
-            tools_[name] = getTime;
-        // else: 仅配置描述，实现需外部通过 registerTool() 注入
+        if (transport == "builtin")
+        {
+            // 内置工具：从 name→function 映射表注册
+            static const std::unordered_map<std::string, ToolFunc> builtinMap = {
+                    {"get_weather", getWeather},
+                    {"get_time", getTime},
+            };
 
-        // 保存 OpenAI Function Calling schema
-        json schema;
-        schema["type"] = "function";
-        schema["function"]["name"] = name;
-        schema["function"]["description"] = toolDef.value("description", "");
-        schema["function"]["parameters"] = toolDef.value("parameters", json::object());
-        toolSchemas_.push_back(std::move(schema));
+            for (auto& toolDef : serverDef["tools"])
+            {
+                std::string name = toolDef.value("name", "");
+                if (name.empty())
+                    continue;
+
+                auto it = builtinMap.find(name);
+                if (it != builtinMap.end())
+                    tools_[name] = it->second;
+
+                json schema;
+                schema["type"] = "function";
+                schema["function"]["name"] = name;
+                schema["function"]["description"] = toolDef.value("description", "");
+                schema["function"]["parameters"] = toolDef.value("parameters", json::object());
+                toolSchemas_.push_back(std::move(schema));
+            }
+        }
+        else if (transport == "stdio" || transport == "sse")
+        {
+            // 委托给 McpClientManager（Phase 3 实现）
+            // McpClientManager::instance().registerServer(serverName, serverDef);
+            LOG_INFO << "[AIToolRegistry] Deferred server '" << serverName << "' (transport=" << transport
+                     << "), McpClientManager not yet loaded";
+        }
+        else
+        {
+            std::cerr << "[AIToolRegistry] Unknown transport '" << transport << "' for server '" << serverName << "'"
+                      << std::endl;
+        }
     }
 
     std::cout << "[AIToolRegistry] Loaded " << toolSchemas_.size() << " tools from config" << std::endl;
@@ -67,13 +105,24 @@ void AIToolRegistry::registerTool(const std::string& name, ToolFunc func)
 
 json AIToolRegistry::invoke(const std::string& name, const json& args) const
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = tools_.find(name);
-    if (it == tools_.end())
     {
-        throw std::runtime_error("Tool not found: " + name);
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = tools_.find(name);
+        if (it != tools_.end())
+        {
+            LOG_INFO << "[AIToolRegistry] Tool '" << name << "' dispatched to [local]";
+            return it->second(args);
+        }
     }
-    return it->second(args);
+
+    // 本地未命中 → 降级到 McpClientManager
+    if (mcpManager_)
+    {
+        LOG_INFO << "[AIToolRegistry] Tool '" << name << "' dispatched to [McpClientManager]";
+        return mcpManager_->callTool(name, args);
+    }
+
+    throw std::runtime_error("Tool not found: " + name);
 }
 
 bool AIToolRegistry::hasTool(const std::string& name) const
@@ -84,11 +133,28 @@ bool AIToolRegistry::hasTool(const std::string& name) const
 
 json AIToolRegistry::getToolsSchema() const
 {
-    std::lock_guard<std::mutex> lock(mutex_);
     json tools = json::array();
-    for (auto& s : toolSchemas_)
-        tools.push_back(s);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (auto& s : toolSchemas_)
+            tools.push_back(s);
+    }
+
+    // 融合 McpClientManager 远端工具 schema
+    if (mcpManager_)
+    {
+        json remote = mcpManager_->discoverAllTools();
+        for (auto& s : remote)
+            tools.push_back(std::move(s));
+    }
+
     return tools;
+}
+
+void AIToolRegistry::setMcpClientManager(McpClientManager* mgr)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    mcpManager_ = mgr;
 }
 
 // ─── curl helper ────────────────────────────────────────────────

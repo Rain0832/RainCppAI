@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "mcp/AIToolRegistry.h"
+#include "mcp/McpClientManager.h"
 #include "server/ChatServer.h"
 
 const std::string RABBITMQ_HOST = "localhost";
@@ -48,7 +49,15 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // 加载 MCP 工具配置（必须在 initChatMessage / 处理请求之前）
-    AIToolRegistry::instance().loadFromConfig("../mcp_config.json");
+    auto& registry = AIToolRegistry::instance();
+    registry.loadFromConfig("../mcp_config.json");
+
+    // 初始化 McpClientManager（stdio/sse 远端工具）
+    auto& mcpMgr = McpClientManager::instance();
+    mcpMgr.loadFromConfig("../mcp_config.json");
+
+    // 注入 McpClientManager 到 AIToolRegistry，打通降级路由
+    registry.setMcpClientManager(&mcpMgr);
 
     server.initChatMessage();
 

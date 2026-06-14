@@ -142,7 +142,7 @@
 
 ---
 
-# v2.1.0
+# v2.0.3
 
 > **MCP 工具调用重构** — 原生 Function Calling 替代文本解析
 
@@ -162,7 +162,7 @@
 
 ---
 
-# v2.1.2
+# v2.0.4
 
 > **MCP 流式修复** — 流式 SSE 场景正式支持 Function Calling / MCP 工具调用
 
@@ -176,3 +176,22 @@
 - MCP 工具调用增加 `LOG_INFO` 级别日志，调试信息 `LOG_DEBUG` 全部移除
 - 日志级别默认 `INFO`（原 `DEBUG`）
 - `HttpRequest.cpp` 补充 `#include <cassert>`
+
+---
+
+# v2.0.5
+
+> **MCP 架构解耦** — 配置驱动路由 + McpClientManager 远端 SSE 支持
+
+### v2.0.5 — MCP 全量解耦 & 远端 SSE
+
+##### v2.0.5 (2026-06)
+- `mcp_config.json` 重构为 `mcpServers` 结构，废弃旧 `tools` 数组（保留旧格式兼容）
+- `AIToolRegistry::loadFromConfig` 移除硬编码 `if (name == "get_weather")` 分支，改为 `builtinMap` 查表 + `transport` 分发
+- `AIToolRegistry::invoke` 降级路由：本地未命中 → 转发 `McpClientManager::callTool()`
+- `AIToolRegistry::getToolsSchema` 融合本地 + 远端 schema
+- 新增 `McpClientManager` 单例：工厂模式按 `transport` 创建 Client
+- 新增 `McpStdioClient`（内联，popen pipe 通信）
+- 新增 `McpSseClient`（libcurl GET SSE + POST JSON-RPC 2.0）
+- `main.cpp` 启动时初始化 McpClientManager 并注入 AIToolRegistry
+- `chatStream` / `StreamContext` 零修改保护

@@ -32,8 +32,18 @@ public:
 
     /**
      * @brief 返回 OpenAI 兼容的 tools[] 数组（用于 Function Calling）
+     *
+     * 融合本地内置工具 + McpClientManager 远端工具 schema
      */
     json getToolsSchema() const;
+
+    /**
+     * @brief 设置 McpClientManager 引用（Phase 3 注入）
+     *
+     * 由 main.cpp 在 McpClientManager 初始化后调用，
+     * 使 invoke() / getToolsSchema() 可路由到远端工具。
+     */
+    void setMcpClientManager(class McpClientManager* mgr);
 
 private:
     AIToolRegistry() = default;
@@ -45,6 +55,9 @@ private:
 
     /// 工具参数 schema（从 config 读取，供 getToolsSchema 用）
     std::vector<json> toolSchemas_;
+
+    /// McpClientManager 指针（Phase 3 注入，nullptr = 未注入）
+    class McpClientManager* mcpManager_ = nullptr;
 
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output);
     static json getWeather(const json& args);
