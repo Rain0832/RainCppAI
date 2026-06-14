@@ -5,6 +5,7 @@
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
+#include "controller/ApiKeyHandler.h"
 #include "controller/ChatEntryHandler.h"
 #include "controller/ChatHandler.h"
 #include "controller/ChatHistoryHandler.h"
@@ -215,6 +216,9 @@ void ChatServer::initializeRouter()
     httpServer_.addRoute(http::HttpRequest::kGet, "/css/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/js/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
+
+    // API Key 管理路由
+    httpServer_.Post("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));
 
     // MCP Server 路由（标准 JSON-RPC 2.0）
     httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));

@@ -120,6 +120,7 @@ private:
     friend class ChatSseHandler;
     friend class ChatUpdateTitleHandler;
     friend class StaticFileHandler;
+    friend class ApiKeyHandler;
 
 private:
     /**
