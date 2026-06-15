@@ -6,6 +6,7 @@
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/ApiKeyHandler.h"
+#include "controller/ChatDeleteSessionHandler.h"
 #include "controller/ChatEntryHandler.h"
 #include "controller/ChatHandler.h"
 #include "controller/ChatHistoryHandler.h"
@@ -35,7 +36,7 @@ void ChatServer::initialize()
     std::cout << "ChatServer initialize start  ! " << std::endl;
 
     // 初始化MySQL数据库连接池
-    http::MysqlUtil::init("127.0.0.1:3307", "chat", "123456", "ChatHttpServer", 5);
+    storage::MysqlUtil::init("127.0.0.1:3307", "chat", "123456", "ChatHttpServer", 5);
 
     initDatabase();
     initializeSession();
@@ -59,10 +60,10 @@ void ChatServer::initDatabase()
             id VARCHAR(64) NOT NULL PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL,
             title VARCHAR(128) DEFAULT NULL,
-            model_type VARCHAR(32) DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
             updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
             deleted_at DATETIME DEFAULT NULL,
+            is_deleted TINYINT(1) DEFAULT 0,
             INDEX idx_user_id (user_id)
         ) CHARSET=utf8mb4
     )SQL";
@@ -71,13 +72,12 @@ void ChatServer::initDatabase()
         CREATE TABLE IF NOT EXISTS messages (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             session_id VARCHAR(64) NOT NULL,
-            user_id BIGINT UNSIGNED NOT NULL,
             role ENUM('user','assistant','system') NOT NULL,
             content MEDIUMTEXT NOT NULL,
             model VARCHAR(64) DEFAULT NULL,
+            payload JSON DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-            INDEX idx_session_created (session_id, created_at),
-            INDEX idx_user_id (user_id)
+            INDEX idx_session_created (session_id, created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC
     )SQL";
 
@@ -118,7 +118,7 @@ void ChatServer::readDataFromMySQL()
 {
     // Phase 2: 从新的 messages 表读取，JOIN sessions 获取用户 ID
     // 通过 sessions.user_id 关联，按 created_at 排序保证消息顺序
-    std::string sql = "SELECT m.session_id, m.user_id, m.role, m.content, "
+    std::string sql = "SELECT m.session_id, s.user_id, m.role, m.content, "
                       "UNIX_TIMESTAMP(m.created_at) * 1000 AS ts_ms "
                       "FROM messages m "
                       "INNER JOIN sessions s ON m.session_id = s.id "
@@ -162,7 +162,7 @@ void ChatServer::readDataFromMySQL()
         auto itSession = userSessions.find(session_id);
         if (itSession == userSessions.end())
         {
-            helper = std::make_shared<AIHelper>();
+            helper = std::make_shared<AIHelper>(&mysqlUtil_, &aiThreadPool_);
             userSessions[session_id] = helper;
             sessionsIdsMap[user_id].push_back(session_id);
         }
@@ -205,6 +205,7 @@ void ChatServer::initializeRouter()
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
     httpServer_.Post("/chat/update-title", std::make_shared<ChatUpdateTitleHandler>(this));
+    httpServer_.Post("/chat/delete-session", std::make_shared<ChatDeleteSessionHandler>(this));
 
     // AI功能路由
     httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
@@ -217,7 +218,8 @@ void ChatServer::initializeRouter()
     httpServer_.addRoute(http::HttpRequest::kGet, "/js/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
 
-    // API Key 管理路由
+    // API Key 管理路由（GET 返回掩码列表，POST 保存新 Key）
+    httpServer_.Get("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));
     httpServer_.Post("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));
 
     // MCP Server 路由（标准 JSON-RPC 2.0）

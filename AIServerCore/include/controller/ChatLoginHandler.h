@@ -2,8 +2,8 @@
 
 #include "3rdparty/JsonUtil.h"
 #include "HttpServer/include/router/RouterHandler.h"
-#include "HttpServer/include/utils/MysqlUtil.h"
 #include "server/ChatServer.h"
+#include "storage/MysqlUtil.h"
 
 class ChatLoginHandler : public http::router::RouterHandler
 {
@@ -34,5 +34,5 @@ private:
 
 private:
     ChatServer* server_;
-    http::MysqlUtil mysqlUtil_;
+    storage::MysqlUtil mysqlUtil_;
 };

@@ -1,7 +1,7 @@
 #pragma once
 #include "HttpServer/include/router/RouterHandler.h"
-#include "HttpServer/include/utils/MysqlUtil.h"
 #include "server/ChatServer.h"
+#include "storage/MysqlUtil.h"
 
 class ChatSessionsHandler : public http::router::RouterHandler
 {
@@ -22,5 +22,5 @@ public:
 private:
 private:
     ChatServer* server_;
-    http::MysqlUtil mysqlUtil_;
+    storage::MysqlUtil mysqlUtil_;
 };
