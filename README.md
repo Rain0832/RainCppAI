@@ -4,7 +4,7 @@
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![License](https://img.shields.io/badge/License-Apache2.0-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.3-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-2.2.0-orange.svg)](CHANGELOG.md)
 
 ---
 
@@ -18,7 +18,7 @@
 - **SSE 流式输出** — curl WRITEFUNCTION 逐 token 实时推送
 - **并发架构** — 8 线程 AI 线程池，IO 线程零阻塞
 - **线程安全会话** — `shared_mutex` 读写锁 + LRU 淘汰（内存中最大 500 会话）
-- **异步持久化** — RabbitMQ 解耦聊天落库
+- **同步持久化** — Prepared Statement 直写 MySQL，零 SQL 注入风险
 
 ---
 
@@ -43,12 +43,15 @@ Browser / MCP Client
 │  ├─ mcp/          │  McpServer · AIToolRegistry
 │  ├─ audio/        │  AISpeechProcessor (TTS)
 │  ├─ vision/       │  ImageRecognizer (ONNX)
-│  └─ common/       │  AIConfig · MQManager · base64
+│  └─ common/       │  AIConfig · base64 · Snowflake
+├──────────────────┤
+│  Storage          │  持久化基础设施
+│  └─ storage/      │  DbConnectionPool · MysqlUtil
 └──────────────────┘
         │
-   ┌────▼─────┐  ┌────▼────┐
-   │ RabbitMQ │  │  MySQL  │
-   └──────────┘  └─────────┘
+   ┌────▼────┐
+   │  MySQL  │
+   └─────────┘
 ```
 
 ---
@@ -67,7 +70,6 @@ Browser / MCP Client
 | OpenCV | ≥ 4.x | 图像处理 |
 | ONNX Runtime | 1.17.1 | 推理引擎 |
 | MySQL C++ Connector | 8.0 | 数据库 |
-| SimpleAmqpClient | latest | RabbitMQ 客户端 |
 | nlohmann/json | 3.11+ | JSON (header-only) |
 
 > 依赖管理规则（新增 / 移除 / 版本登记）详见 `CONTRIBUTING.md` §四。
@@ -124,6 +126,9 @@ export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 | POST | `/chat/history` | ✓ | 会话历史 |
 | POST | `/chat/tts` | ✓ | 语音合成 |
 | POST | `/chat/update-title` | ✓ | 更新会话标题 |
+| POST | `/chat/delete-session` | ✓ | 软删除会话 |
+| GET | `/api/user/apikey` | ✓ | 获取已保存的 API Key（掩码） |
+| POST | `/api/user/apikey` | ✓ | 保存 API Key |
 | GET | `/css/*` | ✗ | 静态 CSS 资源 |
 | GET | `/js/*` | ✗ | 静态 JS 资源 |
 | GET | `/assets/*` | ✗ | 静态图片 / 字体资源 |
@@ -144,7 +149,12 @@ RainCppAI/
 │   │   ├── middleware/   # MiddlewareChain, CorsMiddleware
 │   │   ├── session/      # Session, SessionManager, SessionStorage
 │   │   ├── ssl/          # SslConfig, SslConnection, SslContext
-│   │   └── utils/        # ThreadPool, FileUtil, MysqlUtil, DbConnectionPool
+│   │   └── utils/        # ThreadPool, FileUtil
+│   ├── src/
+│   └── TECHDOC.md
+├── Storage/              # 持久化基础设施
+│   ├── include/
+│   │   └── storage/      # DbConnection, DbConnectionPool, MysqlUtil, DbException
 │   ├── src/
 │   └── TECHDOC.md
 ├── AIServerCore/         # 业务逻辑层
@@ -159,7 +169,7 @@ RainCppAI/
 │   │   ├── mcp/          # McpServer, AIToolRegistry
 │   │   ├── audio/        # AISpeechProcessor
 │   │   ├── vision/       # ImageRecognizer
-│   │   └── common/       # AIConfig, MQManager, base64, AISessionIdGenerator
+│   │   └── common/       # AIConfig, base64, AISessionIdGenerator (Snowflake)
 │   ├── src/
 │   └── TECHDOC.md
 ├── web/                  # 前端资源
