@@ -37,26 +37,6 @@ if(NOT ONNXRUNTIME_LIBRARY)
     message(FATAL_ERROR "ONNX Runtime library not found")
 endif()
 
-# SimpleAmqpClient
-find_library(SIMPLEAMQPCLIENT_LIBRARY
-    NAMES SimpleAmqpClient
-    PATHS
-        /usr/local/lib64
-        /usr/local/lib
-        /usr/lib64
-        /usr/lib
-)
-
-# rabbitmq-c
-find_library(RABBITMQ_LIBRARY
-    NAMES rabbitmq
-    PATHS
-        /usr/local/lib64
-        /usr/local/lib
-        /usr/lib64
-        /usr/lib
-)
-
 # mysqlclient
 find_library(MYSQLCLIENT_LIBRARY
     NAMES mysqlclient
@@ -74,10 +54,18 @@ find_library(MYSQLCLIENT_LIBRARY
 file(GLOB_RECURSE HTTP_SERVER_SRC
     ${PROJECT_SOURCE_DIR}/HttpServer/src/*.cpp
 )
+# 排除已迁移至 Storage/ 模块的旧 DB 文件
+list(FILTER HTTP_SERVER_SRC EXCLUDE REGEX ".*/utils/db/.*")
+
+file(GLOB_RECURSE STORAGE_SRC
+    ${PROJECT_SOURCE_DIR}/Storage/src/*.cpp
+)
 
 file(GLOB_RECURSE AI_ENGINE_SRC
     ${PROJECT_SOURCE_DIR}/AIEngine/src/*.cpp
 )
+# 移除已废弃的 MQ 模块（RabbitMQ 链路已拆除）
+list(FILTER AI_ENGINE_SRC EXCLUDE REGEX ".*/common/MQManager.cpp")
 
 file(GLOB_RECURSE AI_SERVER_CORE_SRC
     ${PROJECT_SOURCE_DIR}/AIServerCore/src/*.cpp
@@ -96,6 +84,7 @@ set(MAIN_SRC
 add_executable(http_server
     ${MAIN_SRC}
     ${HTTP_SERVER_SRC}
+    ${STORAGE_SRC}
     ${AI_ENGINE_SRC}
     ${AI_SERVER_CORE_SRC}
 )
@@ -109,6 +98,7 @@ target_include_directories(http_server
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/HttpServer/include
+        ${PROJECT_SOURCE_DIR}/Storage/include
         ${PROJECT_SOURCE_DIR}/AIEngine/include
         ${PROJECT_SOURCE_DIR}/AIServerCore/include
         ${PROJECT_SOURCE_DIR}/3rdparty
@@ -140,8 +130,6 @@ target_link_libraries(http_server
 
         ${ONNXRUNTIME_LIBRARY}
 
-        ${SIMPLEAMQPCLIENT_LIBRARY}
-        ${RABBITMQ_LIBRARY}
 )
 
 # -----------------------------
