@@ -2,7 +2,7 @@
 
 ## 模块职责
 
-AIServerCore 是项目的**业务编排层**，位于 HttpServer（网络层）和 AIEngine（AI 工具层）之间。负责注册 HTTP 路由、组装 Handler、管理 ChatServer 生命周期。当前共注册 14 个 Handler（v2.1.0 已移除非流式 send / send-new-session 路由）。
+AIServerCore 是项目的**业务编排层**，位于 HttpServer（网络层）和 AIEngine（AI 工具层）之间。负责注册 HTTP 路由、组装 Handler、管理 ChatServer 生命周期。当前共注册 15 个 Handler（含新增的会话软删除）。
 
 ## 核心文件流转逻辑
 
@@ -38,7 +38,7 @@ main.cpp
 |------|------|
 | `src/main.cpp` | 入口：解析命令行参数 → ChatServer::start() |
 | `include/server/ChatServer.h` | 服务启动器：路由注册、muduo 配置 |
-| `include/controller/ChatSseHandler.h` | SSE 流式输出（唯一对话入口，支持不传 sessionId 时自动创建会话） |
+| `include/controller/ChatSseHandler.h` | SSE 流式输出（唯一对话入口，自动创建会话 + 雪花算法 ID） |
 | `include/controller/StaticFileHandler.h` | 通用静态文件服务（MIME 映射 + 路径安全校验） |
 | `include/controller/ChatHistoryHandler.h` | 会话历史（内存 + MySQL fallback） |
 | `include/controller/ChatSessionsHandler.h` | 用户会话列表 |
@@ -46,6 +46,7 @@ main.cpp
 | `include/controller/McpHandler.h` | MCP JSON-RPC 入口 |
 | `include/controller/ChatLoginHandler.h` | 用户登录 |
 | `include/controller/ChatRegisterHandler.h` | 用户注册 |
+| `include/controller/ChatDeleteSessionHandler.h` | 会话软删除（设 is_deleted=1） |
 | `include/controller/AIUploadSendHandler.h` | 图像识别代理 |
 
 ### Handler 依赖关系
@@ -68,7 +69,8 @@ ChatServer
 
 | 依赖 | 说明 |
 |------|------|
-| HttpServer | `http/`、`router/`、`session/`、`utils/`（网络 + DB + 路由） |
+| HttpServer | `http/`、`router/`、`session/`、`utils/`（网络 + 路由） |
+| Storage | `storage/`（数据库持久化） |
 | AIEngine | `llm/`、`mcp/`、`audio/`、`vision/`、`common/`（AI 能力） |
 | 3rdparty | `JsonUtil.h`（JSON 工具） |
 | muduo | `EventLoop`、`InetAddress`（间接依赖） |

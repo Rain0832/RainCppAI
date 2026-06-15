@@ -6,7 +6,7 @@
 
 ## 🔴 P0 — 安全 / 稳定性
 
-- [ ] **SQL 注入修复**：`pushMessageToMysql` SQL 拼接 → Prepared Statement
+- [x] **SQL 注入修复**：`pushMessageToMysql` SQL 拼接 → Prepared Statement（v2.2.0 全局完成）
 - [ ] **Agent Loop 上下文持久化**：tool 消息不丢失，重启后可恢复
 - [ ] **连接池优雅关闭**：`detach()` 线程 → 统一生命周期管理
 - [ ] **chatInformation 全局锁拆分为分片锁**
@@ -21,13 +21,13 @@
 - [ ] **TTS 多供应商**：百度 / Edge-TTS / 阿里云 可选
 - [x] **前端流式统一**：`/chat/send`、`/chat/send-new-session` 迁移至 `/chat/send-stream`，下线 `AIHelper::chat()` 非流式路径（`ChatSendHandler` / `ChatCreateAndSendHandler`）
 - [x] **前端工程化解耦**：HTML/CSS/JS 独立文件拆分 + StaticFileHandler 通用静态文件服务 + MIME 类型映射
-- [ ] **`user_api_keys` 表服务端读取**：替代 localStorage 透传
+- [x] **`user_api_keys` 表服务端读取**：`GET /api/user/apikey` 返回掩码列表（v2.2.0 完成）
 
 ---
 
 ## 🔵 P2 — 架构演进
 
-- [ ] **AIServerCore 三层拆分**：Controller → Service → Repository
+- [ ] **AIServerCore 三层拆分**：Controller → Service → Repository（Storage 模块已完成 DB 层解耦）
 - [ ] **AIEngine 独立编译为静态库**（`libaiengine.a`）
 - [ ] **结构化日志**：JSON 格式 + request_id 链路追踪
 - [ ] **Prometheus 指标**：QPS / 延迟 / 连接池利用率

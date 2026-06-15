@@ -224,3 +224,20 @@
 - 前端模型列表去重：移除"百炼 MCP"冗余选项
 - 后端新增 `ApiKeyHandler`：`POST /api/user/apikey`，API Key 持久化到 MySQL `user_api_keys` 表
 - `.gitignore` 加固：追加 `*.sqlite`、`.env`
+
+---
+
+### v2.2
+> **深水区架构重构** — 存储层剥离 · 防注入 · 同步写 · 雪花算法 · 异步标题 · 软删除
+
+##### v2.2.0 — 底层存储架构彻底重构
+- **【Storage 模块】新建 `Storage/` 顶层模块**（`storage::` 命名空间），DB 连接池从 HttpServer 剥离
+- **【Schema 重写】** `sessions` 删除 `model_type`、新增 `is_deleted TINYINT(1)`；`messages` 删除 `user_id`、新增 `payload JSON`
+- **【防注入】** 全局废弃 SQL 字符串拼接 + `escapeString()`，改用 Prepared Statement + `?` 占位符 + 多类型 `bindParams`
+- **【同步写】** `pushMessageToMysql` 废弃 RabbitMQ 异步 → 当前线程同步 `executeUpdate`
+- **【移除 RabbitMQ】** 删除 `main.cpp` 消费者启动代码、CMakeLists SimpleAmqpClient/rabbitmq 链接
+- **【雪花算法】** `AISessionIdGenerator` 重写为标准 Snowflake（41-bit 时间戳 + 10-bit 机器 ID + 12-bit 序列号），趋势递增
+- **【异步标题】** `AIHelper::startTitleSummarization()` → LLM 10 字内总结 → `UPDATE sessions SET title`
+- **【软删除】** 新增 `POST /chat/delete-session` → `UPDATE sessions SET is_deleted = 1`
+- **【API Key 掩码】** `GET /api/user/apikey` 返回掩码格式 `sk-****1234`
+- **【文档同步】** 全量更新 TECHDOC、README、CHANGELOG、TODO

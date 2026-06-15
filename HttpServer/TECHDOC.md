@@ -37,8 +37,6 @@ TcpServer (muduo)
 | `include/ssl/SslConnection.h` | SSL 连接封装 |
 | `include/utils/ThreadPool.h` | 通用线程池 |
 | `include/utils/FileUtil.h` | 文件读写工具 |
-| `include/utils/db/DbConnectionPool.h` | MySQL 连接池 |
-| `include/utils/db/DbConnection.h` | 单个连接封装 |
 
 ### 核心类关系
 
@@ -59,7 +57,6 @@ HttpServer
 |------|------|
 | muduo | 网络库（Reactor + TcpServer） |
 | OpenSSL | SSL/TLS 支持 |
-| MySQL C++ Connector | 数据库连接 |
 | nlohmann/json | JSON 工具（通过 `3rdparty/JsonUtil.h`） |
 
 ### 被依赖
