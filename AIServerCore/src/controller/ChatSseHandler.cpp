@@ -87,7 +87,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             auto& us = server_->chatInformation[userId];
             if (!us.count(sessionId))
             {
-                us.emplace(sessionId, std::make_shared<AIHelper>());
+                us.emplace(sessionId, std::make_shared<AIHelper>(&server_->mysqlUtil_, &server_->aiThreadPool_));
                 // 同步记录 sessionId 到列表中
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->rwMutexForSessionsId);

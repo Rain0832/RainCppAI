@@ -30,22 +30,10 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
 
         if (!sessionId.empty() && !title.empty())
         {
-            // 转义 title 防止 SQL 注入
-            std::string safeTitle;
-            for (char c : title)
-            {
-                if (c == '\'')
-                    safeTitle += "\\'";
-                else if (c == '\\')
-                    safeTitle += "\\\\";
-                else
-                    safeTitle += c;
-            }
-            std::string sql = "UPDATE sessions SET title = '" + safeTitle + "' WHERE id = '" + sessionId + "'";
             try
             {
-                http::MysqlUtil mu;
-                mu.executeUpdate(sql);
+                storage::MysqlUtil mu;
+                mu.executeUpdate("UPDATE sessions SET title = ? WHERE id = ?", title, sessionId);
             }
             catch (...)
             {

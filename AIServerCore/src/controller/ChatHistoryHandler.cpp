@@ -48,7 +48,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             auto& userSessions = server_->chatInformation[userId];
             if (userSessions.find(sessionId) == userSessions.end())
             {
-                userSessions.emplace(sessionId, std::make_shared<AIHelper>());
+                userSessions.emplace(sessionId,
+                                     std::make_shared<AIHelper>(&server_->mysqlUtil_, &server_->aiThreadPool_));
             }
             AIHelperPtr = userSessions[sessionId];
         }  // 写锁释放
@@ -61,10 +62,10 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         {
             try
             {
-                http::MysqlUtil mu;
-                std::string sql = "SELECT role, content FROM messages WHERE session_id = '" + sessionId +
-                                  "' AND user_id = " + std::to_string(userId) + " ORDER BY created_at ASC, id ASC";
-                auto res = mu.executeQuery(sql);
+                storage::MysqlUtil mu;
+                std::string sql = "SELECT role, content FROM messages WHERE session_id = ? "
+                                  "ORDER BY created_at ASC, id ASC";
+                auto res = mu.executeQuery(sql, sessionId);
                 while (res && res->next())
                 {
                     std::string role = res->getString("role");

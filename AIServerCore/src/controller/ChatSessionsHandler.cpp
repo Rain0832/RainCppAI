@@ -32,10 +32,10 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         std::unordered_map<std::string, std::string> titleMap;
         try
         {
-            http::MysqlUtil mu;
-            std::string sql = "SELECT id, title FROM sessions WHERE user_id = " + std::to_string(userId) +
-                              " AND deleted_at IS NULL ORDER BY updated_at DESC";
-            auto res = mu.executeQuery(sql);
+            storage::MysqlUtil mu;
+            std::string sql = "SELECT id, title FROM sessions WHERE user_id = ? "
+                              "AND is_deleted = 0 ORDER BY updated_at DESC";
+            auto res = mu.executeQuery(sql, userId);
             while (res && res->next())
             {
                 std::string sid = res->getString("id");
