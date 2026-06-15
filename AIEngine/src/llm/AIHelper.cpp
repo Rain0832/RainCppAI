@@ -3,9 +3,8 @@
 #include <chrono>
 #include <stdexcept>
 
-#include "common/MQManager.h"
-
-AIHelper::AIHelper() : processing_(false)
+AIHelper::AIHelper(storage::MysqlUtil* mysqlUtil, http::ThreadPool* threadPool)
+    : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
 {
     strategy = StrategyFactory::instance().create("1");
 }
@@ -51,7 +50,7 @@ json AIHelper::request(const json& payload)
 // ─── 流式聊天（SSE） — 唯一对话入口 —─────────────────────────────────
 std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId, std::string userQuestion,
                                  std::string modelType, std::string apiKey, std::string ragId, StreamCallback onChunk,
-                                 std::string endpointId)
+                                 std::string endpointId, bool isNewSession)
 {
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true))
@@ -136,6 +135,12 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                     messages_.push_back({"assistant", textContent, "", tsNow});
                 }
                 pushMessageToMysql(userId, userName, false, textContent, tsNow, sessionId);
+
+                // 新会话首条对话完成 → 异步 LLM 标题生成
+                if (isNewSession && !apiKey.empty())
+                {
+                    startTitleSummarization(sessionId, userQuestion, apiKey);
+                }
 
                 return textContent;
             }
@@ -401,55 +406,85 @@ size_t AIHelper::WriteCallback(void* contents, size_t size, size_t nmemb, void* 
     return size * nmemb;
 }
 
-std::string AIHelper::escapeString(const std::string& input)
+void AIHelper::startTitleSummarization(const std::string& sessionId, const std::string& userQuestion,
+                                       const std::string& apiKey)
 {
-    std::string output;
-    output.reserve(input.size() * 2);
-    for (char c : input)
-    {
-        switch (c)
-        {
-        case '\\':
-            output += "\\\\";
-            break;
-        case '\'':
-            output += "\\'";
-            break;
-        case '\"':
-            output += "\\\"";
-            break;
-        case '\n':
-            output += "\\n";
-            break;
-        case '\r':
-            output += "\\r";
-            break;
-        case '\t':
-            output += "\\t";
-            break;
-        default:
-            output += c;
-            break;
-        }
-    }
-    return output;
+    if (!threadPool_ || !mysqlUtil_)
+        return;
+
+    // 捕获弱引用防止 AIHelper 被 LRU 淘汰后悬垂
+    auto weakMysql = threadPool_->submit(
+            [this, sessionId, userQuestion, apiKey]()
+            {
+                try
+                {
+                    auto strat = StrategyFactory::instance().create("1");
+                    strat->setApiKey(apiKey);
+
+                    json titlePayload;
+                    titlePayload["model"] = "qwen-turbo";
+                    titlePayload["messages"] = json::array();
+                    json sysMsg;
+                    sysMsg["role"] = "system";
+                    sysMsg["content"] =
+                            "你是一个标题总结助手。请用 10 "
+                            "个字以内的短语总结用户的提问。仅输出标题本身，不要标点、不要引号、不要多余解释。";
+                    titlePayload["messages"].push_back(sysMsg);
+                    json userMsg;
+                    userMsg["role"] = "user";
+                    userMsg["content"] = "请总结以下问题: " + userQuestion;
+                    titlePayload["messages"].push_back(userMsg);
+                    titlePayload["stream"] = false;
+
+                    json fullResp = executeCurl(titlePayload);
+                    std::string title;
+                    if (fullResp.contains("choices") && !fullResp["choices"].empty())
+                    {
+                        auto& msg = fullResp["choices"][0]["message"];
+                        if (msg.contains("content") && !msg["content"].is_null())
+                            title = msg["content"].get<std::string>();
+                    }
+
+                    // 截断超长标题 + 清理空白
+                    if (title.length() > 20)
+                        title = title.substr(0, 20);
+                    // 移除首尾空白/引号
+                    while (!title.empty() && (title.front() == '"' || title.front() == '\'' || title.front() == ' '))
+                        title.erase(0, 1);
+                    while (!title.empty() && (title.back() == '"' || title.back() == '\'' || title.back() == ' '))
+                        title.pop_back();
+
+                    if (!title.empty())
+                    {
+                        mysqlUtil_->executeUpdate("UPDATE sessions SET title = ? WHERE id = ?", title, sessionId);
+                    }
+                }
+                catch (...)
+                {
+                    // 标题生成失败不影响主流程
+                }
+            });
 }
 
 void AIHelper::pushMessageToMysql(int userId, const std::string& userName, bool is_user, const std::string& userInput,
                                   long long ms, std::string sessionId)
 {
-    std::string safeUserInput = escapeString(userInput);
+    if (!mysqlUtil_)
+        return;
+
     std::string role = is_user ? "user" : "assistant";
 
-    // Phase 2: 写入新的 messages 表
-    // 同时 INSERT IGNORE sessions（首条消息时创建会话记录）
-    std::string sqlSession =
-            "INSERT IGNORE INTO sessions (id, user_id) VALUES ('" + sessionId + "', " + std::to_string(userId) + ")";
-
-    std::string sqlMsg = "INSERT INTO messages (session_id, user_id, role, content) VALUES ('" + sessionId + "', " +
-                         std::to_string(userId) + ", '" + role + "', '" + safeUserInput + "')";
-
-    // 两条 SQL 通过 MQ 异步执行
-    MQManager::instance().publish("sql_queue", sqlSession);
-    MQManager::instance().publish("sql_queue", sqlMsg);
+    // 使用 Prepared Statement 同步写入，彻底消除 SQL 注入
+    try
+    {
+        mysqlUtil_->executeUpdate("INSERT IGNORE INTO sessions (id, user_id) VALUES (?, ?)", sessionId,
+                                  static_cast<long long>(userId));
+        mysqlUtil_->executeUpdate("INSERT INTO messages (session_id, role, content, payload) VALUES (?, ?, ?, ?)",
+                                  sessionId, role, userInput, nullptr);
+    }
+    catch (const std::exception& e)
+    {
+        // 同步写入失败不阻塞主流程
+        LOG_ERROR << "pushMessageToMysql failed: " << e.what();
+    }
 }

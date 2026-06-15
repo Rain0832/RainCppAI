@@ -12,10 +12,11 @@
 #include <vector>
 
 #include "3rdparty/JsonUtil.h"
-#include "HttpServer/include/utils/MysqlUtil.h"
+#include "HttpServer/include/utils/ThreadPool.h"
 #include "common/Message.h"
 #include "llm/AIFactory.h"
 #include "mcp/AIToolRegistry.h"
+#include "storage/MysqlUtil.h"
 
 /**
  * @brief AI助手类，封装curl访问各模型的接口。
@@ -30,7 +31,7 @@ public:
     /// SSE 流式回调类型：每收到一个数据块调用一次，返回 false 表示中止
     using StreamCallback = std::function<bool(const std::string& chunk)>;
 
-    AIHelper();
+    AIHelper(storage::MysqlUtil* mysqlUtil = nullptr, http::ThreadPool* threadPool = nullptr);
 
     void setStrategy(std::shared_ptr<AIStrategy> strat);
 
@@ -49,7 +50,7 @@ public:
      */
     std::string chatStream(int userId, std::string userName, std::string sessionId, std::string userQuestion,
                            std::string modelType, std::string apiKey, std::string ragId, StreamCallback onChunk,
-                           std::string endpointId = "");
+                           std::string endpointId = "", bool isNewSession = false);
 
     json request(const json& payload);
 
@@ -57,8 +58,6 @@ public:
 
     bool isProcessing() const { return processing_.load(); }
 
-private:
-    std::string escapeString(const std::string& input);
     void pushMessageToMysql(int userId, const std::string& userName, bool is_user, const std::string& userInput,
                             long long ms, std::string sessionId);
     json executeCurl(const json& payload);
@@ -89,4 +88,10 @@ private:
     mutable std::mutex msgMutex_;
     std::vector<Message> messages_;
     std::atomic<bool> processing_;
+    storage::MysqlUtil* mysqlUtil_ = nullptr;
+    http::ThreadPool* threadPool_ = nullptr;
+
+    /// 异步 LLM 标题生成（新会话首条对话完成后调用）
+    void startTitleSummarization(const std::string& sessionId, const std::string& userQuestion,
+                                 const std::string& apiKey);
 };
