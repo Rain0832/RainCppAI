@@ -1,6 +1,6 @@
 #include "controller/ChatHistoryHandler.h"
 
-void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+void ChatHistoryHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
     try
     {
@@ -40,19 +40,19 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     AIHelperPtr = sit->second;
                 }
             }
-        }  // 读锁释放
+        } // 读锁释放
 
         if (!AIHelperPtr)
         {
             std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
-            auto& userSessions = server_->chatInformation[userId];
+            auto &userSessions = server_->chatInformation[userId];
             if (userSessions.find(sessionId) == userSessions.end())
             {
                 userSessions.emplace(sessionId,
                                      std::make_shared<AIHelper>(&server_->mysqlUtil_, &server_->aiThreadPool_));
             }
             AIHelperPtr = userSessions[sessionId];
-        }  // 写锁释放
+        } // 写锁释放
 
         // 在 chatInformation 锁完全释放后，通过 AIHelper 自身的 msgMutex_ 安全读取
         std::vector<Message> messages = AIHelperPtr->GetMessages();
@@ -76,7 +76,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     AIHelperPtr->restoreMessage(content, 0, role, model);
                 }
             }
-            catch (const std::exception& dbErr)
+            catch (const std::exception &dbErr)
             {
                 // DB 查询失败则返回空历史，不影响主流程
                 LOG_ERROR << "DB fallback failed: " << dbErr.what();
@@ -87,14 +87,13 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         successResp["success"] = true;
         successResp["history"] = json::array();
 
-        for (const auto& msg : messages)
+        for (const auto &msg : messages)
         {
             json msgJson;
             // 直接用 role 字段，彻底消除奇偶依赖
             msgJson["is_user"] = (msg.role == "user");
             msgJson["content"] = msg.content;
-            if (!msg.model.empty())
-                msgJson["model"] = msg.model;
+            msgJson["model"] = msg.model;
             successResp["history"].push_back(msgJson);
         }
 
@@ -105,7 +104,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
         resp->setContentLength(successBody.size());
         resp->setBody(successBody);
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         json failureResp;
         failureResp["status"] = "error";

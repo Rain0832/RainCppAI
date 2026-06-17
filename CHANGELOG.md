@@ -263,3 +263,6 @@
 ##### v2.2.4 — MCP 工具格式适配 & Curl 错误日志拦截
 - **【MCP→OpenAI 格式转换】** `chatStream` 增加工具 schema 转译层：`inputSchema` → `parameters`，外层包装 `type: "function"` + `function: {...}`，解决 MCP 原生格式直接传给千问/豆包导致的 HTTP 400
 - **【Curl 静默失败修复】** `StreamWriteCallback` 增加非 SSE JSON 拦截：当 LLM API 返回 `{"error": ...}` 时打印 `LOG_ERROR << "[API Raw Error]"`
+
+##### v2.2.5 — 历史记录 API Schema 稳定性
+- **【无条件输出 model】** `ChatHistoryHandler` 移除 `if (!msg.model.empty())` 条件判断，改为无条件赋值 `"model": ""`，确保前端始终能安全读取 `model` 字段，避免 `undefined` 引发的渲染缺失
