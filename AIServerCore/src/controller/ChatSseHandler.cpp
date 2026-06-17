@@ -144,7 +144,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                                     sendSseChunk(conn, data.dump());
                                     return true;
                                 },
-                                endpointId);
+                                endpointId, isNewSession);
                         sendSseDone(conn);
                     }
                     catch (const std::exception& e)

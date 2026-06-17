@@ -63,16 +63,17 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             try
             {
                 storage::MysqlUtil mu;
-                std::string sql = "SELECT role, content FROM messages WHERE session_id = ? "
+                std::string sql = "SELECT role, content, model FROM messages WHERE session_id = ? "
                                   "ORDER BY created_at ASC, id ASC";
                 auto res = mu.executeQuery(sql, sessionId);
                 while (res && res->next())
                 {
                     std::string role = res->getString("role");
                     std::string content = res->getString("content");
-                    messages.push_back({role, content, 0});
+                    std::string model = res->isNull("model") ? "" : res->getString("model");
+                    messages.push_back({role, content, model, "", 0});
                     // 同时恢复到内存中
-                    AIHelperPtr->restoreMessage(content, 0, role);
+                    AIHelperPtr->restoreMessage(content, 0, role, model);
                 }
             }
             catch (const std::exception& dbErr)
@@ -92,6 +93,8 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             // 直接用 role 字段，彻底消除奇偶依赖
             msgJson["is_user"] = (msg.role == "user");
             msgJson["content"] = msg.content;
+            if (!msg.model.empty())
+                msgJson["model"] = msg.model;
             successResp["history"].push_back(msgJson);
         }
 
