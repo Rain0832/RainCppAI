@@ -38,7 +38,8 @@ public:
     void addMessage(int userId, const std::string& userName, bool is_user, const std::string& userInput,
                     std::string sessionId);
 
-    void restoreMessage(const std::string& content, long long ms, const std::string& role);
+    void restoreMessage(const std::string& content, long long ms, const std::string& role,
+                        const std::string& modelName = "");
 
     /**
      * @brief 流式聊天（SSE）：每收到 token 块立即回调
@@ -59,7 +60,7 @@ public:
     bool isProcessing() const { return processing_.load(); }
 
     void pushMessageToMysql(int userId, const std::string& userName, bool is_user, const std::string& userInput,
-                            long long ms, std::string sessionId);
+                            long long ms, std::string sessionId, const std::string& modelName = "");
     json executeCurl(const json& payload);
 
     /**
