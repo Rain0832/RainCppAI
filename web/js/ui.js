@@ -120,14 +120,13 @@ async function regenerate() {
     msgs.pop();
 
     const mt = $('#modelType').value;
-    const ak = getApiKey(mt);
     const mn = getModelName();
     const ragId = getRagId();
     const endpointId = getEndpointId();
 
     $('#sendBtn').disabled = true;
     try {
-        await sendWithSSE(lastUserQuestion, mt, ak, mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
+        await sendWithSSE(lastUserQuestion, mt, '', mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
     } catch (e) {
         const tk = $('#thinkingMsg');
         if (tk) tk.remove();
@@ -150,7 +149,7 @@ async function switchSession(id) {
         if (history) sessions[id].messages = history;
     }
     if (sessions[id].messages?.length) {
-        sessions[id].messages.forEach((m, i) => appendMsg(m.role, m.content, null, i));
+        sessions[id].messages.forEach((m, i) => appendMsg(m.role, m.content, m.model, i));
     } else {
         const hint = document.createElement('div');
         hint.className = 'welcome-hint';
@@ -231,7 +230,6 @@ function bindEvents() {
             return;
         }
         const mt = $('#modelType').value;
-        const ak = getApiKey(mt);
         const mn = getModelName();
         const ragId = getRagId();
         const endpointId = getEndpointId();
@@ -245,7 +243,7 @@ function bindEvents() {
 
         try {
             if (tempSession) {
-                const result = await sendWithSSE(q, mt, ak, mn, '', ragId, endpointId, sessions, appendMsg);
+                const result = await sendWithSSE(q, mt, '', mn, '', ragId, endpointId, sessions, appendMsg);
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
                     tempSession = false;
@@ -261,7 +259,7 @@ function bindEvents() {
                     return;
                 }
                 sessions[currentSessionId].messages.push({ role: 'user', content: q });
-                await sendWithSSE(q, mt, ak, mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
+                await sendWithSSE(q, mt, '', mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
             }
         } catch (err) {
             const tk = $('#thinkingMsg');

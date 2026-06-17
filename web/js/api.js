@@ -31,9 +31,6 @@ export async function fetchApiKeysFromDb() {
 }
 
 export function getApiKey(mt) {
-    const providerMap = { '1': 'dashscope', '2': 'doubao', '3': 'dashscope' };
-    const provider = providerMap[mt];
-    if (_apiKeyCache && _apiKeyCache[provider]) return _apiKeyCache[provider];
     const m = { '1': 'rain-key-dashscope', '2': 'rain-key-doubao', '3': 'rain-key-dashscope' };
     return localStorage.getItem(m[mt] || '') || '';
 }
@@ -156,7 +153,7 @@ export async function fetchHistory(sessionId) {
         });
         const d = await r.json();
         if (d.success && Array.isArray(d.history)) {
-            return d.history.map(m => ({ role: m.is_user ? 'user' : 'assistant', content: m.content }));
+            return d.history.map(m => ({ role: m.is_user ? 'user' : 'assistant', content: m.content, model: m.model || '' }));
         }
     } catch (e) { console.error(e); }
     return null;
@@ -169,7 +166,7 @@ export async function fetchSessions(sessions, renderSessions) {
         if (d.success && Array.isArray(d.sessions)) {
             d.sessions.forEach(s => {
                 const sid = String(s.sessionId);
-                sessions[sid] = { name: s.name || `会话 ${sid.slice(0, 8)}`, messages: [] };
+                sessions[sid] = { name: s.name || "新会话", messages: [] };
             });
             renderSessions();
             return d.sessions;
@@ -199,7 +196,7 @@ export async function sendWithSSE(question, modelType, apiKey, modelName, sessio
         const response = await fetch('/chat/send-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, modelType, sessionId, apiKey, ragId, endpointId })
+            body: JSON.stringify({ question, modelType, sessionId, ragId, endpointId })
         });
 
         const reader = response.body.getReader();
