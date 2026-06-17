@@ -266,3 +266,9 @@
 
 ##### v2.2.5 — 历史记录 API Schema 稳定性
 - **【无条件输出 model】** `ChatHistoryHandler` 移除 `if (!msg.model.empty())` 条件判断，改为无条件赋值 `"model": ""`，确保前端始终能安全读取 `model` 字段，避免 `undefined` 引发的渲染缺失
+
+##### v2.2.6 — 前端体验打磨与异步标题解耦
+- **【model 标签修复】** `sendWithSSE` 在内存消息保存时补传 `modelName`，解决切换会话后模型标签消失的问题
+- **【新会话入列】** `tempSession` 收到 SSE 返回的 `sessionId` 后显式兜底插入 `sessions[id]`，确保侧边栏实时刷新
+- **【异步标题解硬编码】** `startTitleSummarization` 新增 `modelType` + `modelName` 参数，复用当前对话策略与模型名生成标题，移除 `"1"` / `"qwen-turbo"` 硬编码
+- **【极简首页】** 删除 `AI.html` 静态 `#welcomeHint` 占位节点，新用户登录后直接看见可交互的聊天框

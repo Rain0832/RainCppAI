@@ -250,7 +250,7 @@ export async function sendWithSSE(question, modelType, apiKey, modelName, sessio
     d.appendChild(acts);
 
     if (sessions[resolvedSid]) {
-        sessions[resolvedSid].messages.push({ role: 'assistant', content: fullContent });
+        sessions[resolvedSid].messages.push({ role: 'assistant', content: fullContent, model: modelName || '' });
     }
 
     return { content: fullContent, sessionId: resolvedSid };

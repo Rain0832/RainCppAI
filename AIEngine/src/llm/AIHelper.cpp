@@ -159,10 +159,11 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                 }
                 pushMessageToMysql(userId, userName, false, textContent, tsNow, sessionId, strategy->getModel());
 
-                // 新会话首条对话完成 → 异步 LLM 标题生成
+                // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
                 if (isNewSession && !apiKey.empty())
                 {
-                    startTitleSummarization(sessionId, userQuestion, apiKey);
+                    startTitleSummarization(sessionId, userQuestion, apiKey, modelType,
+                                            strategy->getModel());
                 }
 
                 return textContent;
@@ -437,22 +438,23 @@ size_t AIHelper::WriteCallback(void *contents, size_t size, size_t nmemb, void *
 }
 
 void AIHelper::startTitleSummarization(const std::string &sessionId, const std::string &userQuestion,
-                                       const std::string &apiKey)
+                                       const std::string &apiKey, const std::string &modelType,
+                                       const std::string &modelName)
 {
     if (!threadPool_ || !mysqlUtil_)
         return;
 
     // 捕获弱引用防止 AIHelper 被 LRU 淘汰后悬垂
     auto weakMysql = threadPool_->submit(
-        [this, sessionId, userQuestion, apiKey]()
+        [this, sessionId, userQuestion, apiKey, modelType, modelName]()
         {
             try
             {
-                auto strat = StrategyFactory::instance().create("1");
+                auto strat = StrategyFactory::instance().create(modelType);
                 strat->setApiKey(apiKey);
 
                 json titlePayload;
-                titlePayload["model"] = "qwen-turbo";
+                titlePayload["model"] = modelName.empty() ? strat->getModel() : modelName;
                 titlePayload["messages"] = json::array();
                 json sysMsg;
                 sysMsg["role"] = "system";

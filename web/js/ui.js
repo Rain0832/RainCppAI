@@ -247,8 +247,12 @@ function bindEvents() {
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
                     tempSession = false;
+                    // 确保新会话已入列（sendWithSSE 已创建 sessions[id]，此处兜底）
+                    if (!sessions[currentSessionId]) {
+                        sessions[currentSessionId] = { name: '新会话', messages: [] };
+                    }
                     renderSessions();
-                    summarizeTitle(result.sessionId, q, sessions, renderSessions);
+                    summarizeTitle(currentSessionId, q, sessions, renderSessions);
                 }
             } else {
                 if (!sessions[currentSessionId]) {
