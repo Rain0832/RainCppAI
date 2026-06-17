@@ -26,6 +26,13 @@ public:
         auto conn = storage::DbConnectionPool::getInstance().getConnection();
         return conn->executeUpdate(sql, std::forward<Args>(args)...);
     }
+
+    /// 执行原生 DDL SQL（CREATE TABLE / DROP TABLE 等），走文本协议，绕过 Prepared Statement
+    int executeRawSql(const std::string& sql)
+    {
+        auto conn = storage::DbConnectionPool::getInstance().getConnection();
+        return conn->executeRawSql(sql);
+    }
 };
 
 }  // namespace storage

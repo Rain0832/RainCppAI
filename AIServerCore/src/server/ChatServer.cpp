@@ -62,7 +62,6 @@ void ChatServer::initDatabase()
             title VARCHAR(128) DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
             updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-            deleted_at DATETIME DEFAULT NULL,
             is_deleted TINYINT(1) DEFAULT 0,
             INDEX idx_user_id (user_id)
         ) CHARSET=utf8mb4
@@ -95,10 +94,10 @@ void ChatServer::initDatabase()
 
     try
     {
-        mysqlUtil_.executeUpdate(createUsers);
-        mysqlUtil_.executeUpdate(createSessions);
-        mysqlUtil_.executeUpdate(createMessages);
-        mysqlUtil_.executeUpdate(createApiKeys);
+        mysqlUtil_.executeRawSql(createUsers);
+        mysqlUtil_.executeRawSql(createSessions);
+        mysqlUtil_.executeRawSql(createMessages);
+        mysqlUtil_.executeRawSql(createApiKeys);
         std::cout << "Database tables initialized successfully." << std::endl;
     }
     catch (const std::exception& e)

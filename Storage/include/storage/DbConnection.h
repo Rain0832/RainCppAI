@@ -63,7 +63,11 @@ public:
         }
     }
 
-    bool ping();  // 添加检测连接是否有效的方法
+    bool ping();
+
+    /// 执行原生 SQL 文本（走 sql::Statement 文本协议），
+    /// 专用于 DDL（CREATE TABLE / DROP TABLE），绕过 Prepared Statement 二进制协议避免 Malformed packet
+    int executeRawSql(const std::string& sql);
 
 private:
     // 辅助函数：递归终止条件
