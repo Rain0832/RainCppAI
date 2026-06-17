@@ -6,7 +6,7 @@
 import {
     getModelName, getApiKey, getRagId, getEndpointId,
     showToast, summarizeTitle, playTTS, logout, saveApiKey, updateKeyStatus,
-    fetchHistory, fetchSessions, sendWithSSE
+    fetchHistory, fetchSessions, sendWithSSE, fetchApiKeysFromDb
 } from './api.js';
 
 // ---- 全局状态（模块作用域） ----
@@ -277,6 +277,9 @@ function bindEvents() {
 (async () => {
     initTheme();
     bindEvents();
+
+    // 从后端 DB 加载 API Key 状态
+    await fetchApiKeysFromDb();
 
     // 自动加载会话列表
     const result = await fetchSessions(sessions, renderSessions);

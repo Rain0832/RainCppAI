@@ -10,7 +10,30 @@ export function getModelName() {
     return s.options[s.selectedIndex].text;
 }
 
+// ---- API Key 缓存（从 DB 加载）----
+
+let _apiKeyCache = null;
+
+export async function fetchApiKeysFromDb() {
+    try {
+        const r = await fetch('/api/user/apikey');
+        const d = await r.json();
+        if (d.success && Array.isArray(d.keys)) {
+            _apiKeyCache = {};
+            d.keys.forEach(k => {
+                _apiKeyCache[k.provider] = k.key;
+                const lsKey = KM[k.provider];
+                if (lsKey) localStorage.setItem(lsKey, k.key);
+            });
+            updateKeyStatus();
+        }
+    } catch (_) {}
+}
+
 export function getApiKey(mt) {
+    const providerMap = { '1': 'dashscope', '2': 'doubao', '3': 'dashscope' };
+    const provider = providerMap[mt];
+    if (_apiKeyCache && _apiKeyCache[provider]) return _apiKeyCache[provider];
     const m = { '1': 'rain-key-dashscope', '2': 'rain-key-doubao', '3': 'rain-key-dashscope' };
     return localStorage.getItem(m[mt] || '') || '';
 }
@@ -58,10 +81,18 @@ const KM = {
     'baidu-secret': 'rain-key-baidu-secret'
 };
 
-export function saveApiKey(n) {
+export async function saveApiKey(n) {
     const v = document.querySelector(`#key-${n}`).value.trim();
     if (!v) { showToast('请输入有效的 Key'); return; }
+    try {
+        await fetch('/api/user/apikey', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: n, apiKey: v })
+        });
+    } catch (_) {}
     localStorage.setItem(KM[n], v);
+    if (_apiKeyCache) _apiKeyCache[n] = v;
     document.querySelector(`#key-${n}`).value = '';
     showToast('已保存');
     updateKeyStatus();
@@ -71,7 +102,7 @@ export function updateKeyStatus() {
     Object.keys(KM).forEach(n => {
         const el = document.querySelector(`#st-${n}`);
         if (!el) return;
-        const set = !!localStorage.getItem(KM[n]);
+        const set = (_apiKeyCache && _apiKeyCache[n]) || !!localStorage.getItem(KM[n]);
         el.textContent = set ? '已配置' : '未配置';
         el.className = 'key-status ' + (set ? 'set' : 'unset');
     });
