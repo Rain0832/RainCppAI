@@ -70,6 +70,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
         strategy->setRagId(ragId);
+    LOG_INFO << "endpointId=" << endpointId;
     if (!endpointId.empty())
         strategy->setEndpointId(endpointId);
     if (strategy->getApiKey().empty())
@@ -106,7 +107,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         }
 
         // 每次构建 payload，传 stream=true
-        json payload = strategy->buildRequest(snapshot, toolsSchema);
+        json payload = strategy->buildRequest(snapshot, toolsSchema, strategy->getModel());
         payload["stream"] = true;
 
         // 审计日志：记录发起 LLM 请求前的关键信息

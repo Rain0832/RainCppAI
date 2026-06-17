@@ -37,8 +37,9 @@ public:
 
     virtual std::string getModel() const = 0;
 
-    // buildRequest: Message 向量 + 可选的 tools JSON
-    virtual json buildRequest(const std::vector<Message> &messages, const json &tools = json::object()) const = 0;
+    // buildRequest: Message 向量 + 可选的 tools JSON + modelName（前端名 → 策略内部可查表映射）
+    virtual json buildRequest(const std::vector<Message> &messages, const json &tools = json::object(),
+                              const std::string &modelName = "") const = 0;
 
     /// 从 LLM 响应中提取文本内容（兼容现有代码）
     virtual std::string parseResponse(const json &response) const = 0;
@@ -63,7 +64,8 @@ public:
     void setApiKey(const std::string &key) override { api_key_ = key; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message> &messages, const json &tools = json::object()) const override;
+    json buildRequest(const std::vector<Message> &messages, const json &tools = json::object(),
+                      const std::string &modelName = "") const override;
     std::string parseResponse(const json &response) const override;
     std::vector<ToolCallInfo> parseToolCalls(const json &response) const override;
 
@@ -84,20 +86,15 @@ public:
     std::string getApiUrl() const override;
     std::string getApiKey() const override;
     void setApiKey(const std::string &key) override { api_key_ = key; }
-    void setEndpointId(const std::string &id) override
-    {
-        LOG_INFO << "[setEndpointId]: " << id;
-        endpoint_id_ = id;
-    }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message> &messages, const json &tools = json::object()) const override;
+    json buildRequest(const std::vector<Message> &messages, const json &tools = json::object(),
+                      const std::string &modelName = "") const override;
     std::string parseResponse(const json &response) const override;
     std::vector<ToolCallInfo> parseToolCalls(const json &response) const override;
 
 private:
     std::string api_key_;
-    std::string endpoint_id_;
 };
 
 class AliyunRAGStrategy : public AIStrategy
@@ -120,7 +117,8 @@ public:
     std::string getRagId() const override { return rag_id_; }
     std::string getModel() const override;
 
-    json buildRequest(const std::vector<Message> &messages, const json &tools = json::object()) const override;
+    json buildRequest(const std::vector<Message> &messages, const json &tools = json::object(),
+                      const std::string &modelName = "") const override;
     std::string parseResponse(const json &response) const override;
     std::vector<ToolCallInfo> parseToolCalls(const json &response) const override;
 

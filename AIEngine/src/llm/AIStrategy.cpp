@@ -1,5 +1,8 @@
 #include "llm/AIStrategy.h"
 
+#include <stdexcept>
+#include <unordered_map>
+
 #include "common/Message.h"
 #include "llm/AIFactory.h"
 
@@ -49,7 +52,8 @@ std::string AliyunStrategy::getModel() const
     return "qwen-plus";
 }
 
-json AliyunStrategy::buildRequest(const std::vector<Message> &messages, const json &tools) const
+json AliyunStrategy::buildRequest(const std::vector<Message> &messages, const json &tools,
+                                  const std::string &modelName) const
 {
     json payload;
     payload["model"] = getModel();
@@ -117,15 +121,34 @@ std::string DouBaoStrategy::getApiKey() const
 {
     return api_key_;
 }
+// 豆包前端模型名 -> 火山引擎 Endpoint ID 映射表
+static const std::unordered_map<std::string, std::string> DOUBAO_ENDPOINT_MAP = {
+    {"doubao-lite-4k", "ep-请在此填入真实的豆包 Lite 接入点ID"},
+    {"doubao-pro-32k", "ep-请在此填入真实的豆包 Pro 接入点ID"},
+};
+
 std::string DouBaoStrategy::getModel() const
 {
-    return endpoint_id_.empty() ? "ep-在此替换你的接入点ID" : endpoint_id_;
+    return "doubao-lite-4k";
 }
 
-json DouBaoStrategy::buildRequest(const std::vector<Message> &messages, const json &tools) const
+json DouBaoStrategy::buildRequest(const std::vector<Message> &messages, const json &tools,
+                                  const std::string &modelName) const
 {
     json payload;
-    payload["model"] = getModel();
+
+    // 查映射表：前端模型名 → 火山引擎 Endpoint ID
+    std::string lookupKey = modelName.empty() ? getModel() : modelName;
+    auto it = DOUBAO_ENDPOINT_MAP.find(lookupKey);
+    if (it != DOUBAO_ENDPOINT_MAP.end())
+    {
+        payload["model"] = it->second;
+    }
+    else
+    {
+        throw std::runtime_error("未知的豆包模型名称 [" + lookupKey + "]，请在后端 DOUBAO_ENDPOINT_MAP 中补充映射");
+    }
+
     payload["messages"] = messagesToJsonArray(messages);
     if (!tools.empty())
     {
@@ -199,7 +222,8 @@ std::string AliyunRAGStrategy::getModel() const
     return "";
 }
 
-json AliyunRAGStrategy::buildRequest(const std::vector<Message> &messages, const json &tools) const
+json AliyunRAGStrategy::buildRequest(const std::vector<Message> &messages, const json &tools,
+                                     const std::string &modelName) const
 {
     json payload;
     payload["input"]["messages"] = messagesToJsonArray(messages);

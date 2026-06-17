@@ -43,7 +43,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
 
-        std::string userQuestion, modelType, sessionId, ragId, endpointId;
+        std::string userQuestion, modelType, sessionId, ragId;
         auto body = req.getBody();
         if (!body.empty())
         {
@@ -54,8 +54,6 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                 sessionId = j["sessionId"];
             if (j.contains("ragId"))
                 ragId = j["ragId"];
-            if (j.contains("endpointId"))
-                endpointId = j["endpointId"];
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
         }
 
@@ -133,7 +131,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
 
         // 提交流式 AI 调用到线程池
         server_->aiThreadPool_.submit(
-            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, endpointId,
+            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
              isNewSession]()
             {
                 try
@@ -157,7 +155,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                             sendSseChunk(conn, data.dump());
                             return true;
                         },
-                        endpointId, isNewSession);
+                        "", isNewSession);
                     sendSseDone(conn);
                 }
                 catch (const std::exception &e)
