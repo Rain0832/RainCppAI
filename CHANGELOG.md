@@ -259,3 +259,7 @@
 - **【废字典】** 删除 `DOUBAO_ENDPOINT_MAP` 静态映射表，不再做模型名→端点的中间转换
 - **【模型透传】** `DouBaoStrategy::buildRequest()` 改为极简逻辑：直接将前端传入的 `modelName` 透传至 JSON payload（空时兜底 `doubao-lite-4k`），完全对齐字节跳动预置推理服务标准
 - **【代码清理】** 移除不再需要的 `#include <stdexcept>` 和 `#include <unordered_map>`
+
+##### v2.2.4 — MCP 工具格式适配 & Curl 错误日志拦截
+- **【MCP→OpenAI 格式转换】** `chatStream` 增加工具 schema 转译层：`inputSchema` → `parameters`，外层包装 `type: "function"` + `function: {...}`，解决 MCP 原生格式直接传给千问/豆包导致的 HTTP 400
+- **【Curl 静默失败修复】** `StreamWriteCallback` 增加非 SSE JSON 拦截：当 LLM API 返回 `{"error": ...}` 时打印 `LOG_ERROR << "[API Raw Error]"`

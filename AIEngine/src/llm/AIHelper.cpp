@@ -88,9 +88,26 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
     }
     pushMessageToMysql(userId, userName, true, userQuestion, ms, sessionId, strategy->getModel());
 
-    // 获取工具 schema
+    // 获取工具 schema（MCP 原始格式），并转换为 OpenAI Function Calling 格式
     auto &registry = AIToolRegistry::instance();
-    json toolsSchema = registry.getToolsSchema();
+    json rawMcpTools = registry.getToolsSchema();
+
+    // MCP → OpenAI 格式转换：{name, description, inputSchema}
+    //                 → {type: "function", function: {name, description, parameters}}
+    json toolsSchema = json::array();
+    for (const auto &mcpTool : rawMcpTools)
+    {
+        json openAiTool;
+        openAiTool["type"] = "function";
+        openAiTool["function"]["name"] = mcpTool.value("name", "");
+        openAiTool["function"]["description"] = mcpTool.value("description", "");
+        if (mcpTool.contains("inputSchema"))
+            openAiTool["function"]["parameters"] = mcpTool["inputSchema"];
+        else
+            openAiTool["function"]["parameters"] = json::object();
+
+        toolsSchema.push_back(std::move(openAiTool));
+    }
 
     // 最大流式工具调用轮次
     const int MAX_TOOL_ROUNDS = 5;
@@ -290,6 +307,13 @@ size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, 
         // 跳过空行和 [DONE]
         if (line.empty() || line == "data: [DONE]")
             continue;
+
+        // 拦截非 SSE 格式的 API 原生错误响应（HTTP 400/401 等）
+        if (!line.empty() && line[0] == '{')
+        {
+            LOG_ERROR << "[API Raw Error] " << line;
+            continue;
+        }
 
         // 解析 "data: {...}"
         if (line.substr(0, 6) == "data: ")
