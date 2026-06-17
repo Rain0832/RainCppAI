@@ -43,8 +43,8 @@ McpClientManager startup (main.cpp):
 | `include/mcp/McpClientManager.h` | Manages stdio/sse client connections, hot-plug support |
 | `include/audio/AISpeechProcessor.h` | TTS speech synthesis |
 | `include/vision/ImageRecognizer.h` | ONNX Runtime + OpenCV inference |
-| `include/common/Message.h` | Message entry (role + content + tool_call_id + ts) |
-| `include/common/MQManager.h` | RabbitMQ message queue manager |
+| `include/common/Message.h` | Message entry (role + content + model + tool_call_id + ts) |
+| `include/common/AISessionIdGenerator.h` | Snowflake 算法 ID 生成器（41-bit 时间戳 + 10-bit 机器 ID + 12-bit 序列号） |
 
 ## MCP Architecture (v2.0.8)
 

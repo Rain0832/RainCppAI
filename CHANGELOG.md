@@ -241,3 +241,11 @@
 - **【软删除】** 新增 `POST /chat/delete-session` → `UPDATE sessions SET is_deleted = 1`
 - **【API Key 掩码】** `GET /api/user/apikey` 返回掩码格式 `sk-****1234`
 - **【文档同步】** 全量更新 TECHDOC、README、CHANGELOG、TODO
+
+##### v2.2.1 — Bug 修复与通道分离
+- **【DDL/DML 通道分离】** `DbConnection` 新增 `executeRawSql()` 文本协议专用于建表，解决 Prepared Statement 执行 DDL 导致的 Malformed packet 崩溃
+- **【Schema 冗余清理】** `sessions` 表删除 `deleted_at` 字段（已被 `is_deleted` 替代）
+- **【model 字段全链路】** `Message` 结构体增 `model` 字段，`pushMessageToMysql`/`restoreMessage`/`ChatHistoryHandler` SQL 及 JSON 响应全链路读写
+- **【标题生成修复】** `ChatSseHandler` 补传 `isNewSession` 参数，异步 LLM 标题生成链路打通
+- **【SQL 注入扫尾】** `ChatRegisterHandler::insertUser`/`isUserExist` 改用 Prepared Statement
+- **【Include 修正】** `SessionManager.cpp` include 路径修正为 `session/SessionManager.h`

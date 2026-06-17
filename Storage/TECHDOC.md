@@ -27,7 +27,7 @@ MysqlUtil::executeUpdate(sql, args...)
 
 | 文件 | 职责 |
 |------|------|
-| `include/storage/DbConnection.h` | 单个连接封装，Prepared Statement 模板方法，多类型参数绑定 |
+| `include/storage/DbConnection.h` | 单个连接封装，Prepared Statement 模板方法（DML）+ `executeRawSql()` 文本协议（DDL），多类型参数绑定 |
 | `include/storage/DbConnectionPool.h` | 连接池单例，超时等待、自动重连、心跳检测 |
 | `include/storage/MysqlUtil.h` | 对外门面类，静态 init + 模板 executeQuery/executeUpdate |
 | `include/storage/DbException.h` | 数据库异常类型 |
