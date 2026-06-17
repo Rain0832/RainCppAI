@@ -1,8 +1,5 @@
 #include "llm/AIStrategy.h"
 
-#include <stdexcept>
-#include <unordered_map>
-
 #include "common/Message.h"
 #include "llm/AIFactory.h"
 
@@ -121,11 +118,6 @@ std::string DouBaoStrategy::getApiKey() const
 {
     return api_key_;
 }
-// 豆包前端模型名 -> 火山引擎 Endpoint ID 映射表
-static const std::unordered_map<std::string, std::string> DOUBAO_ENDPOINT_MAP = {
-    {"doubao-lite-4k", "ep-请在此填入真实的豆包 Lite 接入点ID"},
-    {"doubao-pro-32k", "ep-请在此填入真实的豆包 Pro 接入点ID"},
-};
 
 std::string DouBaoStrategy::getModel() const
 {
@@ -136,19 +128,7 @@ json DouBaoStrategy::buildRequest(const std::vector<Message> &messages, const js
                                   const std::string &modelName) const
 {
     json payload;
-
-    // 查映射表：前端模型名 → 火山引擎 Endpoint ID
-    std::string lookupKey = modelName.empty() ? getModel() : modelName;
-    auto it = DOUBAO_ENDPOINT_MAP.find(lookupKey);
-    if (it != DOUBAO_ENDPOINT_MAP.end())
-    {
-        payload["model"] = it->second;
-    }
-    else
-    {
-        throw std::runtime_error("未知的豆包模型名称 [" + lookupKey + "]，请在后端 DOUBAO_ENDPOINT_MAP 中补充映射");
-    }
-
+    payload["model"] = modelName.empty() ? getModel() : modelName;
     payload["messages"] = messagesToJsonArray(messages);
     if (!tools.empty())
     {

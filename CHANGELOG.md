@@ -249,3 +249,13 @@
 - **【标题生成修复】** `ChatSseHandler` 补传 `isNewSession` 参数，异步 LLM 标题生成链路打通
 - **【SQL 注入扫尾】** `ChatRegisterHandler::insertUser`/`isUserExist` 改用 Prepared Statement
 - **【Include 修正】** `SessionManager.cpp` include 路径修正为 `session/SessionManager.h`
+
+##### v2.2.2 — DouBao 策略重构
+- **【模型映射字典】** `DouBaoStrategy` 新增 `DOUBAO_ENDPOINT_MAP` 静态映射表，前端模型名 → 火山引擎 Endpoint ID（`ep-xxx`）
+- **【buildRequest 扩展】** 基类 `AIStrategy::buildRequest()` 新增 `modelName` 参数（默认空字符串），保留向后兼容
+- **【清理冗余】** `DouBaoStrategy` 删除 `endpoint_id_` 成员和 `setEndpointId()` 方法；`ChatSseHandler` 移除前端 `endpointId` 参数解析链路
+
+##### v2.2.3 — 废除豆包映射字典，回归标准 OpenAI 协议
+- **【废字典】** 删除 `DOUBAO_ENDPOINT_MAP` 静态映射表，不再做模型名→端点的中间转换
+- **【模型透传】** `DouBaoStrategy::buildRequest()` 改为极简逻辑：直接将前端传入的 `modelName` 透传至 JSON payload（空时兜底 `doubao-lite-4k`），完全对齐字节跳动预置推理服务标准
+- **【代码清理】** 移除不再需要的 `#include <stdexcept>` 和 `#include <unordered_map>`
