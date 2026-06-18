@@ -1,40 +1,41 @@
 #include "controller/ModelListHandler.h"
 
+#include <muduo/base/Logging.h>
+
+#include <fstream>
+#include <sstream>
+#include <sys/stat.h>
+
 void ModelListHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
-  json models = json::array();
+  static std::string cached_json;
+  static time_t cached_mtime = 0;
 
-  // 阿里云百炼
+  struct stat st;
+  if (stat("models.json", &st) == 0 && st.st_mtime > cached_mtime)
   {
-    json entry;
-    entry["provider"] = "aliyun";
-    entry["provider_name"] = "阿里云百炼";
-    entry["models"] = json::array();
-    entry["models"].push_back({{"id", "qwen-plus"}, {"name", "通义千问 Plus"}});
-    entry["models"].push_back({{"id", "qwen-max"}, {"name", "通义千问 Max"}});
-    models.push_back(std::move(entry));
+    std::ifstream f("models.json");
+    if (f.is_open())
+    {
+      std::ostringstream ss;
+      ss << f.rdbuf();
+      cached_json = ss.str();
+      cached_mtime = st.st_mtime;
+      LOG_INFO << "models.json changed, reloaded from disk";
+    }
   }
 
-  // 字节火山引擎
+  // 首次加载或文件丢失时使用内置兜底
+  if (cached_json.empty())
   {
-    json entry;
-    entry["provider"] = "volcengine";
-    entry["provider_name"] = "字节火山引擎";
-    entry["models"] = json::array();
-    entry["models"].push_back({{"id", "doubao-lite-4k"}, {"name", "豆包 Lite"}});
-    entry["models"].push_back({{"id", "doubao-pro-32k"}, {"name", "豆包 Pro"}});
-    entry["models"].push_back({{"id", "doubao-seed-2-0-pro-260215"}, {"name", "豆包 Seed 2.0 Pro"}});
-    models.push_back(std::move(entry));
+    cached_json = R"([{"provider":"aliyun","provider_name":"阿里云百炼","models":[{"id":"qwen-plus","name":"通义千问 Plus"},{"id":"qwen-max","name":"通义千问 Max"}]},{"provider":"volcengine","provider_name":"字节火山引擎","models":[{"id":"doubao-lite-4k","name":"豆包 Lite"},{"id":"doubao-pro-32k","name":"豆包 Pro"},{"id":"doubao-seed-2-0-pro-260215","name":"豆包 Seed 2.0 Pro"}]}])";
+    cached_mtime = 1;
   }
 
-  json body;
-  body["success"] = true;
-  body["models"] = std::move(models);
-
-  std::string bodyStr = body.dump();
+  std::string body = R"({"success":true,"models":)" + cached_json + "}";
   resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
   resp->setCloseConnection(false);
   resp->setContentType("application/json");
-  resp->setContentLength(bodyStr.size());
-  resp->setBody(bodyStr);
+  resp->setContentLength(body.size());
+  resp->setBody(body);
 }

@@ -121,12 +121,13 @@ async function regenerate() {
 
     const mt = $('#modelType').value;
     const mn = getModelName();
+    const pv = getSelectedProvider();
     const ragId = getRagId();
     const endpointId = getEndpointId();
 
     $('#sendBtn').disabled = true;
     try {
-        await sendWithSSE(lastUserQuestion, mt, '', mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
+        await sendWithSSE(lastUserQuestion, mt, pv, mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
     } catch (e) {
         const tk = $('#thinkingMsg');
         if (tk) tk.remove();
@@ -231,6 +232,7 @@ function bindEvents() {
         }
         const mt = $('#modelType').value;
         const mn = getModelName();
+        const pv = getSelectedProvider();
         const ragId = getRagId();
         const endpointId = getEndpointId();
         lastUserQuestion = q;
@@ -243,7 +245,7 @@ function bindEvents() {
 
         try {
             if (tempSession) {
-                const result = await sendWithSSE(q, mt, '', mn, '', ragId, endpointId, sessions, appendMsg);
+                const result = await sendWithSSE(q, mt, pv, mn, '', ragId, endpointId, sessions, appendMsg);
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
                     tempSession = false;
@@ -266,7 +268,7 @@ function bindEvents() {
                     return;
                 }
                 sessions[currentSessionId].messages.push({ role: 'user', content: q });
-                await sendWithSSE(q, mt, '', mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
+                await sendWithSSE(q, mt, pv, mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
             }
         } catch (err) {
             const tk = $('#thinkingMsg');
@@ -279,23 +281,30 @@ function bindEvents() {
 
 // ---- 模型下拉框 ----
 
+let _modelRegistry = [];
+
 async function renderModelDropdown() {
     const sel = $('#modelType');
-    const models = await fetchModels();
+    _modelRegistry = await fetchModels();
     sel.innerHTML = '';
-    for (const provider of models) {
+    for (const provider of _modelRegistry) {
         const grp = document.createElement('optgroup');
         grp.label = provider.provider_name;
         for (const model of provider.models) {
             const opt = document.createElement('option');
             opt.value = model.id;
             opt.textContent = model.name;
+            opt.dataset.provider = provider.provider;
             grp.appendChild(opt);
         }
         sel.appendChild(grp);
     }
-    // 默认选中第一个模型的第一个
     if (sel.options.length > 0) sel.options[0].selected = true;
+}
+
+function getSelectedProvider() {
+    const sel = $('#modelType');
+    return sel.options[sel.selectedIndex]?.dataset?.provider || 'aliyun';
 }
 
 // ---- 初始化 ----

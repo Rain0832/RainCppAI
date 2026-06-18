@@ -50,8 +50,8 @@ json AIHelper::request(const json &payload)
 
 // ─── 流式聊天（SSE） — 唯一对话入口 —─────────────────────────────────
 std::string AIHelper::chatStream(int userId, std::string userName, std::string sessionId, std::string userQuestion,
-                                 std::string modelType, std::string apiKey, std::string ragId, StreamCallback onChunk,
-                                 std::string endpointId, bool isNewSession)
+                                 std::string provider, std::string apiKey, std::string ragId, std::string modelId,
+                                 StreamCallback onChunk, std::string endpointId, bool isNewSession)
 {
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true))
@@ -65,7 +65,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         ~Guard() { f = false; }
     } guard{processing_};
 
-    setStrategy(StrategyFactory::instance().create(modelType));
+    setStrategy(StrategyFactory::instance().create(provider));
     if (!apiKey.empty())
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
@@ -78,6 +78,8 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         onChunk("[错误] 未配置 API Key");
         return "";
     }
+    // 兜底：modelId 为空时使用策略默认模型名
+    const std::string effectiveModel = modelId.empty() ? strategy->getModel() : modelId;
 
     // 记录用户消息到内存
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
@@ -123,13 +125,14 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
             snapshot = messages_;
         }
 
-        // 每次构建 payload，传 stream=true
-        json payload = strategy->buildRequest(snapshot, toolsSchema, strategy->getModel());
+        // 每次构建 payload，传 stream=true（使用前端传入的 modelId）
+        json payload = strategy->buildRequest(snapshot, toolsSchema, effectiveModel);
         payload["stream"] = true;
 
         // 审计日志：记录发起 LLM 请求前的关键信息
         LOG_INFO << "[LLM Request] userId: " << userId << " | sessionId: " << sessionId
-                 << " | model: " << strategy->getModel() << " | payload: " << payload.dump();
+                 << " | provider: " << provider << " | model: " << effectiveModel
+                 << " | payload: " << payload.dump();
 
         // 流式请求：累积完整响应 + SSE 回调给前端
         auto roundStreamCb = onChunk; // 复用前端回调
@@ -162,8 +165,8 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                 // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
                 if (isNewSession && !apiKey.empty())
                 {
-                    startTitleSummarization(sessionId, userQuestion, apiKey, modelType,
-                                            strategy->getModel());
+                    startTitleSummarization(sessionId, userQuestion, apiKey, provider,
+                                            effectiveModel);
                 }
 
                 return textContent;

@@ -273,13 +273,18 @@
 - **【异步标题解硬编码】** `startTitleSummarization` 新增 `modelType` + `modelName` 参数，移除 `"1"` / `"qwen-turbo"` 硬编码
 - **【极简首页】** 删除 `AI.html` 静态 `#welcomeHint` 占位节点
 
-### v2.3
-> **模型注册表** — 厂商-模型双层 API 下发 + 前端动态渲染 + 标题异步闭环
-
-##### v2.3.0 — 模型注册表与体验闭环
+##### v2.2.7 — 模型注册表与体验闭环
 - **【模型注册表】** 新增 `GET /api/chat/models`，`ModelListHandler` 返回厂商-模型双层 JSON 配置（阿里云百炼 / 字节火山引擎）
 - **【前端动态渲染】** `<select id="modelType">` 改为 `<optgroup>` 分组动态生成，`modelId` 字符串（如 `"qwen-plus"`）替代数字下标 `"1"/"2"/"3"`
 - **【标题异步刷新】** 新会话首轮结束后 `setTimeout(fetchSessions, 1500ms)` 拉取后端 LLM 生成的异步标题
 - **【Commit 合规】** 历史 commit `324872a` 修正为 `【web】` 前缀（`CONTRIBUTING.md` 规范）
 - **【架构蓝图】** `TODO.md` 追加 P3 级 RBAC 权限系统、Admin 动态看板、角色扩展规划
-- **【文档同步】** CHANGELOG v2.3.0；TECHDOC（AIEngine / AIServerCore）保持当前态
+
+##### v2.2.8 — 基于 Provider 的无状态策略路由
+- **【策略工厂重构】** `StrategyFactory` 注册键从数字 `"1"/"2"/"3"/"4"` 改为字符串 `"aliyun"/"volcengine"/"aliyun-rag"/"aliyun-mcp"`，`create()` 增加 provider 日志埋点与 fallback 兜底
+- **【ChatSseHandler 无状态路由】** 从 JSON body 直接解析 `provider` + `modelType` 字符串，删除 `providerMap[]` 数组 + `std::stoi` 硬编码映射，provider 直传 `StrategyFactory::create()`
+- **【AIHelper 参数拆分】** `chatStream` 签名拆分为 `provider` + `modelId` 两个独立参数，provider 用于策略选择，modelId 透传至 `buildRequest` 的 `modelName`
+- **【前端 Payload 透传】** `<option>` 增加 `data-provider` 属性，form submit 时组装 `{provider, modelType, ...}` 发往后端；`regenarate()` 同步适配
+- **【前端 getApiKey 迁移】** 从数字 key (`'1'→'rain-key-dashscope'`) 改为 provider 字符串匹配 (`'aliyun'→'rain-key-dashscope'`)
+- **【DB API Key 查询修复】** `ChatSseHandler` 中 SQL provider 参数从 `provider` 修正为 `dbProvider`（`"doubao"/"dashscope"`）
+- **【模型注册表文件外部化】** 新建 `models.json`，`ModelListHandler` 引入 `stat` mtime 缓存机制实现零停机热加载

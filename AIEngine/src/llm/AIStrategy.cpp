@@ -228,7 +228,7 @@ std::vector<ToolCallInfo> AliyunRAGStrategy::parseToolCalls(const json &response
     return {}; // RAG 策略不支持 Function Calling
 }
 
-static StrategyRegister<AliyunStrategy> regAliyun("1");
-static StrategyRegister<DouBaoStrategy> regDoubao("2");
-static StrategyRegister<AliyunRAGStrategy> regAliyunRag("3");
-static StrategyRegister<AliyunStrategy> regAliyunMcp("4"); // 合并：模型"4"也走 AliyunStrategy
+static StrategyRegister<AliyunStrategy> regAliyun("aliyun");
+static StrategyRegister<DouBaoStrategy> regDoubao("volcengine");
+static StrategyRegister<AliyunRAGStrategy> regAliyunRag("aliyun-rag");
+static StrategyRegister<AliyunStrategy> regAliyunMcp("aliyun-mcp"); // 合并：MCP 也走 AliyunStrategy

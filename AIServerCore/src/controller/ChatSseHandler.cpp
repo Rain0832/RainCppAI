@@ -43,7 +43,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         int userId = std::stoi(session->getValue("userId"));
         std::string username = session->getValue("username");
 
-        std::string userQuestion, modelType, sessionId, ragId;
+        std::string userQuestion, modelType, sessionId, ragId, provider;
         auto body = req.getBody();
         if (!body.empty())
         {
@@ -54,17 +54,19 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                 sessionId = j["sessionId"];
             if (j.contains("ragId"))
                 ragId = j["ragId"];
-            modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "1";
+            modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "qwen-plus";
+            provider = j.contains("provider") ? j["provider"].get<std::string>() : "aliyun";
         }
 
-        // 根据 modelType 映射 provider，从 DB 查询用户真实 API Key
-        const std::string providerMap[] = {"", "dashscope", "doubao", "dashscope"};
-        std::string provider = (modelType == "1" || modelType == "2" || modelType == "3") ? providerMap[std::stoi(modelType)] : "dashscope";
+        LOG_INFO << "Received chat request: provider=" << provider << ", model=" << modelType;
+
+        // provider → DB api_key provider 映射
+        const std::string dbProvider = (provider == "volcengine") ? "doubao" : "dashscope";
         std::string apiKey;
         try
         {
             storage::MysqlUtil mu;
-            auto res = mu.executeQuery("SELECT api_key FROM user_api_keys WHERE user_id = ? AND provider = ?", userId, provider);
+            auto res = mu.executeQuery("SELECT api_key FROM user_api_keys WHERE user_id = ? AND provider = ?", userId, dbProvider);
             if (res && res->next())
                 apiKey = res->getString("api_key");
         }
@@ -132,7 +134,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         // 提交流式 AI 调用到线程池
         server_->aiThreadPool_.submit(
             [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
-             isNewSession]()
+             provider, isNewSession]()
             {
                 try
                 {
@@ -145,7 +147,8 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                     }
 
                     AIHelperPtr->chatStream(
-                        userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
+                        userId, username, sessionId, userQuestion, provider, apiKey, ragId,
+                        modelType,
                         [&conn](const std::string &token) -> bool
                         {
                             if (!conn->connected())

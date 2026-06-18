@@ -50,8 +50,8 @@ public:
      * @return 完整的 AI 回复内容（用于持久化）
      */
     std::string chatStream(int userId, std::string userName, std::string sessionId, std::string userQuestion,
-                           std::string modelType, std::string apiKey, std::string ragId, StreamCallback onChunk,
-                           std::string endpointId = "", bool isNewSession = false);
+                           std::string provider, std::string apiKey, std::string ragId, std::string modelId,
+                           StreamCallback onChunk, std::string endpointId = "", bool isNewSession = false);
 
     json request(const json &payload);
 

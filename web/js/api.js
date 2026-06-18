@@ -45,8 +45,12 @@ export async function fetchApiKeysFromDb() {
 }
 
 export function getApiKey(mt) {
-    const m = { '1': 'rain-key-dashscope', '2': 'rain-key-doubao', '3': 'rain-key-dashscope' };
-    return localStorage.getItem(m[mt] || '') || '';
+    // mt 为 provider 字符串（如 "aliyun" / "volcengine"）
+    if (mt === 'aliyun' || mt === 'aliyun-rag' || mt === 'aliyun-mcp')
+        return localStorage.getItem('rain-key-dashscope') || '';
+    if (mt === 'volcengine')
+        return localStorage.getItem('rain-key-doubao') || '';
+    return localStorage.getItem('rain-key-dashscope') || '';
 }
 
 export function getRagId() {
@@ -191,7 +195,7 @@ export async function fetchSessions(sessions, renderSessions) {
 
 // ---- SSE 流式发送 ----
 
-export async function sendWithSSE(question, modelType, apiKey, modelName, sessionId, ragId, endpointId, sessions, appendMsg) {
+export async function sendWithSSE(question, modelType, provider, modelName, sessionId, ragId, endpointId, sessions, appendMsg) {
     const tk = document.querySelector('#thinkingMsg');
     if (tk) tk.remove();
 
@@ -210,7 +214,7 @@ export async function sendWithSSE(question, modelType, apiKey, modelName, sessio
         const response = await fetch('/chat/send-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, modelType, sessionId, ragId, endpointId })
+            body: JSON.stringify({ question, modelType, provider, sessionId, ragId, endpointId })
         });
 
         const reader = response.body.getReader();

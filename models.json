@@ -1,0 +1,34 @@
+[
+  {
+    "provider": "aliyun",
+    "provider_name": "阿里云百炼",
+    "models": [
+      {
+        "id": "qwen-plus",
+        "name": "通义千问 Plus"
+      },
+      {
+        "id": "qwen-max",
+        "name": "通义千问 Max"
+      }
+    ]
+  },
+  {
+    "provider": "volcengine",
+    "provider_name": "字节火山引擎",
+    "models": [
+      {
+        "id": "doubao-lite-4k",
+        "name": "豆包 Lite"
+      },
+      {
+        "id": "doubao-pro-32k",
+        "name": "豆包 Pro"
+      },
+      {
+        "id": "doubao-seed-2-0-pro-260215",
+        "name": "豆包 Seed 2.0 Pro"
+      }
+    ]
+  }
+]
