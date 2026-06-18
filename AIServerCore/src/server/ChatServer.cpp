@@ -219,7 +219,7 @@ void ChatServer::initializeRouter()
     httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
 
     // 模型列表路由（厂商-模型双层注册表）
-    httpServer_.Get("/api/chat/models", std::make_shared<ModelListHandler>(this));
+    httpServer_.Get("/api/chat/models", std::make_shared<ModelListHandler>(this, resource_root_));
 
     // API Key 管理路由（GET 返回掩码列表，POST 保存新 Key）
     httpServer_.Get("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));

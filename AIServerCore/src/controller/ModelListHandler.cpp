@@ -11,10 +11,12 @@ void ModelListHandler::handle(const http::HttpRequest &req, http::HttpResponse *
   static std::string cached_json;
   static time_t cached_mtime = 0;
 
+  std::string modelsPath = projectRoot_ + "/models.json";
+
   struct stat st;
-  if (stat("models.json", &st) == 0 && st.st_mtime > cached_mtime)
+  if (stat(modelsPath.c_str(), &st) == 0 && st.st_mtime > cached_mtime)
   {
-    std::ifstream f("models.json");
+    std::ifstream f(modelsPath);
     if (f.is_open())
     {
       std::ostringstream ss;

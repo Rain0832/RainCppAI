@@ -177,6 +177,18 @@ export async function fetchHistory(sessionId) {
     return null;
 }
 
+export async function deleteSession(sessionId) {
+    try {
+        const r = await fetch('/chat/delete-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+        });
+        const d = await r.json();
+        return d.success;
+    } catch (_) { return false; }
+}
+
 export async function fetchSessions(sessions, renderSessions) {
     try {
         const r = await fetch('/chat/sessions');

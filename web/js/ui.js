@@ -6,7 +6,7 @@
 import {
     getModelId, getModelName, getApiKey, getRagId, getEndpointId,
     showToast, summarizeTitle, playTTS, logout, saveApiKey, updateKeyStatus,
-    fetchHistory, fetchSessions, fetchModels, sendWithSSE, fetchApiKeysFromDb
+    fetchHistory, fetchSessions, fetchModels, sendWithSSE, fetchApiKeysFromDb, deleteSession
 } from './api.js';
 
 // ---- 全局状态（模块作用域） ----
@@ -43,9 +43,41 @@ function renderSessions() {
     for (let id in sessions) {
         const d = document.createElement('div');
         d.className = 'session-item' + (id === currentSessionId ? ' active' : '');
-        d.textContent = sessions[id].name || `会话 ${id.slice(0, 8)}`;
-        d.onclick = () => switchSession(id);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'session-name';
+        nameSpan.textContent = sessions[id].name || `会话 ${id.slice(0, 8)}`;
+        nameSpan.onclick = () => switchSession(id);
+        d.appendChild(nameSpan);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'session-del-btn';
+        delBtn.textContent = '🗑';
+        delBtn.title = '删除会话';
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            handleDeleteSession(id);
+        };
+        d.appendChild(delBtn);
+
         el.appendChild(d);
+    }
+}
+
+async function handleDeleteSession(id) {
+    if (!confirm('确定要删除此会话吗？')) return;
+    const ok = await deleteSession(id);
+    if (ok) {
+        delete sessions[id];
+        if (id === currentSessionId) {
+            currentSessionId = null;
+            clearChat();
+            $('#chatForm').style.display = 'none';
+        }
+        renderSessions();
+        showToast('会话已删除');
+    } else {
+        showToast('删除失败');
     }
 }
 

@@ -293,3 +293,7 @@
 - **【构造函数硬编码】** `AIHelper` 构造函数 `create("1")` → `create("aliyun")`，消除启动阶段 Unknown strategy 异常
 - **【异步标题参数重命名】** `startTitleSummarization` 参数 `modelType`/`modelName` → `provider`/`modelId`，lambda 捕获同步更正
 - **【AliyunStrategy model 注入】** `buildRequest` 中 `payload["model"]` 从硬编码 `getModel()` 改为 `modelName.empty() ? getModel() : modelName`，前端透传的 `qwen-max` 等精确模型名不再被忽略
+
+##### v2.2.10 — 模型配置热加载路径修复 & 侧边栏会话删除
+- **【models.json 热加载路径修复】** `ModelListHandler` 构造函数注入 `projectRoot_`，`stat` 从 `ChatServer::resource_root_` 拼接绝对路径，解决 CWD 不匹配导致永远加载内置硬编码兜底 JSON 的问题
+- **【侧边栏会话删除】** `renderSessions()` 新增 🗑 按钮 + `stopPropagation`，`handleDeleteSession()` 调 `POST /chat/delete-session` → 软删除 `sessions.is_deleted=1`，删除后自动从 sidebar 移除
