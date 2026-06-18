@@ -94,6 +94,6 @@ private:
 
     /// 异步 LLM 标题生成（新会话首条对话完成后调用，复用当前策略与模型名）
     void startTitleSummarization(const std::string &sessionId, const std::string &userQuestion,
-                                 const std::string &apiKey, const std::string &modelType,
-                                 const std::string &modelName);
+                                 const std::string &apiKey, const std::string &provider,
+                                 const std::string &modelId);
 };

@@ -53,7 +53,7 @@ json AliyunStrategy::buildRequest(const std::vector<Message> &messages, const js
                                   const std::string &modelName) const
 {
     json payload;
-    payload["model"] = getModel();
+    payload["model"] = modelName.empty() ? getModel() : modelName;
     payload["messages"] = messagesToJsonArray(messages);
     if (!tools.empty())
     {

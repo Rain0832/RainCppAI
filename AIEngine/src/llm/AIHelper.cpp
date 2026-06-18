@@ -6,7 +6,7 @@
 AIHelper::AIHelper(storage::MysqlUtil *mysqlUtil, http::ThreadPool *threadPool)
     : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
 {
-    strategy = StrategyFactory::instance().create("1");
+    strategy = StrategyFactory::instance().create("aliyun");
 }
 
 void AIHelper::setStrategy(std::shared_ptr<AIStrategy> strat)
@@ -441,23 +441,23 @@ size_t AIHelper::WriteCallback(void *contents, size_t size, size_t nmemb, void *
 }
 
 void AIHelper::startTitleSummarization(const std::string &sessionId, const std::string &userQuestion,
-                                       const std::string &apiKey, const std::string &modelType,
-                                       const std::string &modelName)
+                                       const std::string &apiKey, const std::string &provider,
+                                       const std::string &modelId)
 {
     if (!threadPool_ || !mysqlUtil_)
         return;
 
     // 捕获弱引用防止 AIHelper 被 LRU 淘汰后悬垂
     auto weakMysql = threadPool_->submit(
-        [this, sessionId, userQuestion, apiKey, modelType, modelName]()
+        [this, sessionId, userQuestion, apiKey, provider, modelId]()
         {
             try
             {
-                auto strat = StrategyFactory::instance().create(modelType);
+                auto strat = StrategyFactory::instance().create(provider);
                 strat->setApiKey(apiKey);
 
                 json titlePayload;
-                titlePayload["model"] = modelName.empty() ? strat->getModel() : modelName;
+                titlePayload["model"] = modelId.empty() ? strat->getModel() : modelId;
                 titlePayload["messages"] = json::array();
                 json sysMsg;
                 sysMsg["role"] = "system";

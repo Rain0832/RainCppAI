@@ -288,3 +288,8 @@
 - **【前端 getApiKey 迁移】** 从数字 key (`'1'→'rain-key-dashscope'`) 改为 provider 字符串匹配 (`'aliyun'→'rain-key-dashscope'`)
 - **【DB API Key 查询修复】** `ChatSseHandler` 中 SQL provider 参数从 `provider` 修正为 `dbProvider`（`"doubao"/"dashscope"`）
 - **【模型注册表文件外部化】** 新建 `models.json`，`ModelListHandler` 引入 `stat` mtime 缓存机制实现零停机热加载
+
+##### v2.2.9 — 魔术数字扫尾与 payload model 注入修复
+- **【构造函数硬编码】** `AIHelper` 构造函数 `create("1")` → `create("aliyun")`，消除启动阶段 Unknown strategy 异常
+- **【异步标题参数重命名】** `startTitleSummarization` 参数 `modelType`/`modelName` → `provider`/`modelId`，lambda 捕获同步更正
+- **【AliyunStrategy model 注入】** `buildRequest` 中 `payload["model"]` 从硬编码 `getModel()` 改为 `modelName.empty() ? getModel() : modelName`，前端透传的 `qwen-max` 等精确模型名不再被忽略
