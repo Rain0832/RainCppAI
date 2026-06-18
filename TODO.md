@@ -42,3 +42,6 @@
 - [ ] **插件系统**：Handler / Strategy 动态加载
 - [ ] **Kubernetes 部署**：Helm Chart + 水平伸缩
 - [ ] **多语言 SDK**：Python / Node.js SDK
+- [ ] **RBAC 权限系统**：引入账号体系，区分 User 级别和 Admin 级别。Admin 可访问管理后台，User 仅能使用聊天功能
+- [ ] **Admin 动态看板**：提供管理后台，允许 Admin 动态配置和增删"厂商-模型"注册表（`provider` / `model`），取代 `ModelListHandler` 中的静态 JSON。前端模型下拉框所见即 Admin 所配
+- [ ] **角色扩展**：`Message` 枚举增加 `System` 设定词和 `Tool` 结果类型，支持持久化存储到 `messages` 表

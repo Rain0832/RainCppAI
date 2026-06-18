@@ -4,9 +4,9 @@
 // ==========================================================================
 
 import {
-    getModelName, getApiKey, getRagId, getEndpointId,
+    getModelId, getModelName, getApiKey, getRagId, getEndpointId,
     showToast, summarizeTitle, playTTS, logout, saveApiKey, updateKeyStatus,
-    fetchHistory, fetchSessions, sendWithSSE, fetchApiKeysFromDb
+    fetchHistory, fetchSessions, fetchModels, sendWithSSE, fetchApiKeysFromDb
 } from './api.js';
 
 // ---- 全局状态（模块作用域） ----
@@ -253,6 +253,9 @@ function bindEvents() {
                     }
                     renderSessions();
                     summarizeTitle(currentSessionId, q, sessions, renderSessions);
+
+                    // 延迟 1.5s 等待后端 LLM 异步标题落库后刷新侧边栏
+                    setTimeout(() => fetchSessions(sessions, renderSessions), 1500);
                 }
             } else {
                 if (!sessions[currentSessionId]) {
@@ -274,11 +277,35 @@ function bindEvents() {
     };
 }
 
+// ---- 模型下拉框 ----
+
+async function renderModelDropdown() {
+    const sel = $('#modelType');
+    const models = await fetchModels();
+    sel.innerHTML = '';
+    for (const provider of models) {
+        const grp = document.createElement('optgroup');
+        grp.label = provider.provider_name;
+        for (const model of provider.models) {
+            const opt = document.createElement('option');
+            opt.value = model.id;
+            opt.textContent = model.name;
+            grp.appendChild(opt);
+        }
+        sel.appendChild(grp);
+    }
+    // 默认选中第一个模型的第一个
+    if (sel.options.length > 0) sel.options[0].selected = true;
+}
+
 // ---- 初始化 ----
 
 (async () => {
     initTheme();
     bindEvents();
+
+    // 从后端加载模型列表，动态渲染下拉框
+    await renderModelDropdown();
 
     // 从后端 DB 加载 API Key 状态
     await fetchApiKeysFromDb();

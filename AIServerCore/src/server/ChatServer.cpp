@@ -18,6 +18,7 @@
 #include "controller/ChatSseHandler.h"
 #include "controller/ChatUpdateTitleHandler.h"
 #include "controller/McpHandler.h"
+#include "controller/ModelListHandler.h"
 #include "controller/StaticFileHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
@@ -25,7 +26,7 @@
 
 using namespace http;
 
-ChatServer::ChatServer(int port, const std::string& name, muduo::net::TcpServer::Option option)
+ChatServer::ChatServer(int port, const std::string &name, muduo::net::TcpServer::Option option)
     : httpServer_(port, name, option)
 {
     initialize();
@@ -47,7 +48,7 @@ void ChatServer::initialize()
 void ChatServer::initDatabase()
 {
     // 建表（幂等，已存在则跳过）
-    const char* createUsers = R"SQL(
+    const char *createUsers = R"SQL(
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) NOT NULL UNIQUE,
@@ -55,7 +56,7 @@ void ChatServer::initDatabase()
         ) CHARSET=utf8mb4
     )SQL";
 
-    const char* createSessions = R"SQL(
+    const char *createSessions = R"SQL(
         CREATE TABLE IF NOT EXISTS sessions (
             id VARCHAR(64) NOT NULL PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL,
@@ -67,7 +68,7 @@ void ChatServer::initDatabase()
         ) CHARSET=utf8mb4
     )SQL";
 
-    const char* createMessages = R"SQL(
+    const char *createMessages = R"SQL(
         CREATE TABLE IF NOT EXISTS messages (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             session_id VARCHAR(64) NOT NULL,
@@ -80,7 +81,7 @@ void ChatServer::initDatabase()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC
     )SQL";
 
-    const char* createApiKeys = R"SQL(
+    const char *createApiKeys = R"SQL(
         CREATE TABLE IF NOT EXISTS user_api_keys (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL,
@@ -100,7 +101,7 @@ void ChatServer::initDatabase()
         mysqlUtil_.executeRawSql(createApiKeys);
         std::cout << "Database tables initialized successfully." << std::endl;
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "Failed to init database tables: " << e.what() << std::endl;
     }
@@ -123,12 +124,12 @@ void ChatServer::readDataFromMySQL()
                       "INNER JOIN sessions s ON m.session_id = s.id "
                       "ORDER BY m.created_at ASC, m.id ASC";
 
-    sql::ResultSet* res;
+    sql::ResultSet *res;
     try
     {
         res = mysqlUtil_.executeQuery(sql);
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "MySQL query failed: " << e.what() << std::endl;
         return;
@@ -149,13 +150,13 @@ void ChatServer::readDataFromMySQL()
             content = res->getString("content");
             ts_ms = res->getInt64("ts_ms");
         }
-        catch (const std::exception& e)
+        catch (const std::exception &e)
         {
             std::cerr << "Failed to read row: " << e.what() << std::endl;
             continue;
         }
 
-        auto& userSessions = chatInformation[user_id];
+        auto &userSessions = chatInformation[user_id];
 
         std::shared_ptr<AIHelper> helper;
         auto itSession = userSessions.find(session_id);
@@ -199,7 +200,7 @@ void ChatServer::initializeRouter()
 
     // 聊天功能路由
     httpServer_.Get("/chat", std::make_shared<ChatHandler>(this));
-    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this));  // SSE 流式（唯一对话入口）
+    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this)); // SSE 流式（唯一对话入口）
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
@@ -216,6 +217,9 @@ void ChatServer::initializeRouter()
     httpServer_.addRoute(http::HttpRequest::kGet, "/css/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/js/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
+
+    // 模型列表路由（厂商-模型双层注册表）
+    httpServer_.Get("/api/chat/models", std::make_shared<ModelListHandler>(this));
 
     // API Key 管理路由（GET 返回掩码列表，POST 保存新 Key）
     httpServer_.Get("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));
@@ -238,9 +242,9 @@ void ChatServer::initializeMiddleware()
     httpServer_.addMiddleware(corsMiddleware);
 }
 
-void ChatServer::packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
-                             const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
-                             const std::string& body, http::HttpResponse* resp)
+void ChatServer::packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,
+                             const std::string &statusMsg, bool close, const std::string &contentType, int contentLen,
+                             const std::string &body, http::HttpResponse *resp)
 {
     if (resp == nullptr)
     {
@@ -260,7 +264,7 @@ void ChatServer::packageResp(const std::string& version, http::HttpResponse::Htt
 
         LOG_INFO << "Response packaged successfully";
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         LOG_ERROR << "Error in packageResp: " << e.what();
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
@@ -269,7 +273,7 @@ void ChatServer::packageResp(const std::string& version, http::HttpResponse::Htt
     }
 }
 
-void ChatServer::touchSession(int userId, const std::string& sessionId)
+void ChatServer::touchSession(int userId, const std::string &sessionId)
 {
     std::string key = std::to_string(userId) + ":" + sessionId;
     auto it = lruMap_.find(key);

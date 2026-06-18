@@ -5,9 +5,23 @@
 
 // ---- helpers ----
 
+export function getModelId() {
+    const s = document.querySelector('#modelType');
+    return s.value;
+}
+
 export function getModelName() {
     const s = document.querySelector('#modelType');
     return s.options[s.selectedIndex].text;
+}
+
+export async function fetchModels() {
+    try {
+        const r = await fetch('/api/chat/models');
+        const d = await r.json();
+        if (d.success && Array.isArray(d.models)) return d.models;
+    } catch (_) {}
+    return [];
 }
 
 // ---- API Key 缓存（从 DB 加载）----
