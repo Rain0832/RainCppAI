@@ -93,17 +93,33 @@ void ChatServer::initDatabase()
         ) CHARSET=utf8mb4
     )SQL";
 
-    try
+    auto initAllTables = [&]()
     {
         mysqlUtil_.executeRawSql(createUsers);
         mysqlUtil_.executeRawSql(createSessions);
         mysqlUtil_.executeRawSql(createMessages);
         mysqlUtil_.executeRawSql(createApiKeys);
+    };
+
+    try
+    {
+        initAllTables();
         std::cout << "Database tables initialized successfully." << std::endl;
     }
     catch (const std::exception &e)
     {
-        std::cerr << "Failed to init database tables: " << e.what() << std::endl;
+        std::cerr << "First attempt to init database tables failed: " << e.what()
+                  << " — retrying after 2s ..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        try
+        {
+            initAllTables();
+            std::cout << "Database tables initialized successfully (retry)." << std::endl;
+        }
+        catch (const std::exception &e2)
+        {
+            std::cerr << "Failed to init database tables after retry: " << e2.what() << std::endl;
+        }
     }
 }
 

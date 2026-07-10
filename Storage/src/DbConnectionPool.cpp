@@ -7,154 +7,161 @@
 namespace storage
 {
 
-void DbConnectionPool::init(const std::string& host, const std::string& user, const std::string& password,
-                            const std::string& database, size_t poolSize)
-{
-    // 连接池会被多个线程访问，所以操作其成员变量时需要加锁
-    std::lock_guard<std::mutex> lock(mutex_);
-    // 确保只初始化一次
-    if (initialized_)
+    void DbConnectionPool::init(const std::string &host, const std::string &user, const std::string &password,
+                                const std::string &database, size_t poolSize)
     {
-        return;
-    }
-
-    host_ = host;
-    user_ = user;
-    password_ = password;
-    database_ = database;
-
-    // 创建连接
-    for (size_t i = 0; i < poolSize; ++i)
-    {
-        connections_.push(createConnection());
-    }
-
-    initialized_ = true;
-    LOG_INFO << "Database connection pool initialized with " << poolSize << " connections";
-}
-
-DbConnectionPool::DbConnectionPool()
-{
-    checkThread_ = std::thread(&DbConnectionPool::checkConnections, this);
-    checkThread_.detach();
-}
-
-DbConnectionPool::~DbConnectionPool()
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    while (!connections_.empty())
-    {
-        connections_.pop();
-    }
-    LOG_INFO << "Database connection pool destroyed";
-}
-
-// 修改获取连接的函数
-std::shared_ptr<DbConnection> DbConnectionPool::getConnection()
-{
-    std::shared_ptr<DbConnection> conn;
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-
-        // 等待超时 3 秒，防止高并发时线程池全部阻塞在此
-        const auto timeout = std::chrono::seconds(3);
-        bool acquired = cv_.wait_for(lock, timeout, [this] { return !connections_.empty(); });
-
-        if (!acquired)
+        // 连接池会被多个线程访问，所以操作其成员变量时需要加锁
+        std::lock_guard<std::mutex> lock(mutex_);
+        // 确保只初始化一次
+        if (initialized_)
         {
-            throw DbException("Connection pool timeout: no available connection within 3s");
-        }
-        if (!initialized_)
-        {
-            throw DbException("Connection pool not initialized");
+            return;
         }
 
-        conn = connections_.front();
-        connections_.pop();
-    }  // 释放锁
+        host_ = host;
+        user_ = user;
+        password_ = password;
+        database_ = database;
 
-    try
-    {
-        // 在锁外检查连接
-        if (!conn->ping())
+        // 创建连接
+        for (size_t i = 0; i < poolSize; ++i)
         {
-            LOG_WARN << "Connection lost, attempting to reconnect...";
-            conn->reconnect();
+            connections_.push(createConnection());
         }
 
-        return std::shared_ptr<DbConnection>(conn.get(),
-                                             [this, conn](DbConnection*)
-                                             {
-                                                 std::lock_guard<std::mutex> lock(mutex_);
-                                                 connections_.push(conn);
-                                                 cv_.notify_one();
-                                             });
+        initialized_ = true;
+        LOG_INFO << "Database connection pool initialized with " << poolSize << " connections";
     }
-    catch (const std::exception& e)
+
+    DbConnectionPool::DbConnectionPool()
     {
-        LOG_ERROR << "Failed to get connection: " << e.what();
+        checkThread_ = std::thread(&DbConnectionPool::checkConnections, this);
+    }
+
+    DbConnectionPool::~DbConnectionPool()
+    {
+        running_ = false;
+        cv_.notify_all(); // 唤醒可能正在 wait 的检查线程
+        if (checkThread_.joinable())
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            connections_.push(conn);
-            cv_.notify_one();
+            checkThread_.join();
         }
-        throw;
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        while (!connections_.empty())
+        {
+            connections_.pop();
+        }
+        LOG_INFO << "Database connection pool destroyed";
     }
-}
 
-std::shared_ptr<DbConnection> DbConnectionPool::createConnection()
-{
-    return std::make_shared<DbConnection>(host_, user_, password_, database_);
-}
-
-// 修改检查连接的函数
-void DbConnectionPool::checkConnections()
-{
-    while (true)
+    // 修改获取连接的函数
+    std::shared_ptr<DbConnection> DbConnectionPool::getConnection()
     {
+        std::shared_ptr<DbConnection> conn;
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+
+            // 等待超时 3 秒，防止高并发时线程池全部阻塞在此
+            const auto timeout = std::chrono::seconds(3);
+            bool acquired = cv_.wait_for(lock, timeout, [this]
+                                         { return !connections_.empty(); });
+
+            if (!acquired)
+            {
+                throw DbException("Connection pool timeout: no available connection within 3s");
+            }
+            if (!initialized_)
+            {
+                throw DbException("Connection pool not initialized");
+            }
+
+            conn = connections_.front();
+            connections_.pop();
+        } // 释放锁
+
         try
         {
-            std::vector<std::shared_ptr<DbConnection>> connsToCheck;
-            {
-                std::unique_lock<std::mutex> lock(mutex_);
-                if (connections_.empty())
-                {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    continue;
-                }
-
-                auto temp = connections_;
-                while (!temp.empty())
-                {
-                    connsToCheck.push_back(temp.front());
-                    temp.pop();
-                }
-            }
-
             // 在锁外检查连接
-            for (auto& conn : connsToCheck)
+            if (!conn->ping())
             {
-                if (!conn->ping())
-                {
-                    try
-                    {
-                        conn->reconnect();
-                    }
-                    catch (const std::exception& e)
-                    {
-                        LOG_ERROR << "Failed to reconnect: " << e.what();
-                    }
-                }
+                LOG_WARN << "Connection lost, attempting to reconnect...";
+                conn->reconnect();
             }
 
-            std::this_thread::sleep_for(std::chrono::seconds(60));
+            return std::shared_ptr<DbConnection>(conn.get(),
+                                                 [this, conn](DbConnection *)
+                                                 {
+                                                     std::lock_guard<std::mutex> lock(mutex_);
+                                                     connections_.push(conn);
+                                                     cv_.notify_one();
+                                                 });
         }
-        catch (const std::exception& e)
+        catch (const std::exception &e)
         {
-            LOG_ERROR << "Error in check thread: " << e.what();
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            LOG_ERROR << "Failed to get connection: " << e.what();
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                connections_.push(conn);
+                cv_.notify_one();
+            }
+            throw;
         }
     }
-}
 
-}  // namespace storage
+    std::shared_ptr<DbConnection> DbConnectionPool::createConnection()
+    {
+        return std::make_shared<DbConnection>(host_, user_, password_, database_);
+    }
+
+    // 修改检查连接的函数
+    void DbConnectionPool::checkConnections()
+    {
+        while (running_.load())
+        {
+            try
+            {
+                std::vector<std::shared_ptr<DbConnection>> connsToCheck;
+                {
+                    std::unique_lock<std::mutex> lock(mutex_);
+                    if (connections_.empty())
+                    {
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                        continue;
+                    }
+
+                    auto temp = connections_;
+                    while (!temp.empty())
+                    {
+                        connsToCheck.push_back(temp.front());
+                        temp.pop();
+                    }
+                }
+
+                // 在锁外检查连接
+                for (auto &conn : connsToCheck)
+                {
+                    if (!conn->ping())
+                    {
+                        try
+                        {
+                            conn->reconnect();
+                        }
+                        catch (const std::exception &e)
+                        {
+                            LOG_ERROR << "Failed to reconnect: " << e.what();
+                        }
+                    }
+                }
+
+                std::this_thread::sleep_for(std::chrono::seconds(60));
+            }
+            catch (const std::exception &e)
+            {
+                LOG_ERROR << "Error in check thread: " << e.what();
+                std::this_thread::sleep_for(std::chrono::seconds(5));
+            }
+        }
+    }
+
+} // namespace storage
