@@ -55,8 +55,8 @@ function renderSessions() {
         const icon = document.createElement('img');
         icon.src = '/assets/images/red_delete.svg';
         icon.alt = '';
-        icon.width = 14;
-        icon.height = 14;
+        icon.width = 16;
+        icon.height = 16;
         delBtn.appendChild(icon);
         delBtn.title = '删除会话';
         delBtn.onclick = (e) => {

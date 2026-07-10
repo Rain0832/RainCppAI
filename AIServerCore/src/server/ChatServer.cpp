@@ -233,6 +233,7 @@ void ChatServer::initializeRouter()
     httpServer_.addRoute(http::HttpRequest::kGet, "/css/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/js/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
+    httpServer_.addRoute(http::HttpRequest::kGet, "/assets/images/:file", staticFileHandler);
 
     // 模型列表路由（厂商-模型双层注册表）
     httpServer_.Get("/api/chat/models", std::make_shared<ModelListHandler>(this, resource_root_));
