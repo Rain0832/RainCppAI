@@ -104,9 +104,9 @@ body {
     color: var(--text2);
     transition: all .15s;
     margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .session-item:hover {
@@ -118,6 +118,38 @@ body {
     background: var(--accent);
     color: #fff;
     font-weight: 500;
+}
+
+.session-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.session-del-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text2);
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all .2s;
+    flex-shrink: 0;
+}
+
+.session-item:hover .session-del-btn {
+    opacity: 1;
+}
+
+.session-del-btn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
 }
 
 /* ── Main Area ── */
