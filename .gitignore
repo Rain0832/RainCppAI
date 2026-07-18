@@ -6,7 +6,8 @@
 build/
 docs/
 .clang-format
+.env
 *.db
 *.sqlite
-.env
 plan.md
+TODO.md
