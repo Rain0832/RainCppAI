@@ -8,6 +8,10 @@
         "name": "通义千问 Plus"
       },
       {
+        "id": "qwen-turbo",
+        "name": "通义千问 Turbo"
+      },
+      {
         "id": "qwen-max",
         "name": "通义千问 Max"
       }
@@ -18,16 +22,20 @@
     "provider_name": "字节火山引擎",
     "models": [
       {
-        "id": "doubao-lite-4k",
-        "name": "豆包 Lite"
-      },
-      {
-        "id": "doubao-pro-32k",
-        "name": "豆包 Pro"
-      },
-      {
         "id": "doubao-seed-2-0-pro-260215",
         "name": "豆包 Seed 2.0 Pro"
+      },
+      {
+        "id": "doubao-seed-2-0-lite-260428",
+        "name": "豆包 Seed 2.0 Lite"
+      },
+      {
+        "id": "doubao-seed-2-0-mini-260428",
+        "name": "豆包 Seed 2.0 Mini"
+      },
+      {
+        "id": "doubao-seed-2-0-code-preview-260215",
+        "name": "豆包 Seed 2.0 Code(Preview)"
       }
     ]
   }
