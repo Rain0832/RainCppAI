@@ -60,7 +60,7 @@ public:
      * @param name 服务器名称（用于日志标识）
      * @param option muduo网络库配置选项
      */
-    ChatServer(int port, const std::string& name,
+    ChatServer(int port, const std::string &name,
                muduo::net::TcpServer::Option option = muduo::net::TcpServer::kNoReusePort);
 
     /**
@@ -90,21 +90,23 @@ public:
     // Handlers access ChatServer through public getters only (no friend classes).
     // SP 1.10 removed 15 friend declarations; SP 1.13 fix consolidated to single public: section.
 
-    http::session::SessionManager* getSessionManager() const { return httpServer_.getSessionManager(); }
-    const std::string& getResourceRoot() const { return resource_root_; }
-    storage::MysqlUtil& getMysqlUtil() { return mysqlUtil_; }
-    common::ThreadPool& getAiThreadPool() { return aiThreadPool_; }
-    auto& getOnlineUsers() { return onlineUsers_; }
-    auto& getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
-    auto& getImageRecognizers() { return ImageRecognizerMap; }
-    auto& getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
+    http::session::SessionManager *getSessionManager() const { return httpServer_.getSessionManager(); }
+    const std::string &getResourceRoot() const { return resource_root_; }
+    storage::MysqlUtil &getMysqlUtil() { return mysqlUtil_; }
+    common::ThreadPool &getAiThreadPool() { return aiThreadPool_; }
+    auto &getOnlineUsers() { return onlineUsers_; }
+    auto &getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
+    auto &getImageRecognizers() { return ImageRecognizerMap; }
+    auto &getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
 
     void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
-    { httpServer_.setSessionManager(std::move(manager)); }
+    {
+        httpServer_.setSessionManager(std::move(manager));
+    }
 
-    void packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
-                     const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
-                     const std::string& body, http::HttpResponse* resp);
+    void packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,
+                     const std::string &statusMsg, bool close, const std::string &contentType, int contentLen,
+                     const std::string &body, http::HttpResponse *resp);
 
 private:
     void initialize();
@@ -113,11 +115,11 @@ private:
     void initializeRouter();
     void initializeMiddleware();
     void readDataFromMySQL();
-    void touchSession(int userId, const std::string& sessionId);
+    void touchSession(int userId, const std::string &sessionId);
     void evictIfNeeded();
 
     http::HttpServer httpServer_;
-    common::ThreadPool aiThreadPool_ {8};
+    common::ThreadPool aiThreadPool_{8};
     storage::MysqlUtil mysqlUtil_;
     std::string resource_root_ = "../";
     std::unordered_map<int, bool> onlineUsers_;
