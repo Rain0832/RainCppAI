@@ -163,10 +163,6 @@ void ChatServer::initDatabase()
 
     auto initAllTables = [&]()
     {
-        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS user_api_keys");
-        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS users");
-        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS messages");
-        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS sessions");
         mysqlUtil_.executeRawSql(createAccounts);
         mysqlUtil_.executeRawSql(createSessions);
         mysqlUtil_.executeRawSql(createMessages);
@@ -176,7 +172,6 @@ void ChatServer::initDatabase()
         mysqlUtil_.executeRawSql(createFeedback);
         mysqlUtil_.executeRawSql(createCallLogs);
     };
-
     try
     {
         initAllTables();
