@@ -334,3 +334,7 @@
 ##### v2.2.18 — Repository 层（收拢全部 SQL）
 - **【AIServerCore】新建 `Repository/` 目录 + 4 个 Repository**：`AccountRepository` / `SessionRepository` / `MessageRepository` / `ApiKeyRepository`
 - **【AIServerCore】全部 SQL 从 Handler 迁入 Repository**：统一使用 Prepared Statement，清除控制器层裸 SQL
+
+##### v2.2.19 — Service 层（抽业务逻辑）
+- **【AIServerCore】新建 `Service/` 目录 + 4 个 Service**：`AuthService` / `SessionService` / `ApiKeyService` / `ChatService`
+- **【AIServerCore】Service 层封装 Repository 调用与业务逻辑**：Handler 不再直接操作 Repository，通过 Service 间接调用
