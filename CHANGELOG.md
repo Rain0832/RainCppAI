@@ -297,3 +297,7 @@
 ##### v2.2.10 — 模型配置热加载路径修复 & 侧边栏会话删除
 - **【models.json 热加载路径修复】** `ModelListHandler` 构造函数注入 `projectRoot_`，`stat` 从 `ChatServer::resource_root_` 拼接绝对路径，解决 CWD 不匹配导致永远加载内置硬编码兜底 JSON 的问题
 - **【侧边栏会话删除】** `renderSessions()` 新增 🗑 按钮 + `stopPropagation`，`handleDeleteSession()` 调 `POST /chat/delete-session` → 软删除 `sessions.is_deleted=1`，删除后自动从 sidebar 移除
+
+ ##### v2.2.11 — LICENSE 更换 + 文档勘误
+ - **【Docs】LICENSE 更换为 Apache License 2.0**（原 GPL v3；README badge 已标注 Apache 2.0 但文件内容不符，现统一）
+ - **【Docs】CONTRIBUTING.md 移除 SimpleAmqpClient 依赖行**（v2.2.0 已移除 RabbitMQ 异步写，依赖表长期未同步）

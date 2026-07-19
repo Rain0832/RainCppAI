@@ -34,13 +34,13 @@ web/              ← 前端资源，无 C++ 编译期依赖
 【模块名】type: 描述（可中文）
 ```
 
-模块名：HttpServer / AIServerCore / AIEngine / web / DB / MCP / Docs / Infra
+模块名：HttpServer / AIServerCore / AIEngine / Storage / web / MCP / Docs / Infra / Common / Infralib
 
 type：feat / fix / refactor / perf / chore / docs
 
 示例：
 ```
-【DB】fix: pushMessageToMysql 改用 Prepared Statement 防注入
+【Storage】fix: pushMessageToMysql 改用 Prepared Statement 防注入
 【MCP】refactor: 工具声明从硬编码改为 config.json 配置化
 【AIEngine】feat: Agent Loop 增加最大步数配置项
 ```
@@ -58,7 +58,7 @@ type：feat / fix / refactor / perf / chore / docs
 | libcurl | AI API 调用 | 核心 |
 | nlohmann/json | JSON 解析 | 核心 |
 | MySQL Connector | 数据库 | 核心 |
-| SimpleAmqpClient + rabbitmq-c | 异步消息队列 | 可选 |
+| ~~SimpleAmqpClient + rabbitmq-c~~ | 异步消息队列 | v2.2.0 已移除，不再使用 |
 | OpenCV | 图像前处理 | 可选 |
 | ONNX Runtime | 端侧图像识别 | 可选 |
 
@@ -80,6 +80,6 @@ type：feat / fix / refactor / perf / chore / docs
 4. 每次修改必须更新 CHANGELOG.md
 5. 不得引入未登记的新依赖
 6. SQL 操作必须用 Prepared Statement，禁止字符串拼接
-7. 新增 Handler 必须在 `ChatServer::registerRoutes()` 注册路由
+7. 新增 Handler 必须在 `ChatServer::initializeRouter()` 注册路由
 8. MCP 新增工具必须同步更新 config.json
 9. 开始 PLAN 前必须阅读 `AGENT.md` 并遵循其流程
