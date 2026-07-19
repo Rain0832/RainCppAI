@@ -43,22 +43,6 @@
 #include "storage/MysqlUtil.h"
 #include "vision/ImageRecognizer.h"
 
-class ChatLoginHandler;
-class ChatRegisterHandler;
-class ChatLogoutHandler;
-class ChatHandler;
-class ChatEntryHandler;
-class ChatHistoryHandler;
-
-class AIMenuHandler;
-class AIUploadHandler;
-class AIUploadSendHandler;
-
-class ChatSessionsHandler;
-class ChatSpeechHandler;
-class ChatSseHandler;
-class ChatUpdateTitleHandler;
-
 /**
  * @brief AI聊天服务器核心类
  *
@@ -103,147 +87,48 @@ public:
      */
     void initChatMessage();
 
-private:
-public:
-    /**
-     * @brief 服务器初始化入口方法
-     *
-     * 按照依赖关系顺序初始化各个组件：
-     * 1. 数据库连接 → 2. 会话管理 → 3. 中间件 → 4. 路由配置
-     * 这种顺序确保了底层服务先于上层业务初始化
-     */
-    void initialize();
+    // Handlers access ChatServer through public getters only (no friend classes).
+    // SP 1.10 removed 15 friend declarations; SP 1.13 fix consolidated to single public: section.
 
-    /**
-     * @brief 初始化数据库表结构
-     *
-     * 使用 CREATE TABLE IF NOT EXISTS 确保幂等性
-     */
-    void initDatabase();
-
-    /**
-     * @brief 初始化会话管理系统
-     *
-     * 配置基于内存的会话存储，支持用户登录状态管理
-     * 采用SessionManager统一管理会话生命周期
-     */
-    void initializeSession();
-
-    /**
-     * @brief 初始化HTTP路由映射
-     *
-     * 注册所有API端点和对应的处理器类，采用RESTful风格设计：
-     * - GET请求用于获取资源
-     * - POST请求用于创建或修改资源
-     *
-     * 路由设计原则：
-     * 1. 按功能模块分组（chat、upload、user等）
-     * 2. 使用动词+名词的命名规范
-     * 3. 支持路径参数和查询参数
-     */
-    void initializeRouter();
-
-    /**
-     * @brief 初始化HTTP中间件
-     *
-     * 配置请求处理管道，支持跨域资源共享(CORS)等通用功能
-     * 中间件在请求到达处理器之前执行预处理
-     */
-    void initializeMiddleware();
-
-    /**
-     * @brief 从MySQL数据库读取聊天消息
-     *
-     * 执行SQL查询获取所有用户的聊天记录，按时间顺序加载
-     * 构建用户会话树结构，恢复AI助手状态
-     */
-    void readDataFromMySQL();
-
-    /**
-     * @brief 统一响应封装方法
-     *
-     * 标准化HTTP响应格式，确保所有接口返回一致的数据结构
-     * 提供错误处理和日志记录功能
-     *
-     * @param version HTTP协议版本（如"HTTP/1.1"）
-     * @param statusCode HTTP状态码（200、404、500等）
-     * @param statusMsg 状态描述信息
-     * @param close 是否关闭连接（长连接/短连接）
-     * @param contentType 响应内容类型（如"application/json"）
-     * @param contentLen 内容长度
-     * @param body 响应体数据（JSON格式）
-     * @param resp HttpResponse指针，用于设置响应参数
-     */
-    void packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
-                     const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
-                     const std::string& body, http::HttpResponse* resp);
-
-    /**
-     * @brief 设置会话管理器
-     *
-     * 配置会话管理组件，支持用户登录状态维护
-     *
-     * @param manager 会话管理器实例
-     */
-    void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
-    {
-        httpServer_.setSessionManager(std::move(manager));
-    }
-
-    /**
-     * @brief 获取会话管理器
-     *
-     * @return 当前会话管理器实例指针
-     */
     http::session::SessionManager* getSessionManager() const { return httpServer_.getSessionManager(); }
-
-    /**
-     * @brief 获取资源根路径
-     *
-     * 返回项目根目录（相对于 build/ 为 "../"），
-     * Handler 可拼接此路径访问 web/*.html 等静态资源。
-     */
     const std::string& getResourceRoot() const { return resource_root_; }
-
-    http::HttpServer httpServer_;  ///< HTTP服务器实例
-
-    common::ThreadPool aiThreadPool_ {8};  ///< AI 任务线程池（8线程，处理耗时 AI API 调用）
-
     storage::MysqlUtil& getMysqlUtil() { return mysqlUtil_; }
-    http::ThreadPool& getAiThreadPool() { return aiThreadPool_; }
+    common::ThreadPool& getAiThreadPool() { return aiThreadPool_; }
     auto& getOnlineUsers() { return onlineUsers_; }
     auto& getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
     auto& getImageRecognizers() { return ImageRecognizerMap; }
     auto& getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
-    storage::MysqlUtil mysqlUtil_;  ///< MySQL数据库工具实例
 
-    std::string resource_root_ = "../";  ///< 资源根路径（相对于 build/ 工作目录）
+    void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
+    { httpServer_.setSessionManager(std::move(manager)); }
 
-    std::unordered_map<int, bool> onlineUsers_;        ///< 在线用户状态映射
-    mutable std::shared_mutex rwMutexForOnlineUsers_;  ///< 在线用户读写锁
+    void packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
+                     const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
+                     const std::string& body, http::HttpResponse* resp);
 
-    /**
-     * @brief 聊天信息存储结构
-     *
-     * 外层键：用户ID
-     * 内层键：会话ID
-     * 值：AI助手实例
-     */
-    std::unordered_map<int, std::unordered_map<std::string, std::shared_ptr<AIHelper>>> chatInformation;
-    mutable std::shared_mutex rwMutexForChatInfo;  ///< 读写锁（替代原 mutex）
-
-    std::unordered_map<int, std::shared_ptr<ImageRecognizer>> ImageRecognizerMap;  ///< 图像识别器映射
-    mutable std::shared_mutex rwMutexForImageRecognizer;                           ///< 图像识别器读写锁
-
-    std::unordered_map<int, std::vector<std::string>> sessionsIdsMap;  ///< 用户-会话ID列表映射
-    mutable std::shared_mutex rwMutexForSessionsId;                    ///< 会话ID列表读写锁
-
-    /// LRU 淘汰：记录会话访问顺序，key = "userId:sessionId"
-    std::list<std::string> lruList_;
-    std::unordered_map<std::string, std::list<std::string>::iterator> lruMap_;
-    static constexpr size_t MAX_SESSIONS = 500;  ///< 内存中最大会话数
-
-    /// LRU 辅助方法（调用方需持有写锁）
+private:
+    void initialize();
+    void initDatabase();
+    void initializeSession();
+    void initializeRouter();
+    void initializeMiddleware();
+    void readDataFromMySQL();
     void touchSession(int userId, const std::string& sessionId);
     void evictIfNeeded();
+
+    http::HttpServer httpServer_;
+    common::ThreadPool aiThreadPool_ {8};
+    storage::MysqlUtil mysqlUtil_;
+    std::string resource_root_ = "../";
+    std::unordered_map<int, bool> onlineUsers_;
+    mutable std::shared_mutex rwMutexForOnlineUsers_;
+    std::unordered_map<int, std::unordered_map<std::string, std::shared_ptr<AIHelper>>> chatInformation;
+    mutable std::shared_mutex rwMutexForChatInfo;
+    std::unordered_map<int, std::shared_ptr<ImageRecognizer>> ImageRecognizerMap;
+    mutable std::shared_mutex rwMutexForImageRecognizer;
+    std::unordered_map<int, std::vector<std::string>> sessionsIdsMap;
+    mutable std::shared_mutex rwMutexForSessionsId;
+    std::list<std::string> lruList_;
+    std::unordered_map<std::string, std::list<std::string>::iterator> lruMap_;
+    static constexpr size_t MAX_SESSIONS = 500;
 };
