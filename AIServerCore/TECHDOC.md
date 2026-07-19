@@ -49,10 +49,13 @@ main.cpp
 | `include/controller/ChatDeleteSessionHandler.h` | 会话软删除（设 is_deleted=1） |
 | `include/controller/AIUploadSendHandler.h` | 图像识别代理 |
 
-### Handler 依赖关系
-
-```
-ChatServer
+## Plan 1 变更摘要 (v2.2.13)
+- 新增 Repository/ 层：Account / Session / Message / ApiKey
+- 新增 Service/ 层：Auth / Session / ApiKey / Chat
+- 新增 Server/SessionStore：封装 chatInformation + LRU
+- ChatServer 移除 15 个 `friend class`，改为公开 getter
+- StaticFileHandler 下沉至 HttpServer
+- 数据库全量重设计：8 表 + FK + 范式合规
   ├─► chatInformation (map<session_id, AIHelper>) — 会话池
   ├─► onlineUsers_ (map<session_cookie, user_id>)  — 登录态
   └─► 路由表 → 14 Handler

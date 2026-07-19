@@ -45,9 +45,9 @@ MysqlUtil::executeUpdate(sql, args...)
 
 ## 对外依赖与耦合边界
 
-### 依赖
-
-| 依赖 | 说明 |
+## Plan 1 变更摘要 (v2.2.13)
+- 数据库全量重设计（8 表 + FOREIGN KEY + 1NF/2NF/3NF）
+- DDL 见 `AIServerCore/src/server/ChatServer.cpp::initDatabase()`
 |------|------|
 | MySQL Connector C++ 8 | `cppconn/` 头文件 |
 
@@ -76,4 +76,3 @@ MysqlUtil::executeUpdate(sql, args...)
 | call_logs | id, session_id, account_id, model, provider, duration_ms, status ENUM(success/error/timeout) | — |
 
 See AIServerCore/src/server/ChatServer.cpp::initDatabase() for DDL.
-

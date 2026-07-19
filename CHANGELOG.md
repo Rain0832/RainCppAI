@@ -352,3 +352,9 @@
 - **【CMake】全量重构**：`aiengine` / `httpserver` / `storage` 独立静态库，`http_server` 仅链接
 - **【Tests】引入 GoogleTest（FetchContent）**：`Tests/test_router` / `test_config` / `test_db_pool` 冒烟测试
 - **【Infra】`.gitignore` 追加测试产物忽略项**
+
+##### v2.2.13 — 路径配置化 + TECHDOC 同步（Plan 1 收尾）
+- **【Docs】全量更新 4 个模块 TECHDOC**：移除过时描述，同步 Plan 1 全部架构变更
+- **【Docs】CONTRIBUTING.md 登记 GoogleTest 新依赖**
+- **【Docs】`mcp_config.json` 添加 MCP_PYTHON 环境变量注释**
+- **【Plan 1 总结】架构重构完成**：ChatServer 去 friend → Repository/Service 分层 → ThreadPool/ApiResult/ConfigManager 公用化 → 数据库 8 表全量重设计 →前端功能回归通过

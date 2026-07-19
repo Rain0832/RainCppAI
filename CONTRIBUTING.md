@@ -62,6 +62,8 @@ type：feat / fix / refactor / perf / chore / docs
 | OpenCV | 图像前处理 | 可选 |
 | ONNX Runtime | 端侧图像识别 | 可选 |
 
+| GoogleTest | 单元测试 | 可选（仅编译 Tests/ 时拉取） |
+
 新增依赖必须：在 `README.md` 依赖表登记版本 → 在本表登记类别 → CMake 设为可选 → CHANGELOG 说明原因。
 
 ---

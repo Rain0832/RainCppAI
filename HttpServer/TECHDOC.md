@@ -51,9 +51,10 @@ HttpServer
 
 ## 对外依赖与耦合边界
 
-### 依赖
-
-| 依赖 | 说明 |
+## Plan 1 变更摘要 (v2.2.13)
+- StaticFileHandler 从 AIServerCore 迁入（`http/`，命名空间 `http::`）
+- ThreadPool 提取到 Common/Threading/（原文件改为兼容别名）
+- `utils/db/` 旧 DB 文件已删除（v2.2.0 已迁至 Storage）
 |------|------|
 | muduo | 网络库（Reactor + TcpServer） |
 | OpenSSL | SSL/TLS 支持 |

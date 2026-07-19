@@ -1,4 +1,5 @@
 {
+  "_comment": "Python path overridable via MCP_PYTHON env var (ConfigManager reads it)",
   "mcpServers": {
     "weather_agent": {
       "transport": "stdio",

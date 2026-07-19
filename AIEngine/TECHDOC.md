@@ -106,3 +106,8 @@ LLM → tool_calls
 ### External Dependencies (Runtime)
 
 - Python 3 + `mcp` + `requests` (for `mcp_servers/weather_server.py`)
+
+## Plan 1 变更摘要 (v2.2.13)
+- ThreadPool 提取到 Common/Threading/，**零 HttpServer 依赖已兑现**
+- MQManager.h/.cpp 迁移至 Infralib/Mq/（备份）
+- 编译为独立静态库 libaiengine.a
