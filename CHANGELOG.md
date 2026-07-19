@@ -316,3 +316,9 @@
 - **【Common】新建 `Common/Threading/ThreadPool.h`**（命名空间 `common::`），HttpServer 旧文件改为兼容别名
 - **【AIEngine】`AIHelper.h/.cpp` 头文件引用脱钩**：`HttpServer/include/utils/ThreadPool.h` → `Common/Threading/ThreadPool.h`，终结 AIEngine → HttpServer 非法依赖
 - **【AIServerCore】`ChatServer::aiThreadPool_` 类型更新**：`http::ThreadPool` → `common::ThreadPool`
+
+##### v2.2.15 — 统一配置层 ConfigManager + config.json
+- **【Common】新建 `Common/Config/ConfigManager`**：单例，JSON 加载 + 环境变量覆盖（`DB_HOST` → `db.host`）
+- **【AIServerCore】`ChatServer::initialize()` DB 初始化配置化**：写死的凭据改为从 ConfigManager 读取
+- **【AIServerCore】`main.cpp` 端口 / 线程数 / MCP 路径配置化**：`config.json` + 命令行 `-p` 覆盖
+- **【Infra】新增 `config.json`**：统一管理 server/db/paths/mcp/ai 全部可配项

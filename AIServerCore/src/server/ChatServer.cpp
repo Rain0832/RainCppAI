@@ -2,6 +2,8 @@
 
 #include "server/ChatServer.h"
 
+#include "Common/Config/ConfigManager.h"
+
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
@@ -37,7 +39,11 @@ void ChatServer::initialize()
     std::cout << "ChatServer initialize start  ! " << std::endl;
 
     // 初始化MySQL数据库连接池
-    storage::MysqlUtil::init("127.0.0.1:3307", "chat", "123456", "ChatHttpServer", 5);
+    auto& cfg = common::ConfigManager::instance();
+    cfg.load("../config.json");
+    std::string dbConn = cfg.get("db.host", "127.0.0.1") + ":" + std::to_string(cfg.getInt("db.port", 3307));
+    storage::MysqlUtil::init(dbConn, cfg.get("db.user", "chat"), cfg.get("db.password", ""),
+                              cfg.get("db.name", "ChatHttpServer"), cfg.getInt("db.pool_size", 5));
 
     initDatabase();
     initializeSession();
