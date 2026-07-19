@@ -347,3 +347,8 @@
 ##### v2.2.21 — StaticFileHandler 下沉至 HttpServer
 - **【HttpServer】`StaticFileHandler` 从 AIServerCore 迁入 HttpServer**（命名空间 `http::`）
 - **【AIServerCore】路由注册改用 `http::StaticFileHandler`，不依赖 `ChatServer*`
+
+##### v2.2.22 — CMake 模块化 + libaiengine.a + GoogleTest
+- **【CMake】全量重构**：`aiengine` / `httpserver` / `storage` 独立静态库，`http_server` 仅链接
+- **【Tests】引入 GoogleTest（FetchContent）**：`Tests/test_router` / `test_config` / `test_db_pool` 冒烟测试
+- **【Infra】`.gitignore` 追加测试产物忽略项**

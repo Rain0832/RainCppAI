@@ -77,65 +77,40 @@ set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.cpp
 )
 
-# -----------------------------
-# 可执行文件
-# -----------------------------
+# ==== 静态库：AIEngine ====
+add_library(aiengine STATIC ${AI_ENGINE_SRC})
+target_include_directories(aiengine PUBLIC ${PROJECT_SOURCE_DIR}/AIEngine/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common)
+target_link_libraries(aiengine PUBLIC CURL::libcurl OpenSSL::SSL OpenSSL::Crypto ${OpenCV_LIBS} ${ONNXRUNTIME_LIBRARY} pthread)
 
-add_executable(http_server
-    ${MAIN_SRC}
-    ${HTTP_SERVER_SRC}
-    ${STORAGE_SRC}
-    ${AI_ENGINE_SRC}
-    ${AI_SERVER_CORE_SRC}
-)
+# ==== 静态库：HttpServer ====
+add_library(httpserver STATIC ${HTTP_SERVER_SRC})
+target_include_directories(httpserver PUBLIC ${PROJECT_SOURCE_DIR}/HttpServer/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common)
+target_link_libraries(httpserver PUBLIC muduo_net muduo_base OpenSSL::SSL OpenSSL::Crypto pthread)
 
-# -----------------------------
-# 头文件目录
-# -----------------------------
+# ==== 静态库：Storage ====
+add_library(storage STATIC ${STORAGE_SRC})
+target_include_directories(storage PUBLIC ${PROJECT_SOURCE_DIR}/Storage/include)
+target_link_libraries(storage PUBLIC ${MYSQLCPPCONN_LIBRARY} ${MYSQLCLIENT_LIBRARY})
 
-target_include_directories(http_server
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}
-        ${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_SOURCE_DIR}/HttpServer/include
-        ${PROJECT_SOURCE_DIR}/Storage/include
-        ${PROJECT_SOURCE_DIR}/AIEngine/include
-        ${PROJECT_SOURCE_DIR}/AIServerCore/include
-        ${PROJECT_SOURCE_DIR}/3rdparty
-        /usr/include/mysql-cppconn-8
-        /usr/include/mysql
-        /usr/local/include
-        /usr/local/include/jdbc
-        /usr/local/onnxruntime/include
-)
+# ==== 可执行文件（AIServerCore + main）====
+add_executable(http_server ${MAIN_SRC} ${AI_SERVER_CORE_SRC})
+target_include_directories(http_server PRIVATE
+    ${PROJECT_SOURCE_DIR}/AIServerCore/include
+    ${PROJECT_SOURCE_DIR}/3rdparty
+    ${PROJECT_SOURCE_DIR}/Common
+    /usr/include/mysql-cppconn-8
+    /usr/include/mysql
+    /usr/local/include
+    /usr/local/include/jdbc
+    /usr/local/onnxruntime/include)
+target_link_libraries(http_server PRIVATE aiengine httpserver storage pthread)
 
-# -----------------------------
-# 链接库
-# -----------------------------
-
-target_link_libraries(http_server
-    PRIVATE
-        pthread
-        muduo_net
-        muduo_base
-
-        ${MYSQLCPPCONN_LIBRARY}
-        ${MYSQLCLIENT_LIBRARY}
-
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        CURL::libcurl
-
-        ${OpenCV_LIBS}
-
-        ${ONNXRUNTIME_LIBRARY}
-
-)
-
-# -----------------------------
-# 调试信息
-# -----------------------------
+# ==== GoogleTest ====
+include(FetchContent)
+FetchContent_Declare(googletest URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip)
+FetchContent_MakeAvailable(googletest)
+enable_testing()
+add_subdirectory(Tests)
 
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "ONNX Runtime library: ${ONNXRUNTIME_LIBRARY}")
-        ${PROJECT_SOURCE_DIR}/Common
