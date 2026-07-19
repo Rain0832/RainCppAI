@@ -306,3 +306,8 @@
 - **【Docs】DEVELOP_STANDARD.md 新增 §1.7 目录命名规范**（新增目录 PascalCase，存量 lowercase 逐步对齐）
 - **【Docs】归档过时文档**：`docs/Session_Architecture_Guide.md`、`retrospective-v2.0.3-MCP重构.md`、`retrospective-v2.0.8.md` → `Docs/Archive/`；删除旧 `docs/` 目录
 - **【Infra】新建 `skill/` 目录**，用于项目级可复用技能沉淀
+
+##### v2.2.13 — 数据库全量重设计（8 表 + FK）
+- **【Storage】`ChatServer::initDatabase()` 全量重写**：`users` → `accounts`（含 role ENUM + email + password_hash）+ `user_api_keys` → `api_keys` + 新增 `invite_codes` / `verification_codes` / `feedback` / `call_logs` 四表
+- **【Storage】全部表满足 1NF/2NF/3NF**，InnoDB + utf8mb4 + FOREIGN KEY 约束
+- **【Storage】`messages.role` ENUM 扩展 `tool`**，新增 `tool_call_id` 字段，支撑 Agent Loop 上下文持久化

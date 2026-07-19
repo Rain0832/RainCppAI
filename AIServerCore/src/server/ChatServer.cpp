@@ -47,76 +47,152 @@ void ChatServer::initialize()
 
 void ChatServer::initDatabase()
 {
-    // 建表（幂等，已存在则跳过）
-    const char *createUsers = R"SQL(
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(255) NOT NULL UNIQUE,
-            password VARCHAR(255) NOT NULL
-        ) CHARSET=utf8mb4
-    )SQL";
-
-    const char *createSessions = R"SQL(
-        CREATE TABLE IF NOT EXISTS sessions (
-            id VARCHAR(64) NOT NULL PRIMARY KEY,
-            user_id BIGINT UNSIGNED NOT NULL,
-            title VARCHAR(128) DEFAULT NULL,
+    const char* createAccounts = R"SQL(
+        CREATE TABLE IF NOT EXISTS accounts (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(64) NOT NULL,
+            password_hash VARCHAR(256) NOT NULL,
+            email VARCHAR(255) DEFAULT NULL,
+            role ENUM('user','admin','org') NOT NULL DEFAULT 'user',
+            is_disabled TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
             updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-            is_deleted TINYINT(1) DEFAULT 0,
-            INDEX idx_user_id (user_id)
-        ) CHARSET=utf8mb4
+            last_login_at DATETIME(3) DEFAULT NULL,
+            UNIQUE KEY uk_username (username),
+            UNIQUE KEY uk_email (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     )SQL";
 
-    const char *createMessages = R"SQL(
+    const char* createSessions = R"SQL(
+        CREATE TABLE IF NOT EXISTS sessions (
+            id VARCHAR(64) NOT NULL PRIMARY KEY,
+            account_id BIGINT UNSIGNED NOT NULL,
+            title VARCHAR(128) DEFAULT NULL,
+            is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+            INDEX idx_account_id (account_id),
+            INDEX idx_account_deleted (account_id, is_deleted),
+            CONSTRAINT fk_session_account FOREIGN KEY (account_id) REFERENCES accounts(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )SQL";
+
+    const char* createMessages = R"SQL(
         CREATE TABLE IF NOT EXISTS messages (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             session_id VARCHAR(64) NOT NULL,
-            role ENUM('user','assistant','system') NOT NULL,
+            role ENUM('user','assistant','system','tool') NOT NULL,
             content MEDIUMTEXT NOT NULL,
             model VARCHAR(64) DEFAULT NULL,
+            tool_call_id VARCHAR(128) DEFAULT NULL,
             payload JSON DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-            INDEX idx_session_created (session_id, created_at)
+            INDEX idx_session_created (session_id, created_at),
+            CONSTRAINT fk_message_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC
     )SQL";
 
-    const char *createApiKeys = R"SQL(
-        CREATE TABLE IF NOT EXISTS user_api_keys (
+    const char* createApiKeys = R"SQL(
+        CREATE TABLE IF NOT EXISTS api_keys (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            user_id BIGINT UNSIGNED NOT NULL,
+            account_id BIGINT UNSIGNED NOT NULL,
             provider VARCHAR(32) NOT NULL,
             api_key VARCHAR(512) NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY uk_user_provider (user_id, provider)
-        ) CHARSET=utf8mb4
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+            UNIQUE KEY uk_account_provider (account_id, provider),
+            CONSTRAINT fk_apikey_account FOREIGN KEY (account_id) REFERENCES accounts(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )SQL";
+
+    const char* createInviteCodes = R"SQL(
+        CREATE TABLE IF NOT EXISTS invite_codes (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(32) NOT NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            max_uses INT UNSIGNED NOT NULL DEFAULT 1,
+            used_count INT UNSIGNED NOT NULL DEFAULT 0,
+            expires_at DATETIME(3) DEFAULT NULL,
+            is_disabled TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            UNIQUE KEY uk_code (code),
+            INDEX idx_created_by (created_by),
+            CONSTRAINT fk_invite_creator FOREIGN KEY (created_by) REFERENCES accounts(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )SQL";
+
+    const char* createVerificationCodes = R"SQL(
+        CREATE TABLE IF NOT EXISTS verification_codes (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            code VARCHAR(8) NOT NULL,
+            purpose ENUM('register','reset_password') NOT NULL DEFAULT 'register',
+            is_used TINYINT(1) NOT NULL DEFAULT 0,
+            expires_at DATETIME(3) NOT NULL,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            INDEX idx_email_purpose (email, purpose)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )SQL";
+
+    const char* createFeedback = R"SQL(
+        CREATE TABLE IF NOT EXISTS feedback (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            account_id BIGINT UNSIGNED NOT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            INDEX idx_account_id (account_id),
+            CONSTRAINT fk_feedback_account FOREIGN KEY (account_id) REFERENCES accounts(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )SQL";
+
+    const char* createCallLogs = R"SQL(
+        CREATE TABLE IF NOT EXISTS call_logs (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            session_id VARCHAR(64) DEFAULT NULL,
+            account_id BIGINT UNSIGNED NOT NULL,
+            model VARCHAR(64) NOT NULL,
+            provider VARCHAR(32) NOT NULL,
+            duration_ms INT UNSIGNED NOT NULL,
+            status ENUM('success','error','timeout') NOT NULL DEFAULT 'success',
+            error_message VARCHAR(512) DEFAULT NULL,
+            created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            INDEX idx_account_created (account_id, created_at),
+            INDEX idx_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     )SQL";
 
     auto initAllTables = [&]()
     {
-        mysqlUtil_.executeRawSql(createUsers);
+        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS user_api_keys");
+        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS users");
+        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS messages");
+        mysqlUtil_.executeRawSql("DROP TABLE IF EXISTS sessions");
+        mysqlUtil_.executeRawSql(createAccounts);
         mysqlUtil_.executeRawSql(createSessions);
         mysqlUtil_.executeRawSql(createMessages);
         mysqlUtil_.executeRawSql(createApiKeys);
+        mysqlUtil_.executeRawSql(createInviteCodes);
+        mysqlUtil_.executeRawSql(createVerificationCodes);
+        mysqlUtil_.executeRawSql(createFeedback);
+        mysqlUtil_.executeRawSql(createCallLogs);
     };
 
     try
     {
         initAllTables();
-        std::cout << "Database tables initialized successfully." << std::endl;
+        std::cout << "Database tables initialized successfully (8 tables with FK)." << std::endl;
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         std::cerr << "First attempt to init database tables failed: " << e.what()
-                  << " — retrying after 2s ..." << std::endl;
+                  << " -- retrying after 2s ..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(2));
         try
         {
             initAllTables();
             std::cout << "Database tables initialized successfully (retry)." << std::endl;
         }
-        catch (const std::exception &e2)
+        catch (const std::exception& e2)
         {
             std::cerr << "Failed to init database tables after retry: " << e2.what() << std::endl;
         }
