@@ -343,3 +343,7 @@
 - **【AIServerCore】新建 `Server/SessionStore`**：封装 chatInformation + LRU + sessionsIdsMap，线程安全
 - **【AIServerCore】ChatServer 移除 15 个 `friend class` 声明**，新增公开 getter（`getMysqlUtil` / `getAiThreadPool` / `getOnlineUsers` / `getImageRecognizers`）
  Handler 通过 getter 访问 ChatServer，不再直接穿透私有成员
+
+##### v2.2.21 — StaticFileHandler 下沉至 HttpServer
+- **【HttpServer】`StaticFileHandler` 从 AIServerCore 迁入 HttpServer**（命名空间 `http::`）
+- **【AIServerCore】路由注册改用 `http::StaticFileHandler`，不依赖 `ChatServer*`

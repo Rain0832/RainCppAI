@@ -21,7 +21,7 @@
 #include "controller/ChatUpdateTitleHandler.h"
 #include "controller/McpHandler.h"
 #include "controller/ModelListHandler.h"
-#include "controller/StaticFileHandler.h"
+#include "http/StaticFileHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "http/HttpServer.h"
@@ -306,7 +306,7 @@ void ChatServer::initializeRouter()
     httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
 
     // 静态文件路由（CSS / JS / 图片 / 字体 — 动态正则匹配）
-    auto staticFileHandler = std::make_shared<StaticFileHandler>(this);
+    auto staticFileHandler = std::make_shared<http::StaticFileHandler>(resource_root_);
     httpServer_.addRoute(http::HttpRequest::kGet, "/css/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/js/:file", staticFileHandler);
     httpServer_.addRoute(http::HttpRequest::kGet, "/assets/:path", staticFileHandler);
