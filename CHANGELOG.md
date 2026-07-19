@@ -311,3 +311,8 @@
 - **【Storage】`ChatServer::initDatabase()` 全量重写**：`users` → `accounts`（含 role ENUM + email + password_hash）+ `user_api_keys` → `api_keys` + 新增 `invite_codes` / `verification_codes` / `feedback` / `call_logs` 四表
 - **【Storage】全部表满足 1NF/2NF/3NF**，InnoDB + utf8mb4 + FOREIGN KEY 约束
 - **【Storage】`messages.role` ENUM 扩展 `tool`**，新增 `tool_call_id` 字段，支撑 Agent Loop 上下文持久化
+
+##### v2.2.14 — ThreadPool 提取 + AIEngine 解耦
+- **【Common】新建 `Common/Threading/ThreadPool.h`**（命名空间 `common::`），HttpServer 旧文件改为兼容别名
+- **【AIEngine】`AIHelper.h/.cpp` 头文件引用脱钩**：`HttpServer/include/utils/ThreadPool.h` → `Common/Threading/ThreadPool.h`，终结 AIEngine → HttpServer 非法依赖
+- **【AIServerCore】`ChatServer::aiThreadPool_` 类型更新**：`http::ThreadPool` → `common::ThreadPool`

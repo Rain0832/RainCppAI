@@ -138,3 +138,4 @@ target_link_libraries(http_server
 
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "ONNX Runtime library: ${ONNXRUNTIME_LIBRARY}")
+        ${PROJECT_SOURCE_DIR}/Common

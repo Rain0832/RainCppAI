@@ -225,7 +225,7 @@ private:
 
     http::HttpServer httpServer_;  ///< HTTP服务器实例
 
-    http::ThreadPool aiThreadPool_ {8};  ///< AI 任务线程池（8线程，处理耗时 AI API 调用）
+    common::ThreadPool aiThreadPool_ {8};  ///< AI 任务线程池（8线程，处理耗时 AI API 调用）
 
     storage::MysqlUtil mysqlUtil_;  ///< MySQL数据库工具实例
 

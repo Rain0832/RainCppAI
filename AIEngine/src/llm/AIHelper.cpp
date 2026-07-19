@@ -3,7 +3,7 @@
 #include <chrono>
 #include <stdexcept>
 
-AIHelper::AIHelper(storage::MysqlUtil *mysqlUtil, http::ThreadPool *threadPool)
+AIHelper::AIHelper(storage::MysqlUtil *mysqlUtil, common::ThreadPool *threadPool)
     : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
 {
     strategy = StrategyFactory::instance().create("aliyun");
