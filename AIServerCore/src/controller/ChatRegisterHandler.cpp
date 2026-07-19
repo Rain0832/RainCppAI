@@ -1,4 +1,5 @@
 #include "controller/ChatRegisterHandler.h"
+#include "Common/Http/ApiResult.h"
 
 void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -23,9 +24,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
     else
     {
-        json failureResp;
-        failureResp["status"] = "error";
-        failureResp["message"] = "username already exists";
+        json failureResp = common::ApiResult::fail(400, "username already exists").toJson();
         std::string failureBody = failureResp.dump(4);
 
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k409Conflict, "Conflict");

@@ -326,3 +326,7 @@
 ##### v2.2.16 — 死代码清理 + MQManager 迁移
 - **【HttpServer】删除 `utils/db/` 旧 DB 文件**（DbConnection/DbConnectionPool/DbException，v2.2.0 已迁至 Storage 模块，CMake 早已排除）
 - **【Infralib】`MQManager.h/.cpp` 迁至 `Infralib/Mq/`**：RabbitMQ 异步写已废弃，保留代码备查，新增 README 说明退役原因
+
+##### v2.2.17 — 统一错误响应 ApiResult
+- **【Common】新建 `Common/Http/ApiResult.h`**：统一 `{success, data, error{code, message}}` 信封，提供 `ok()` / `fail()` 工厂
+- **【AIServerCore】12 个 Handler 错误响应全部迁移**：`json e; e["status"]="error"` → `ApiResult::fail(code, msg).toJson()`

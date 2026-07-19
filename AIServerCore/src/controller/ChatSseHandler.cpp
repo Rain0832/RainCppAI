@@ -1,4 +1,5 @@
 #include "controller/ChatSseHandler.h"
+#include "Common/Http/ApiResult.h"
 
 #include "common/AISessionIdGenerator.h"
 #include "llm/AIHelper.h"
@@ -31,9 +32,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         auto session = server_->getSessionManager()->getSession(req, resp);
         if (session->getValue("isLoggedIn") != "true")
         {
-            json e;
-            e["status"] = "error";
-            e["message"] = "Unauthorized";
+            json e = common::ApiResult::fail(400, "Unauthorized").toJson();
             std::string b = e.dump();
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
                                  "application/json", b.size(), b, resp);

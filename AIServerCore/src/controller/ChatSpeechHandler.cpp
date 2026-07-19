@@ -1,4 +1,5 @@
 #include "controller/ChatSpeechHandler.h"
+#include "Common/Http/ApiResult.h"
 
 void ChatSpeechHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -8,9 +9,7 @@ void ChatSpeechHandler::handle(const http::HttpRequest& req, http::HttpResponse*
         LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
         if (session->getValue("isLoggedIn") != "true")
         {
-            json errorResp;
-            errorResp["status"] = "error";
-            errorResp["message"] = "Unauthorized";
+            json errorResp = common::ApiResult::fail(400, "Unauthorized").toJson();
             std::string errorBody = errorResp.dump(4);
 
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,

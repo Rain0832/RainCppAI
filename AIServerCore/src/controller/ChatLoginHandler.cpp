@@ -1,4 +1,5 @@
 #include "controller/ChatLoginHandler.h"
+#include "Common/Http/ApiResult.h"
 
 void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -65,9 +66,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
         }
         else
         {
-            json failureResp;
-            failureResp["status"] = "error";
-            failureResp["message"] = "Invalid username or password";
+            json failureResp = common::ApiResult::fail(400, "Invalid username or password").toJson();
             std::string failureBody = failureResp.dump(4);
 
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized");

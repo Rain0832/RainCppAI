@@ -1,4 +1,5 @@
 #include "controller/ApiKeyHandler.h"
+#include "Common/Http/ApiResult.h"
 
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
@@ -13,9 +14,7 @@ void ApiKeyHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
     auto session = server_->getSessionManager()->getSession(req, resp);
     if (session->getValue("isLoggedIn") != "true")
     {
-        json e;
-        e["status"] = "error";
-        e["message"] = "Unauthorized";
+        json e = common::ApiResult::fail(400, "Unauthorized").toJson();
         std::string b = e.dump();
         server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
                              "application/json", b.size(), b, resp);
@@ -74,9 +73,7 @@ void ApiKeyHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         auto body = req.getBody();
         if (body.empty())
         {
-            json e;
-            e["status"] = "error";
-            e["message"] = "Empty body";
+            json e = common::ApiResult::fail(400, "Empty body").toJson();
             std::string b = e.dump();
             server_->packageResp(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request", true,
                                  "application/json", b.size(), b, resp);
@@ -89,9 +86,7 @@ void ApiKeyHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
 
         if (provider.empty() || apiKey.empty())
         {
-            json e;
-            e["status"] = "error";
-            e["message"] = "Missing provider or apiKey";
+            json e = common::ApiResult::fail(400, "Missing provider or apiKey").toJson();
             std::string b = e.dump();
             server_->packageResp(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request", true,
                                  "application/json", b.size(), b, resp);
