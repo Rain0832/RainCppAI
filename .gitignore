@@ -5,6 +5,7 @@
 .vscode/
 build/
 docs/
+Docs/
 .clang-format
 .env
 *.db

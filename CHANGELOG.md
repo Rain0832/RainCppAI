@@ -299,5 +299,10 @@
 - **【侧边栏会话删除】** `renderSessions()` 新增 🗑 按钮 + `stopPropagation`，`handleDeleteSession()` 调 `POST /chat/delete-session` → 软删除 `sessions.is_deleted=1`，删除后自动从 sidebar 移除
 
  ##### v2.2.11 — LICENSE 更换 + 文档勘误
- - **【Docs】LICENSE 更换为 Apache License 2.0**（原 GPL v3；README badge 已标注 Apache 2.0 但文件内容不符，现统一）
- - **【Docs】CONTRIBUTING.md 移除 SimpleAmqpClient 依赖行**（v2.2.0 已移除 RabbitMQ 异步写，依赖表长期未同步）
+- **【Docs】LICENSE 更换为 Apache License 2.0**（原 GPL v3；README badge 已标注 Apache 2.0 但文件内容不符，现统一）
+- **【Docs】CONTRIBUTING.md 移除 SimpleAmqpClient 依赖行**（v2.2.0 已移除 RabbitMQ 异步写，依赖表长期未同步）
+
+##### v2.2.12 — 目录命名规范 + 文档归档 + skill 目录
+- **【Docs】DEVELOP_STANDARD.md 新增 §1.7 目录命名规范**（新增目录 PascalCase，存量 lowercase 逐步对齐）
+- **【Docs】归档过时文档**：`docs/Session_Architecture_Guide.md`、`retrospective-v2.0.3-MCP重构.md`、`retrospective-v2.0.8.md` → `Docs/Archive/`；删除旧 `docs/` 目录
+- **【Infra】新建 `skill/` 目录**，用于项目级可复用技能沉淀

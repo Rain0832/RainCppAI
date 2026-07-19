@@ -124,6 +124,22 @@ namespace http::ssl { }
 
 ---
 
+## 1.7 目录命名
+
+模块顶层目录、模块内子目录均使用 **PascalCase**。已存在的 lowercase 子目录逐步对齐，新增目录强制执行 PascalCase。
+
+```text
+// ✅ 正确（新增目录）
+Common/Config/    Common/Threading/    Common/Http/
+Infralib/Mq/      Infralib/Logging/
+Tests/
+Docs/Archive/
+```
+
+**例外**：第三方库目录（`.venv/`、`.node_modules/`）、Git 目录（`.git/`）、构建产物目录（`build/`）不受此规则约束，保持原名。
+
+---
+
 ## 2. 头文件规范
 
 ### 2.1 Include Guard — `#pragma once`
