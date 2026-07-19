@@ -330,3 +330,7 @@
 ##### v2.2.17 — 统一错误响应 ApiResult
 - **【Common】新建 `Common/Http/ApiResult.h`**：统一 `{success, data, error{code, message}}` 信封，提供 `ok()` / `fail()` 工厂
 - **【AIServerCore】12 个 Handler 错误响应全部迁移**：`json e; e["status"]="error"` → `ApiResult::fail(code, msg).toJson()`
+
+##### v2.2.18 — Repository 层（收拢全部 SQL）
+- **【AIServerCore】新建 `Repository/` 目录 + 4 个 Repository**：`AccountRepository` / `SessionRepository` / `MessageRepository` / `ApiKeyRepository`
+- **【AIServerCore】全部 SQL 从 Handler 迁入 Repository**：统一使用 Prepared Statement，清除控制器层裸 SQL

@@ -1,0 +1,80 @@
+#include "Repository/AccountRepository.h"
+#include "storage/MysqlUtil.h"
+
+json AccountRepository::findByUsername(const std::string& username)
+{
+    storage::MysqlUtil mu;
+    auto res = mu.executeQuery("SELECT id, username, password_hash, email, role, is_disabled "
+                               "FROM accounts WHERE username = ?", username);
+    if (res && res->next())
+    {
+        json j;
+        j["id"] = res->getInt64("id");
+        j["username"] = res->getString("username");
+        j["password_hash"] = res->getString("password_hash");
+        j["email"] = res->getString("email") ? res->getString("email") : "";
+        j["role"] = res->getString("role");
+        j["is_disabled"] = res->getBoolean("is_disabled");
+        return j;
+    }
+    return {};
+}
+
+json AccountRepository::findById(long long id)
+{
+    storage::MysqlUtil mu;
+    auto res = mu.executeQuery("SELECT id, username, email, role, is_disabled "
+                               "FROM accounts WHERE id = ?", id);
+    if (res && res->next())
+    {
+        json j;
+        j["id"] = res->getInt64("id");
+        j["username"] = res->getString("username");
+        j["email"] = res->getString("email") ? res->getString("email") : "";
+        j["role"] = res->getString("role");
+        j["is_disabled"] = res->getBoolean("is_disabled");
+        return j;
+    }
+    return {};
+}
+
+json AccountRepository::create(const std::string& username, const std::string& passwordHash,
+                                const std::string& email)
+{
+    storage::MysqlUtil mu;
+    mu.executeUpdate("INSERT INTO accounts (username, password_hash, email) VALUES (?, ?, ?)",
+                     username, passwordHash, email);
+    return findByUsername(username);
+}
+
+bool AccountRepository::updatePassword(long long id, const std::string& newHash)
+{
+    storage::MysqlUtil mu;
+    mu.executeUpdate("UPDATE accounts SET password_hash = ? WHERE id = ?", newHash, id);
+    return true;
+}
+
+bool AccountRepository::setDisabled(long long id, bool disabled)
+{
+    storage::MysqlUtil mu;
+    mu.executeUpdate("UPDATE accounts SET is_disabled = ? WHERE id = ?", (int)disabled, id);
+    return true;
+}
+
+json AccountRepository::listAll()
+{
+    json arr = json::array();
+    storage::MysqlUtil mu;
+    auto res = mu.executeQuery("SELECT id, username, email, role, is_disabled FROM accounts ORDER BY id");
+    while (res && res->next())
+    {
+        json j;
+        j["id"] = res->getInt64("id");
+        j["username"] = res->getString("username");
+        j["email"] = res->getString("email") ? res->getString("email") : "";
+        j["role"] = res->getString("role");
+        j["is_disabled"] = res->getBoolean("is_disabled");
+        arr.push_back(j);
+    }
+    return arr;
+}
