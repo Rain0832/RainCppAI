@@ -322,3 +322,7 @@
 - **【AIServerCore】`ChatServer::initialize()` DB 初始化配置化**：写死的凭据改为从 ConfigManager 读取
 - **【AIServerCore】`main.cpp` 端口 / 线程数 / MCP 路径配置化**：`config.json` + 命令行 `-p` 覆盖
 - **【Infra】新增 `config.json`**：统一管理 server/db/paths/mcp/ai 全部可配项
+
+##### v2.2.16 — 死代码清理 + MQManager 迁移
+- **【HttpServer】删除 `utils/db/` 旧 DB 文件**（DbConnection/DbConnectionPool/DbException，v2.2.0 已迁至 Storage 模块，CMake 早已排除）
+- **【Infralib】`MQManager.h/.cpp` 迁至 `Infralib/Mq/`**：RabbitMQ 异步写已废弃，保留代码备查，新增 README 说明退役原因
