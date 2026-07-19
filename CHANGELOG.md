@@ -338,3 +338,8 @@
 ##### v2.2.19 — Service 层（抽业务逻辑）
 - **【AIServerCore】新建 `Service/` 目录 + 4 个 Service**：`AuthService` / `SessionService` / `ApiKeyService` / `ChatService`
 - **【AIServerCore】Service 层封装 Repository 调用与业务逻辑**：Handler 不再直接操作 Repository，通过 Service 间接调用
+
+##### v2.2.20 — Handler 瘦身 + ChatServer 去 friend
+- **【AIServerCore】新建 `Server/SessionStore`**：封装 chatInformation + LRU + sessionsIdsMap，线程安全
+- **【AIServerCore】ChatServer 移除 15 个 `friend class` 声明**，新增公开 getter（`getMysqlUtil` / `getAiThreadPool` / `getOnlineUsers` / `getImageRecognizers`）
+ Handler 通过 getter 访问 ChatServer，不再直接穿透私有成员
