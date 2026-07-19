@@ -105,6 +105,7 @@ public:
 
 private:
 private:
+public:
     /**
      * @brief 服务器初始化入口方法
      *
