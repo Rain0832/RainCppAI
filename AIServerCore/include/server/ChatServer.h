@@ -104,24 +104,6 @@ public:
     void initChatMessage();
 
 private:
-    friend class ChatLoginHandler;
-    friend class ChatRegisterHandler;
-    friend ChatLogoutHandler;
-    friend class ChatHandler;
-    friend class ChatEntryHandler;
-    friend class AIMenuHandler;
-    friend class AIUploadHandler;
-    friend class AIUploadSendHandler;
-    friend class ChatHistoryHandler;
-
-    friend class ChatSessionsHandler;
-    friend class ChatSpeechHandler;
-    friend class ChatSseHandler;
-    friend class ChatUpdateTitleHandler;
-    friend class ChatDeleteSessionHandler;
-    friend class StaticFileHandler;
-    friend class ApiKeyHandler;
-
 private:
     /**
      * @brief 服务器初始化入口方法
@@ -227,6 +209,12 @@ private:
 
     common::ThreadPool aiThreadPool_ {8};  ///< AI 任务线程池（8线程，处理耗时 AI API 调用）
 
+    storage::MysqlUtil& getMysqlUtil() { return mysqlUtil_; }
+    http::ThreadPool& getAiThreadPool() { return aiThreadPool_; }
+    auto& getOnlineUsers() { return onlineUsers_; }
+    auto& getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
+    auto& getImageRecognizers() { return ImageRecognizerMap; }
+    auto& getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
     storage::MysqlUtil mysqlUtil_;  ///< MySQL数据库工具实例
 
     std::string resource_root_ = "../";  ///< 资源根路径（相对于 build/ 工作目录）
