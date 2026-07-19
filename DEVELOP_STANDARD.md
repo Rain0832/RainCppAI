@@ -357,6 +357,13 @@ bool is_running_;        ///< 服务器运行状态
 - **大括号**：K&R 风格（左括号不换行）
 - **指针 / 引用**：`Type* ptr`、`Type& ref`（`*` 和 `&` 紧贴类型）
 
+**.clang-format**：项目根目录包含 `.clang-format` 配置文件。每次编辑 `.cpp` / `.h` 文件后，必须运行 `clang-format -i <文件路径>` 确保格式一致。建议在 CMakeLists.txt 中增加 `make format` 目标：
+```cmake
+file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.h)
+add_custom_target(format COMMAND clang-format -i ${ALL_SOURCE_FILES})
+```
+编辑后执行 `make format` 格式化所有源文件，commit 前确保格式正确。
+
 ```cpp
 // ✅ 正确
 if (condition) {

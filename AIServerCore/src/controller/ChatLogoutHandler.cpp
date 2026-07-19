@@ -24,8 +24,8 @@ void ChatLogoutHandler::handle(const http::HttpRequest& req, http::HttpResponse*
         json parsed = json::parse(req.getBody());
 
         {
-            std::lock_guard<std::shared_mutex> lock(server_->rwMutexForOnlineUsers_);
-            server_->onlineUsers_.erase(userId);
+            std::lock_guard<std::shared_mutex> lock(server_->getOnlineUsersMutex());
+            server_->getOnlineUsers().erase(userId);
         }
 
         json response;

@@ -23,8 +23,8 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         // 同时兼容内存中的会话（新建但 MQ 尚未持久化的）
         std::vector<std::string> memSessions;
         {
-            std::shared_lock<std::shared_mutex> lock(server_->rwMutexForSessionsId);
-            memSessions = server_->sessionsIdsMap[userId];
+            std::shared_lock<std::shared_mutex> lock(server_->getSessionIdsMutex());
+            memSessions = server_->getSessionIdsMap()[userId];
         }
 
         // 查 DB 获取 title

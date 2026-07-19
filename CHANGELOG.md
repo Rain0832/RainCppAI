@@ -358,3 +358,8 @@
 - **【Docs】CONTRIBUTING.md 登记 GoogleTest 新依赖**
 - **【Docs】`mcp_config.json` 添加 MCP_PYTHON 环境变量注释**
 - **【Plan 1 总结】架构重构完成**：ChatServer 去 friend → Repository/Service 分层 → ThreadPool/ApiResult/ConfigManager 公用化 → 数据库 8 表全量重设计 →前端功能回归通过
+
+##### 编译修复 (post-v2.2.13)
+- **【AIServerCore】ChatServer.h 单 public:/private: 结构重构**：移除死 friend forward declarations，整合为干净的访问控制
+- **【AIServerCore】6 个 Handler 直接成员访问替换为公共获取器调用**（onlineUsers_ / ImageRecognizerMap / chatInformation 等 → getter 代理）
+- **【Docs】DEVELOP_STANDARD.md 新增 clang-format 格式化规则**

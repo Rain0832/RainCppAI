@@ -84,9 +84,9 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         // 获取/创建 AIHelperPtr（读写锁）
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
-            std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForChatInfo);
-            auto uit = server_->chatInformation.find(userId);
-            if (uit != server_->chatInformation.end())
+            std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex());
+            auto uit = server_->getChatInformation().find(userId);
+            if (uit != server_->getChatInformation().end())
             {
                 auto sit = uit->second.find(sessionId);
                 if (sit != uit->second.end())
@@ -95,15 +95,15 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         }
         if (!AIHelperPtr)
         {
-            std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForChatInfo);
-            auto &us = server_->chatInformation[userId];
+            std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex());
+            auto &us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
             {
                 us.emplace(sessionId, std::make_shared<AIHelper>(&server_->mysqlUtil_, &server_->aiThreadPool_));
                 // 同步记录 sessionId 到列表中
                 {
-                    std::unique_lock<std::shared_mutex> slock(server_->rwMutexForSessionsId);
-                    server_->sessionsIdsMap[userId].push_back(sessionId);
+                    std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
+                    server_->getSessionIdsMap()[userId].push_back(sessionId);
                 }
             }
             AIHelperPtr = us[sessionId];

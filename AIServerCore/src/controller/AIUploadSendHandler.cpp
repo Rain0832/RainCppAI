@@ -21,9 +21,9 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         std::shared_ptr<ImageRecognizer> ImageRecognizerPtr;
         {
             // 先读锁查找
-            std::shared_lock<std::shared_mutex> rlock(server_->rwMutexForImageRecognizer);
-            auto it = server_->ImageRecognizerMap.find(userId);
-            if (it != server_->ImageRecognizerMap.end())
+            std::shared_lock<std::shared_mutex> rlock(server_->getImageRecognizerMutex());
+            auto it = server_->getImageRecognizers().find(userId);
+            if (it != server_->getImageRecognizers().end())
             {
                 ImageRecognizerPtr = it->second;
             }
@@ -31,13 +31,13 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
 
             if (!ImageRecognizerPtr)
             {
-                std::unique_lock<std::shared_mutex> wlock(server_->rwMutexForImageRecognizer);
-                if (server_->ImageRecognizerMap.find(userId) == server_->ImageRecognizerMap.end())
+                std::unique_lock<std::shared_mutex> wlock(server_->getImageRecognizerMutex());
+                if (server_->getImageRecognizers().find(userId) == server_->getImageRecognizers().end())
                 {
-                    server_->ImageRecognizerMap.emplace(
+                    server_->getImageRecognizers().emplace(
                             userId, std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx"));
                 }
-                ImageRecognizerPtr = server_->ImageRecognizerMap[userId];
+                ImageRecognizerPtr = server_->getImageRecognizers()[userId];
             }
         }
 

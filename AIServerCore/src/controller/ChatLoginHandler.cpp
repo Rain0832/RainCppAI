@@ -29,12 +29,12 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
             session->setValue("userId", std::to_string(userId));
             session->setValue("username", username);
             session->setValue("isLoggedIn", "true");
-            if (server_->onlineUsers_.find(userId) == server_->onlineUsers_.end() ||
-                server_->onlineUsers_[userId] == false)
+            if (server_->getOnlineUsers().find(userId) == server_->getOnlineUsers().end() ||
+                server_->getOnlineUsers()[userId] == false)
             {
                 {
-                    std::lock_guard<std::shared_mutex> lock(server_->rwMutexForOnlineUsers_);
-                    server_->onlineUsers_[userId] = true;
+                    std::lock_guard<std::shared_mutex> lock(server_->getOnlineUsersMutex());
+                    server_->getOnlineUsers()[userId] = true;
                 }
 
                 json successResp;
