@@ -12,7 +12,8 @@ json AccountRepository::findByUsername(const std::string& username)
         j["id"] = res->getInt64("id");
         j["username"] = res->getString("username");
         j["password_hash"] = res->getString("password_hash");
-        j["email"] = res->getString("email") ? res->getString("email") : "";
+        std::string emailVal = res->getString("email");
+        j["email"] = emailVal.empty() ? "" : emailVal;
         j["role"] = res->getString("role");
         j["is_disabled"] = res->getBoolean("is_disabled");
         return j;
@@ -30,7 +31,8 @@ json AccountRepository::findById(long long id)
         json j;
         j["id"] = res->getInt64("id");
         j["username"] = res->getString("username");
-        j["email"] = res->getString("email") ? res->getString("email") : "";
+            std::string emailVal2 = res->getString("email");
+            j["email"] = emailVal2.empty() ? "" : emailVal2;
         j["role"] = res->getString("role");
         j["is_disabled"] = res->getBoolean("is_disabled");
         return j;
@@ -71,7 +73,8 @@ json AccountRepository::listAll()
         json j;
         j["id"] = res->getInt64("id");
         j["username"] = res->getString("username");
-        j["email"] = res->getString("email") ? res->getString("email") : "";
+        std::string emailVal3 = res->getString("email");
+        j["email"] = emailVal3.empty() ? "" : emailVal3;
         j["role"] = res->getString("role");
         j["is_disabled"] = res->getBoolean("is_disabled");
         arr.push_back(j);

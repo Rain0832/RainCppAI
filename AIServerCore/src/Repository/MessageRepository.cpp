@@ -14,7 +14,8 @@ json MessageRepository::findBySession(const std::string& sessionId)
         json m;
         m["role"] = res->getString("role");
         m["content"] = res->getString("content");
-        m["model"] = res->getString("model") ? res->getString("model") : "";
+        std::string modelVal = res->getString("model");
+        m["model"] = modelVal.empty() ? "" : modelVal;
         m["created_at"] = res->getString("created_at");
         arr.push_back(m);
     }

@@ -12,7 +12,8 @@ json SessionRepository::findByAccount(long long accountId)
     {
         json j;
         j["sessionId"] = res->getString("id");
-        j["name"] = res->getString("title") ? res->getString("title") : "新会话";
+        std::string titleVal = res->getString("title");
+        j["name"] = titleVal.empty() ? "新会话" : titleVal;
         arr.push_back(j);
     }
     return arr;
@@ -28,7 +29,8 @@ json SessionRepository::findById(const std::string& sessionId)
         json j;
         j["sessionId"] = res->getString("id");
         j["accountId"] = res->getInt64("account_id");
-        j["title"] = res->getString("title") ? res->getString("title") : "";
+        std::string titleVal2 = res->getString("title");
+        j["title"] = titleVal2.empty() ? "" : titleVal2;
         return j;
     }
     return {};
