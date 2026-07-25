@@ -65,7 +65,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         try
         {
             storage::MysqlUtil mu;
-            auto res = mu.executeQuery("SELECT api_key FROM user_api_keys WHERE user_id = ? AND provider = ?", userId, dbProvider);
+            auto res = mu.executeQuery("SELECT api_key FROM api_keys WHERE account_id = ? AND provider = ?", userId, dbProvider);
             if (res && res->next())
                 apiKey = res->getString("api_key");
         }
@@ -99,7 +99,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
             auto &us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
             {
-                us.emplace(sessionId, std::make_shared<AIHelper>(&server_->mysqlUtil_, &server_->aiThreadPool_));
+                us.emplace(sessionId, std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
                 // 同步记录 sessionId 到列表中
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
@@ -107,8 +107,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                 }
             }
             AIHelperPtr = us[sessionId];
-            server_->touchSession(userId, sessionId);
-            server_->evictIfNeeded();
+            // SessionStore handles LRU touch/evict internally via getOrCreate
         }
 
         // 标记 deferred，发送 SSE 握手头
@@ -131,7 +130,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
             });
 
         // 提交流式 AI 调用到线程池
-        server_->aiThreadPool_.submit(
+        server_->getAiThreadPool().submit(
             [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
              provider, isNewSession]()
             {

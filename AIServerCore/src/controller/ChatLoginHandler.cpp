@@ -95,7 +95,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
 
 int ChatLoginHandler::queryUserId(const std::string& username, const std::string& password)
 {
-    std::string sql = "SELECT id FROM users WHERE username = ? AND password = ?";
+    std::string sql = "SELECT id FROM accounts WHERE username = ? AND password_hash = ?";
     // std::vector<std::string> params = {username, password};
     auto res = mysqlUtil_.executeQuery(sql, username, password);
     if (res->next())

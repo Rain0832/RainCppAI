@@ -29,7 +29,7 @@ void ApiKeyHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         try
         {
             storage::MysqlUtil mu;
-            std::string sql = "SELECT provider, api_key FROM user_api_keys WHERE user_id = ?";
+            std::string sql = "SELECT provider, api_key FROM api_keys WHERE account_id = ?";
             auto res = mu.executeQuery(sql, userId);
             json keys = json::array();
             while (res && res->next())
@@ -94,7 +94,7 @@ void ApiKeyHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         }
 
         storage::MysqlUtil mysqlUtil;
-        mysqlUtil.executeUpdate("INSERT INTO user_api_keys (user_id, provider, api_key) VALUES (?, ?, ?) "
+        mysqlUtil.executeUpdate("INSERT INTO api_keys (user_id, provider, api_key) VALUES (?, ?, ?) "
                                 "ON DUPLICATE KEY UPDATE api_key = VALUES(api_key)",
                                 userId, provider, apiKey);
 

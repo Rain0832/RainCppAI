@@ -32,7 +32,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         try
         {
             storage::MysqlUtil mu;
-            std::string sql = "SELECT id, title FROM sessions WHERE user_id = ? "
+            std::string sql = "SELECT id, title FROM sessions WHERE account_id = ? "
                               "AND is_deleted = 0 ORDER BY updated_at DESC";
             auto res = mu.executeQuery(sql, userId);
             while (res && res->next())

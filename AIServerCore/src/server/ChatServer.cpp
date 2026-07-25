@@ -36,7 +36,7 @@ ChatServer::ChatServer(int port, const std::string &name, muduo::net::TcpServer:
 
 void ChatServer::initialize()
 {
-    std::cout << "ChatServer initialize start  ! " << std::endl;
+    LOG_INFO << "ChatServer initializing ...";
 
     // 初始化MySQL数据库连接池
     auto& cfg = common::ConfigManager::instance();
@@ -181,7 +181,7 @@ void ChatServer::initDatabase()
     try
     {
         initAllTables();
-        std::cout << "Database tables initialized successfully (8 tables with FK)." << std::endl;
+        LOG_INFO << "Database tables initialized (8 tables with FK)";
     }
     catch (const std::exception& e)
     {
@@ -202,16 +202,16 @@ void ChatServer::initDatabase()
 
 void ChatServer::initChatMessage()
 {
-    std::cout << "initChatMessage start ! " << std::endl;
+    LOG_INFO << "Loading chat history from database ...";
     readDataFromMySQL();
-    std::cout << "initChatMessage success ! " << std::endl;
+    LOG_INFO << "Chat history loaded successfully";
 }
 
 void ChatServer::readDataFromMySQL()
 {
     // Phase 2: 从新的 messages 表读取，JOIN sessions 获取用户 ID
     // 通过 sessions.user_id 关联，按 created_at 排序保证消息顺序
-    std::string sql = "SELECT m.session_id, s.user_id, m.role, m.content, "
+    std::string sql = "SELECT m.session_id, s.account_id AS user_id, m.role, m.content, "
                       "UNIX_TIMESTAMP(m.created_at) * 1000 AS ts_ms "
                       "FROM messages m "
                       "INNER JOIN sessions s ON m.session_id = s.id "
@@ -267,7 +267,7 @@ void ChatServer::readDataFromMySQL()
         helper->restoreMessage(content, ts_ms, role);
     }
 
-    std::cout << "readDataFromMySQL finished" << std::endl;
+    LOG_INFO << "Chat history restore complete";
 }
 
 void ChatServer::setThreadNum(int numThreads)

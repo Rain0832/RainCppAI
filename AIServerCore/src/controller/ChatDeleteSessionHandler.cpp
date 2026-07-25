@@ -46,7 +46,7 @@ void ChatDeleteSessionHandler::handle(const http::HttpRequest& req, http::HttpRe
 
         // 软删除：设置 is_deleted = 1（仅允许删除自己的会话）
         storage::MysqlUtil mu;
-        mu.executeUpdate("UPDATE sessions SET is_deleted = 1 WHERE id = ? AND user_id = ?", sessionId, userId);
+        mu.executeUpdate("UPDATE sessions SET is_deleted = 1 WHERE id = ? AND account_id = ?", sessionId, userId);
 
         json res;
         res["success"] = true;

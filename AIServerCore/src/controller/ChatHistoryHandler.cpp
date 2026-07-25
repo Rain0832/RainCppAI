@@ -48,7 +48,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest &req, http::HttpResponse
             if (userSessions.find(sessionId) == userSessions.end())
             {
                 userSessions.emplace(sessionId,
-                                     std::make_shared<AIHelper>(&server_->mysqlUtil_, &server_->aiThreadPool_));
+                                     std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
             }
             AIHelperPtr = userSessions[sessionId];
         } // 写锁释放

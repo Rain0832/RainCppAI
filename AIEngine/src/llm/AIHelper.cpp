@@ -512,7 +512,7 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, bool 
     // 使用 Prepared Statement 同步写入，彻底消除 SQL 注入
     try
     {
-        mysqlUtil_->executeUpdate("INSERT IGNORE INTO sessions (id, user_id) VALUES (?, ?)", sessionId,
+    mysqlUtil_->executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)", sessionId,
                                   static_cast<long long>(userId));
         if (modelName.empty())
         {

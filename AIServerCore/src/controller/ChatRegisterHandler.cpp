@@ -39,8 +39,8 @@ int ChatRegisterHandler::insertUser(const std::string& username, const std::stri
 {
     if (!isUserExist(username))
     {
-        mysqlUtil_.executeUpdate("INSERT INTO users (username, password) VALUES (?, ?)", username, password);
-        auto res = mysqlUtil_.executeQuery("SELECT id FROM users WHERE username = ?", username);
+        mysqlUtil_.executeUpdate("INSERT INTO accounts (username, password_hash) VALUES (?, ?)", username, password);
+        auto res = mysqlUtil_.executeQuery("SELECT id FROM accounts WHERE username = ?", username);
         if (res->next())
         {
             return res->getInt("id");
@@ -51,7 +51,7 @@ int ChatRegisterHandler::insertUser(const std::string& username, const std::stri
 
 bool ChatRegisterHandler::isUserExist(const std::string& username)
 {
-    auto res = mysqlUtil_.executeQuery("SELECT id FROM users WHERE username = ?", username);
+    auto res = mysqlUtil_.executeQuery("SELECT id FROM accounts WHERE username = ?", username);
     if (res->next())
     {
         return true;
