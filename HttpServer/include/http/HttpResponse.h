@@ -21,6 +21,7 @@ public:
         k301MovedPermanently = 301,
         k400BadRequest = 400,
         k401Unauthorized = 401,
+        k429TooManyRequests = 429,
         k403Forbidden = 403,
         k404NotFound = 404,
         k409Conflict = 409,

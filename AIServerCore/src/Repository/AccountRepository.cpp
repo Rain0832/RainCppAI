@@ -4,7 +4,8 @@
 json AccountRepository::findByUsername(const std::string& username)
 {
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery("SELECT id, username, password_hash, email, role, is_disabled "
+    auto res = mu.executeQuery("SELECT id, username, password_hash, email, role, is_disabled, "
+                               "failed_attempts, locked_until "
                                "FROM accounts WHERE username = ?", username);
     if (res && res->next())
     {
@@ -16,6 +17,10 @@ json AccountRepository::findByUsername(const std::string& username)
         j["email"] = emailVal.empty() ? "" : emailVal;
         j["role"] = res->getString("role");
         j["is_disabled"] = res->getBoolean("is_disabled");
+        j["failed_attempts"] = res->getInt("failed_attempts");
+        std::string lockVal = res->getString("locked_until");
+        if (!lockVal.empty())
+            j["locked_until"] = lockVal;
         return j;
     }
     return {};

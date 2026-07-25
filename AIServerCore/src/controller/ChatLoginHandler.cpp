@@ -31,7 +31,38 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
         // 通过 AuthService 进行 argon2id 密码验证
         AuthService auth;
         json account = auth.login(username, password);
-        if (!account.empty())
+        if (account.contains("locked") && account["locked"].get<bool>())
+        {
+            // 账号已被锁定，计算剩余时间
+            std::string lockUntil = account.value("locked_until", "");
+            int remainMin = 15;
+            if (!lockUntil.empty())
+            {
+                // 解析 MySQL DATETIME 格式 "YYYY-MM-DD HH:MM:SS"
+                std::tm tm = {};
+                sscanf(lockUntil.c_str(), "%d-%d-%d %d:%d:%d",
+                       &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                       &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+                tm.tm_year -= 1900;
+                tm.tm_mon -= 1;
+                auto lockTime = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+                auto now = std::chrono::system_clock::now();
+                auto remain = std::chrono::duration_cast<std::chrono::minutes>(lockTime - now).count();
+                if (remain > 0 && remain <= 15)
+                    remainMin = static_cast<int>(remain);
+            }
+            std::string msg = "账号已锁定，请" + std::to_string(remainMin) + "分钟后重试";
+            json failureResp = common::ApiResult::fail(429, msg).toJson();
+            std::string failureBody = failureResp.dump(4);
+
+            resp->setStatusLine(req.getVersion(), http::HttpResponse::k429TooManyRequests, "Too Many Requests");
+            resp->setCloseConnection(false);
+            resp->setContentType("application/json");
+            resp->setContentLength(failureBody.size());
+            resp->setBody(failureBody);
+            return;
+        }
+        else if (!account.empty())
         {
             int userId = account["id"].get<int>();
             auto session = server_->getSessionManager()->getSession(req, resp);
