@@ -29,7 +29,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest &req, http::HttpResponse
         // 先取到 AIHelperPtr（最小化锁范围），再在锁外调用 GetMessages()
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
-            std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex());
+            std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex(userId));
             auto uit = server_->getChatInformation().find(userId);
             if (uit != server_->getChatInformation().end())
             {
@@ -43,7 +43,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest &req, http::HttpResponse
 
         if (!AIHelperPtr)
         {
-            std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex());
+            std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex(userId));
             auto &userSessions = server_->getChatInformation()[userId];
             if (userSessions.find(sessionId) == userSessions.end())
             {

@@ -84,7 +84,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         // 获取/创建 AIHelperPtr（读写锁）
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
-            std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex());
+            std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex(userId));
             auto uit = server_->getChatInformation().find(userId);
             if (uit != server_->getChatInformation().end())
             {
@@ -95,7 +95,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         }
         if (!AIHelperPtr)
         {
-            std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex());
+            std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex(userId));
             auto &us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
             {

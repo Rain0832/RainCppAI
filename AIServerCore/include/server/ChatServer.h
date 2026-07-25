@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdlib>
 #include <ctime>
@@ -97,7 +98,9 @@ public:
     auto& getImageRecognizers() { return ImageRecognizerMap; }
     auto& getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
     auto& getChatInformation() { return chatInformation; }
-    auto& getChatInfoMutex() { return rwMutexForChatInfo; }
+    /// 分片锁：userId % 16 映射到对应锁，降低高并发写锁竞争
+    static constexpr int kChatInfoShardCount = 16;
+    auto& getChatInfoMutex(int userId) { return chatInfoMutexes_[static_cast<size_t>(userId) % kChatInfoShardCount]; }
     auto& getSessionIdsMap() { return sessionsIdsMap; }
     auto& getSessionIdsMutex() { return rwMutexForSessionsId; }
     void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
@@ -126,7 +129,7 @@ private:
     std::unordered_map<int, bool> onlineUsers_;
     mutable std::shared_mutex rwMutexForOnlineUsers_;
     std::unordered_map<int, std::unordered_map<std::string, std::shared_ptr<AIHelper>>> chatInformation;
-    mutable std::shared_mutex rwMutexForChatInfo;
+    mutable std::array<std::shared_mutex, kChatInfoShardCount> chatInfoMutexes_;
     std::unordered_map<int, std::shared_ptr<ImageRecognizer>> ImageRecognizerMap;
     mutable std::shared_mutex rwMutexForImageRecognizer;
     std::unordered_map<int, std::vector<std::string>> sessionsIdsMap;
