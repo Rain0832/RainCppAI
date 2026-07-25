@@ -18,11 +18,12 @@ int main(int argc, char *argv[])
 {
     LOG_INFO << "pid = " << getpid();
     std::string serverName = "ChatServer";
-    auto& cfg = common::ConfigManager::instance();
+    auto &cfg = common::ConfigManager::instance();
     cfg.load("../config.json");
     // 安全检查：DB 密码应从环境变量注入，config.json 中密码字段应为空
     std::string dbPass = cfg.get("db.password", "");
-    if (dbPass.empty()) {
+    if (dbPass.empty())
+    {
         LOG_WARN << "DB_PASSWORD env var is not set; if config.json has no password, DB connection will fail";
     }
     int port = cfg.getInt("server.port", 80);
@@ -42,7 +43,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    muduo::Logger::setLogLevel(muduo::Logger::INFO);
+    muduo::Logger::setLogLevel(muduo::Logger::DEBUG);
     // 日志时区设为东八区 (CST)，方便国内排查
     muduo::Logger::setTimeZone(muduo::TimeZone(8 * 3600, "CST"));
     ChatServer server(port, serverName);

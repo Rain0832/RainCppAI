@@ -26,7 +26,6 @@ void AIHelper::addMessage(int userId, const std::string &userName, const std::st
         messages_.push_back({role, userInput, "", "", ms});
     }
     pushMessageToMysql(userId, userName, role, userInput, ms, sessionId);
-    pushMessageToMysql(userId, userName, role, userInput, ms, sessionId);
 }
 
 // ─── 从 DB 恢复历史消息（线程安全，启动阶段单线程调用，但加锁保险）───
@@ -222,7 +221,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         }
         catch (const std::exception &)
         {
-            // roundResponse 不是完整 JSON（正常流式场景），按纯文本处理
+            LOG_ERROR << "[LLM Response] parse/stream failed, treating as plain text";
             auto tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
                              std::chrono::system_clock::now().time_since_epoch())
                              .count();
@@ -264,9 +263,16 @@ std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onCh
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ctx);
 
-    curl_easy_perform(curl);
+    CURLcode curlRes = curl_easy_perform(curl);
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
+
+    if (curlRes != CURLE_OK)
+    {
+        LOG_ERROR << "[LLM API] curl failed: " << curl_easy_strerror(curlRes)
+                  << " | url: " << strategy->getApiUrl();
+        throw std::runtime_error(std::string("LLM API call failed: ") + curl_easy_strerror(curlRes));
+    }
 
     // 流结束后，构造完整的 JSON 响应给 chatStream 解析
     json fakeResponse;

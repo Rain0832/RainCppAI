@@ -6,23 +6,15 @@
 
 static void sendSseChunk(const muduo::net::TcpConnectionPtr &conn, const std::string &data)
 {
+    if (!conn || !conn->connected()) return;
     std::string frame = "data: " + data + "\n\n";
-    conn->getLoop()->runInLoop(
-        [conn, frame]()
-        {
-            if (conn->connected())
-                conn->send(frame);
-        });
+    conn->send(frame);  // TcpConnection::send() 内置线程安全
 }
 
 static void sendSseDone(const muduo::net::TcpConnectionPtr &conn)
 {
-    conn->getLoop()->runInLoop(
-        [conn]()
-        {
-            if (conn->connected())
-                conn->send("data: [DONE]\n\n");
-        });
+    if (conn && conn->connected())
+        conn->send("data: [DONE]\n\n");
 }
 
 void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
@@ -118,8 +110,10 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         conn->getLoop()->runInLoop(
             [conn, req]()
             {
-                if (!conn->connected())
+                if (!conn->connected()) {
+                    LOG_WARN << "[SSE] Handshake skipped: connection not connected";
                     return;
+                }
                 std::string sseHeader = "HTTP/1.1 200 OK\r\n"
                                         "Content-Type: text/event-stream\r\n"
                                         "Cache-Control: no-cache\r\n"
@@ -127,6 +121,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                                         "Access-Control-Allow-Origin: *\r\n"
                                         "\r\n";
                 conn->send(sseHeader);
+                LOG_INFO << "[SSE] Handshake sent";
             });
 
         // 提交流式 AI 调用到线程池
@@ -134,6 +129,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
             [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
              provider, isNewSession]()
             {
+                LOG_INFO << "[SSE] ThreadPool task started, connected=" << conn->connected();
                 try
                 {
                     // 新会话：先发送 sessionId 事件让前端知道
