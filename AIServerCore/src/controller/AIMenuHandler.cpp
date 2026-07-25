@@ -52,10 +52,10 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
     }
     catch (const std::exception& e)
     {
-        // 异常场景返回标准JSON错误响应
+        LOG_ERROR << "AIMenuHandler exception: " << e.what();
         json failureResp;
         failureResp["status"] = "error";
-        failureResp["message"] = e.what();
+        failureResp["message"] = "Internal server error";
         std::string failureBody = failureResp.dump(4);
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(true);

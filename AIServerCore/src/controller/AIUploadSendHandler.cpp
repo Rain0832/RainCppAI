@@ -58,6 +58,16 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         }
 
         std::string decodedData = base64_decode(imageBase64);
+        // 图片安全校验：base64 解码后数据不超过 10 MB
+        static constexpr size_t kMaxImageBytes = 10 * 1024 * 1024;  // 10 MB
+        if (decodedData.size() > kMaxImageBytes)
+        {
+            throw std::runtime_error("Image size exceeds 10 MB limit");
+        }
+        if (decodedData.size() < 12)
+        {
+            throw std::runtime_error("Image data too small to be valid");
+        }
         std::vector<uchar> imgData(decodedData.begin(), decodedData.end());
 
         std::string className = ImageRecognizerPtr->PredictFromBuffer(imgData);
@@ -80,9 +90,10 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
     catch (const std::exception& e)
     {
+        LOG_ERROR << "AIUploadSendHandler exception: " << e.what();
         json failureResp;
         failureResp["status"] = "error";
-        failureResp["message"] = e.what();
+        failureResp["message"] = "Image processing failed";
         std::string failureBody = failureResp.dump(4);
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(true);

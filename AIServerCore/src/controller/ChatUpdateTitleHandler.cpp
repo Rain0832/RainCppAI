@@ -52,9 +52,10 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
     }
     catch (const std::exception& e)
     {
+        LOG_ERROR << "ChatUpdateTitleHandler exception: " << e.what();
         json f;
         f["status"] = "error";
-        f["message"] = e.what();
+        f["message"] = "Internal server error";
         std::string b = f.dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad");
         resp->setContentType("application/json");
