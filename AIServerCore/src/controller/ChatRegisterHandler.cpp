@@ -7,13 +7,14 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
     std::string username = parsed["username"];
     std::string password = parsed["password"];
 
-    int userId = insertUser(username, password);
-    if (userId != -1)
+    AuthService auth;
+    json account = auth.registerAccount(username, password);
+    if (!account.empty())
     {
         json successResp;
         successResp["status"] = "success";
         successResp["message"] = "Register successful";
-        successResp["userId"] = userId;
+        successResp["userId"] = account["id"];
         std::string successBody = successResp.dump(4);
 
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
@@ -24,7 +25,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
     else
     {
-        json failureResp = common::ApiResult::fail(400, "username already exists").toJson();
+        json failureResp = common::ApiResult::fail(409, "用户名已存在").toJson();
         std::string failureBody = failureResp.dump(4);
 
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k409Conflict, "Conflict");
@@ -33,28 +34,4 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
         resp->setContentLength(failureBody.size());
         resp->setBody(failureBody);
     }
-}
-
-int ChatRegisterHandler::insertUser(const std::string& username, const std::string& password)
-{
-    if (!isUserExist(username))
-    {
-        mysqlUtil_.executeUpdate("INSERT INTO accounts (username, password_hash) VALUES (?, ?)", username, password);
-        auto res = mysqlUtil_.executeQuery("SELECT id FROM accounts WHERE username = ?", username);
-        if (res->next())
-        {
-            return res->getInt("id");
-        }
-    }
-    return -1;
-}
-
-bool ChatRegisterHandler::isUserExist(const std::string& username)
-{
-    auto res = mysqlUtil_.executeQuery("SELECT id FROM accounts WHERE username = ?", username);
-    if (res->next())
-    {
-        return true;
-    }
-    return false;
 }

@@ -1,10 +1,12 @@
 #include "controller/ChatLoginHandler.h"
+#include "Service/AuthService.h"
 #include "Common/Http/ApiResult.h"
 
 void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     auto contentType = req.getHeader("Content-Type");
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
+    int userId = account["id"].get<int>();
     {
         LOG_INFO << "content" << req.getBody();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
@@ -21,8 +23,9 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
         std::string username = parsed["username"];
         std::string password = parsed["password"];
 
-        int userId = queryUserId(username, password);
-        if (userId != -1)
+    AuthService auth;
+    json account = auth.login(username, password);
+    if (!account.empty())
         {
             auto session = server_->getSessionManager()->getSession(req, resp);
 

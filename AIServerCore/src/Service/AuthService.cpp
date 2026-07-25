@@ -1,4 +1,5 @@
 #include "Service/AuthService.h"
+#include "Crypto/PasswordHash.h"
 #include "Repository/AccountRepository.h"
 
 json AuthService::login(const std::string& username, const std::string& password)
@@ -7,8 +8,8 @@ json AuthService::login(const std::string& username, const std::string& password
     json account = repo.findByUsername(username);
     if (account.empty())
         return {};  // not found
-    // Password check (plaintext for now; Plan 2 adds argon2id)
-    if (account["password_hash"].get<std::string>() != password)
+    // argon2id verify against stored hash
+    if (!common::verifyPassword(password, account["password_hash"].get<std::string>()))
         return {};  // wrong password
     return account;
 }
@@ -19,7 +20,8 @@ json AuthService::registerAccount(const std::string& username, const std::string
     AccountRepository repo;
     if (!repo.findByUsername(username).empty())
         return {};  // already exists
-    return repo.create(username, password, email);
+    std::string hash = common::hashPassword(password);
+    return repo.create(username, hash, email);
 }
 
 bool AuthService::isUsernameTaken(const std::string& username)

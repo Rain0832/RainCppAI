@@ -64,6 +64,8 @@ type：feat / fix / refactor / perf / chore / docs
 
 | GoogleTest | 单元测试 | 可选（仅编译 Tests/ 时拉取） |
 
+| libsodium | 密码哈希 (argon2id) | 核心（Plan 2 引入） |
+
 新增依赖必须：在 `README.md` 依赖表登记版本 → 在本表登记类别 → CMake 设为可选 → CHANGELOG 说明原因。
 
 ---

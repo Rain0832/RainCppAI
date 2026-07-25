@@ -18,10 +18,10 @@ find_package(OpenCV REQUIRED)
 find_library(MYSQLCPPCONN_LIBRARY
     NAMES mysqlcppconn mysqlcppconn8
     PATHS
-        /usr/local/lib64
-        /usr/local/lib
-        /usr/lib64
-        /usr/lib
+    /usr/local/lib64
+    /usr/local/lib
+    /usr/lib64
+    /usr/lib
 )
 
 # ONNX Runtime
@@ -75,6 +75,7 @@ list(REMOVE_ITEM AI_SERVER_CORE_SRC ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.
 # 主程序
 set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.cpp
+    ${PROJECT_SOURCE_DIR}/Common/Crypto/PasswordHash.cpp
     ${PROJECT_SOURCE_DIR}/Common/Config/ConfigManager.cpp
 )
 
@@ -83,6 +84,7 @@ add_library(aiengine STATIC ${AI_ENGINE_SRC})
 target_include_directories(aiengine PUBLIC ${PROJECT_SOURCE_DIR}/AIEngine/include ${PROJECT_SOURCE_DIR}/Storage/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common ${PROJECT_SOURCE_DIR})
 target_include_directories(aiengine PUBLIC /usr/local/onnxruntime/include)
 target_link_libraries(aiengine PUBLIC CURL::libcurl OpenSSL::SSL OpenSSL::Crypto ${OpenCV_LIBS} ${ONNXRUNTIME_LIBRARY} pthread storage)
+target_link_libraries(aiengine PUBLIC sodium)
 
 # ==== 静态库：HttpServer ====
 add_library(httpserver STATIC ${HTTP_SERVER_SRC})
@@ -97,6 +99,7 @@ target_link_libraries(storage PUBLIC ${MYSQLCPPCONN_LIBRARY} ${MYSQLCLIENT_LIBRA
 # ==== 可执行文件（AIServerCore + main）====
 add_executable(http_server ${MAIN_SRC} ${AI_SERVER_CORE_SRC})
 target_include_directories(http_server PRIVATE
+    ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/AIServerCore/include
     ${PROJECT_SOURCE_DIR}/3rdparty
     ${PROJECT_SOURCE_DIR}/Common
