@@ -75,12 +75,14 @@ list(REMOVE_ITEM AI_SERVER_CORE_SRC ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.
 # 主程序
 set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.cpp
+    ${PROJECT_SOURCE_DIR}/Common/Config/ConfigManager.cpp
 )
 
 # ==== 静态库：AIEngine ====
 add_library(aiengine STATIC ${AI_ENGINE_SRC})
-target_include_directories(aiengine PUBLIC ${PROJECT_SOURCE_DIR}/AIEngine/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common)
-target_link_libraries(aiengine PUBLIC CURL::libcurl OpenSSL::SSL OpenSSL::Crypto ${OpenCV_LIBS} ${ONNXRUNTIME_LIBRARY} pthread)
+target_include_directories(aiengine PUBLIC ${PROJECT_SOURCE_DIR}/AIEngine/include ${PROJECT_SOURCE_DIR}/Storage/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common ${PROJECT_SOURCE_DIR})
+target_include_directories(aiengine PUBLIC /usr/local/onnxruntime/include)
+target_link_libraries(aiengine PUBLIC CURL::libcurl OpenSSL::SSL OpenSSL::Crypto ${OpenCV_LIBS} ${ONNXRUNTIME_LIBRARY} pthread storage)
 
 # ==== 静态库：HttpServer ====
 add_library(httpserver STATIC ${HTTP_SERVER_SRC})
@@ -103,7 +105,7 @@ target_include_directories(http_server PRIVATE
     /usr/local/include
     /usr/local/include/jdbc
     /usr/local/onnxruntime/include)
-target_link_libraries(http_server PRIVATE aiengine httpserver storage pthread)
+target_link_libraries(http_server PRIVATE -Wl,--whole-archive aiengine -Wl,--no-whole-archive httpserver storage pthread)
 
 # ==== GoogleTest ====
 include(FetchContent)
