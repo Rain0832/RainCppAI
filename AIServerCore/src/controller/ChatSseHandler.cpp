@@ -76,6 +76,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         // 获取/创建 AIHelperPtr（读写锁）
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
+            LOG_DEBUG << "[ChatSseHandler] acquire shared lock for chatInfo (userId=" << userId << ", shard=" << (userId%16) << ")";
             std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex(userId));
             auto uit = server_->getChatInformation().find(userId);
             if (uit != server_->getChatInformation().end())
@@ -87,6 +88,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         }
         if (!AIHelperPtr)
         {
+            LOG_DEBUG << "[ChatSseHandler] acquire unique lock for chatInfo (userId=" << userId << ", shard=" << (userId%16) << ")";
             std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex(userId));
             auto &us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
@@ -108,7 +110,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
 
         // SSE 握手：在 IO 线程中立即发送响应头
         conn->getLoop()->runInLoop(
-            [conn, req]()
+            [conn, req, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider, isNewSession]()
             {
                 if (!conn->connected()) {
                     LOG_WARN << "[SSE] Handshake skipped: connection not connected";
@@ -122,22 +124,15 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                                         "\r\n";
                 conn->send(sseHeader);
                 LOG_INFO << "[SSE] Handshake sent";
-            });
 
-        // 提交流式 AI 调用到线程池
-        server_->getAiThreadPool().submit(
-            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
-             provider, isNewSession]()
-            {
-                LOG_INFO << "[SSE] ThreadPool task started, connected=" << conn->connected();
+                // 在 IO 线程内同步执行 AI 调用（避免跨线程唤醒管道问题）
                 try
                 {
-                    // 新会话：先发送 sessionId 事件让前端知道
                     if (isNewSession)
                     {
                         json sidEvent;
                         sidEvent["sessionId"] = sessionId;
-                        sendSseChunk(conn, sidEvent.dump());
+                        conn->send("data: " + sidEvent.dump() + "\n\n");
                     }
 
                     AIHelperPtr->chatStream(
@@ -149,18 +144,21 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                                 return false;
                             json data;
                             data["token"] = token;
-                            sendSseChunk(conn, data.dump());
+                            conn->send("data: " + data.dump() + "\n\n");
                             return true;
                         },
                         "", isNewSession);
-                    sendSseDone(conn);
+                    if (conn->connected())
+                        conn->send("data: [DONE]\n\n");
                 }
                 catch (const std::exception &e)
                 {
                     json err;
                     err["error"] = e.what();
-                    sendSseChunk(conn, err.dump());
-                    sendSseDone(conn);
+                    if (conn->connected())
+                        conn->send("data: " + err.dump() + "\n\n");
+                    if (conn->connected())
+                        conn->send("data: [DONE]\n\n");
                 }
             });
     }
