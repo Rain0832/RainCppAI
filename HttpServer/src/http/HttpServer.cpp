@@ -152,7 +152,7 @@ void HttpServer::onRequest(const muduo::net::TcpConnectionPtr& conn, const HttpR
     // 同步模式：立即发送响应
     muduo::net::Buffer buf;
     response.appendToBuffer(&buf);
-    LOG_INFO << "Sending response:\n" << buf.toStringPiece().as_string();
+    // LOG_DEBUG << "Sending response (" << buf.readableBytes() << " bytes)";
 
     conn->send(&buf);
     if (response.closeConnection())
@@ -174,8 +174,7 @@ void HttpServer::handleRequest(const HttpRequest& req, HttpResponse* resp)
         // 路由处理
         if (!router_.route(mutableReq, resp))
         {
-            LOG_INFO << "请求的啥，url：" << req.method() << " " << req.path();
-            LOG_INFO << "未找到路由，返回404";
+            LOG_DEBUG << "No route matched: " << req.method() << " " << req.path();
             resp->setStatusCode(HttpResponse::k404NotFound);
             resp->setStatusMessage("Not Found");
             resp->setCloseConnection(true);

@@ -25,7 +25,7 @@ void ConfigManager::load(const std::string& path)
         return;
     }
     file >> config_;
-    std::cout << "[ConfigManager] Loaded config from " << path << std::endl;
+    // Config loaded successfully (no output needed at startup)
 }
 
 std::string ConfigManager::get(const std::string& path, const std::string& defaultVal) const
