@@ -35,7 +35,12 @@ public:
 
     void setStrategy(std::shared_ptr<AIStrategy> strat);
 
-    void addMessage(int userId, const std::string &userName, bool is_user, const std::string &userInput,
+    /**
+     * @brief 向消息历史追加一条消息（内存 + MySQL 同步写入）
+     *
+     * @param role 角色："user" / "assistant" / "tool"
+     */
+    void addMessage(int userId, const std::string &userName, const std::string &role, const std::string &userInput,
                     std::string sessionId);
 
     void restoreMessage(const std::string &content, long long ms, const std::string &role,
@@ -59,8 +64,18 @@ public:
 
     bool isProcessing() const { return processing_.load(); }
 
-    void pushMessageToMysql(int userId, const std::string &userName, bool is_user, const std::string &userInput,
-                            long long ms, std::string sessionId, const std::string &modelName = "");
+    /**
+     * @brief 持久化写入 MySQL messages 表（同步，不阻塞主流程）
+     *
+     * @param role "user" / "assistant" / "tool"
+     * @param payload JSON 字符串（tool_calls 数据等），默认为空
+     * @param toolCallId 工具调用 ID（role=tool 时关联回传）
+     */
+    void pushMessageToMysql(int userId, const std::string &userName, const std::string &role,
+                            const std::string &userInput, long long ms, std::string sessionId,
+                            const std::string &modelName = "",
+                            const std::string &payload = "",
+                            const std::string &toolCallId = "");
     json executeCurl(const json &payload);
 
     /**

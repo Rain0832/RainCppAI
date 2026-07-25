@@ -15,7 +15,7 @@ void AIHelper::setStrategy(std::shared_ptr<AIStrategy> strat)
 }
 
 // ─── 添加消息（线程安全）──────────────────────────────────────────
-void AIHelper::addMessage(int userId, const std::string &userName, bool is_user, const std::string &userInput,
+void AIHelper::addMessage(int userId, const std::string &userName, const std::string &role, const std::string &userInput,
                           std::string sessionId)
 {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
@@ -23,9 +23,10 @@ void AIHelper::addMessage(int userId, const std::string &userName, bool is_user,
 
     {
         std::lock_guard<std::mutex> lock(msgMutex_);
-        messages_.push_back({is_user ? "user" : "assistant", userInput, "", "", ms});
+        messages_.push_back({role, userInput, "", "", ms});
     }
-    pushMessageToMysql(userId, userName, is_user, userInput, ms, sessionId);
+    pushMessageToMysql(userId, userName, role, userInput, ms, sessionId);
+    pushMessageToMysql(userId, userName, role, userInput, ms, sessionId);
 }
 
 // ─── 从 DB 恢复历史消息（线程安全，启动阶段单线程调用，但加锁保险）───
@@ -88,7 +89,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         std::lock_guard<std::mutex> lock(msgMutex_);
         messages_.push_back({"user", userQuestion, "", "", ms});
     }
-    pushMessageToMysql(userId, userName, true, userQuestion, ms, sessionId, strategy->getModel());
+    pushMessageToMysql(userId, userName, "user", userQuestion, ms, sessionId, strategy->getModel());
 
     // 获取工具 schema（MCP 原始格式），并转换为 OpenAI Function Calling 格式
     auto &registry = AIToolRegistry::instance();
@@ -160,7 +161,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                     std::lock_guard<std::mutex> lock(msgMutex_);
                     messages_.push_back({"assistant", textContent, strategy->getModel(), "", tsNow});
                 }
-                pushMessageToMysql(userId, userName, false, textContent, tsNow, sessionId, strategy->getModel());
+                pushMessageToMysql(userId, userName, "assistant", textContent, tsNow, sessionId, strategy->getModel());
 
                 // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
                 if (isNewSession && !apiKey.empty())
@@ -186,6 +187,12 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                     tcArr.push_back(std::move(obj));
                 }
                 messages_.push_back({"assistant", tcArr.dump(), strategy->getModel(), "tool_calls", 0});
+                // 持久化 assistant 的 tool_calls 消息到 MySQL（解决重启后上下文断裂）
+                auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::system_clock::now().time_since_epoch())
+                                 .count();
+                pushMessageToMysql(userId, userName, "assistant", "",
+                                   nowMs, sessionId, strategy->getModel(), tcArr.dump());
             }
 
             // ── 执行所有工具并加入历史 ──
@@ -205,6 +212,9 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                 {
                     std::lock_guard<std::mutex> lock(msgMutex_);
                     messages_.push_back({"tool", toolResult.dump(), "", tc.id, 0});
+                    // 持久化 tool 执行结果到 MySQL（解决重启后上下文断裂）
+                    pushMessageToMysql(userId, userName, "tool", toolResult.dump(),
+                                       0, sessionId, "", "", tc.id);
                 }
             }
 
@@ -220,7 +230,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                 std::lock_guard<std::mutex> lock(msgMutex_);
                 messages_.push_back({"assistant", roundResponse, strategy->getModel(), "", tsNow});
             }
-            pushMessageToMysql(userId, userName, false, roundResponse, tsNow, sessionId, strategy->getModel());
+            pushMessageToMysql(userId, userName, "assistant", roundResponse, tsNow, sessionId, strategy->getModel());
             return roundResponse;
         }
     }
@@ -228,7 +238,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
     // 超出最大轮次
     std::string msg = "[提示] 工具调用次数过多，请简化您的请求";
     onChunk(msg);
-    addMessage(userId, userName, false, msg, sessionId);
+    addMessage(userId, userName, "assistant", msg, sessionId);
     return msg;
 }
 
@@ -501,34 +511,36 @@ void AIHelper::startTitleSummarization(const std::string &sessionId, const std::
         });
 }
 
-void AIHelper::pushMessageToMysql(int userId, const std::string &userName, bool is_user, const std::string &userInput,
-                                  long long ms, std::string sessionId, const std::string &modelName)
+void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const std::string &role,
+                                  const std::string &userInput, long long ms, std::string sessionId,
+                                  const std::string &modelName, const std::string &payload,
+                                  const std::string &toolCallId)
 {
     if (!mysqlUtil_)
         return;
 
-    std::string role = is_user ? "user" : "assistant";
-
-    // 使用 Prepared Statement 同步写入，彻底消除 SQL 注入
+    // Prepared Statement 同步写入 messages 表
     try
     {
-    mysqlUtil_->executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)", sessionId,
-                                  static_cast<long long>(userId));
+        mysqlUtil_->executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)", sessionId,
+                                      static_cast<long long>(userId));
         if (modelName.empty())
         {
-            mysqlUtil_->executeUpdate("INSERT INTO messages (session_id, role, content, payload) VALUES (?, ?, ?, ?)",
-                                      sessionId, role, userInput, nullptr);
+            mysqlUtil_->executeUpdate(
+                "INSERT INTO messages (session_id, role, content, payload, tool_call_id) VALUES (?, ?, ?, ?, ?)",
+                sessionId, role, userInput, payload,
+                toolCallId);
         }
         else
         {
             mysqlUtil_->executeUpdate(
-                "INSERT INTO messages (session_id, role, content, payload, model) VALUES (?, ?, ?, ?, ?)",
-                sessionId, role, userInput, nullptr, modelName);
+                "INSERT INTO messages (session_id, role, content, payload, model, tool_call_id) VALUES (?, ?, ?, ?, ?, ?)",
+                sessionId, role, userInput, payload, modelName,
+                toolCallId);
         }
     }
     catch (const std::exception &e)
     {
-        // 同步写入失败不阻塞主流程
         LOG_ERROR << "pushMessageToMysql failed: " << e.what();
     }
 }
