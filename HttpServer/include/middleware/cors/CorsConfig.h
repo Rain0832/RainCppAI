@@ -19,7 +19,7 @@ struct CorsConfig
     static CorsConfig defaultConfig()
     {
         CorsConfig config;
-        config.allowedOrigins = {"*"};
+        config.allowedOrigins = {};  // 必须显式配置 allowlist，不放行所有来源
         config.allowedMethods = {"GET", "POST", "PUT", "DELETE", "OPTIONS"};
         config.allowedHeaders = {"Content-Type", "Authorization"};
         return config;

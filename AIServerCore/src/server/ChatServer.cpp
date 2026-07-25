@@ -336,8 +336,17 @@ void ChatServer::initializeSession()
 
 void ChatServer::initializeMiddleware()
 {
-    auto corsMiddleware = std::make_shared<http::middleware::CorsMiddleware>();
+    // CORS 中间件：内测阶段仅允许本地访问
+    http::middleware::CorsConfig corsCfg = http::middleware::CorsConfig::defaultConfig();
+    corsCfg.allowedOrigins = {"http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:8088", "http://127.0.0.1:8088"};
+    corsCfg.allowCredentials = true;
+
+    auto corsMiddleware = std::make_shared<http::middleware::CorsMiddleware>(corsCfg);
     httpServer_.addMiddleware(corsMiddleware);
+
+    // 安全响应头中间件：CSP / HSTS / X-Frame-Options / X-Content-Type-Options / X-XSS-Protection
+    auto secHeaders = std::make_shared<http::middleware::SecurityHeadersMiddleware>();
+    httpServer_.addMiddleware(secHeaders);
 }
 
 void ChatServer::packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,

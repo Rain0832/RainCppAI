@@ -37,6 +37,7 @@
 
 #include "../middleware/MiddlewareChain.h"
 #include "../middleware/cors/CorsMiddleware.h"
+#include "../middleware/SecurityHeadersMiddleware.h"
 #include "../router/Router.h"
 #include "../session/SessionManager.h"
 #include "../ssl/SslConnection.h"
