@@ -10,5 +10,6 @@ Docs/
 .env
 *.db
 *.sqlite
+config.json
 plan.md
 TODO.md
