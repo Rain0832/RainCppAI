@@ -87,26 +87,27 @@ public:
      */
     void initChatMessage();
 
+    // --- Public getters for handlers (SP 1.10: friend classes removed) ---
+    http::session::SessionManager* getSessionManager() const { return httpServer_.getSessionManager(); }
+    const std::string& getResourceRoot() const { return resource_root_; }
+    storage::MysqlUtil& getMysqlUtil() { return mysqlUtil_; }
+    common::ThreadPool& getAiThreadPool() { return aiThreadPool_; }
+    auto& getOnlineUsers() { return onlineUsers_; }
+    auto& getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
+    auto& getImageRecognizers() { return ImageRecognizerMap; }
+    auto& getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
+    auto& getChatInformation() { return chatInformation; }
+    auto& getChatInfoMutex() { return rwMutexForChatInfo; }
+    auto& getSessionIdsMap() { return sessionsIdsMap; }
+    auto& getSessionIdsMutex() { return rwMutexForSessionsId; }
+    void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
+    { httpServer_.setSessionManager(std::move(manager)); };
+    void packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
+                     const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
+                     const std::string& body, http::HttpResponse* resp);
+
     // Handlers access ChatServer through public getters only (no friend classes).
     // SP 1.10 removed 15 friend declarations; SP 1.13 fix consolidated to single public: section.
-
-    http::session::SessionManager *getSessionManager() const { return httpServer_.getSessionManager(); }
-    const std::string &getResourceRoot() const { return resource_root_; }
-    storage::MysqlUtil &getMysqlUtil() { return mysqlUtil_; }
-    common::ThreadPool &getAiThreadPool() { return aiThreadPool_; }
-    auto &getOnlineUsers() { return onlineUsers_; }
-    auto &getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
-    auto &getImageRecognizers() { return ImageRecognizerMap; }
-    auto &getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
-
-    void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
-    {
-        httpServer_.setSessionManager(std::move(manager));
-    }
-
-    void packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,
-                     const std::string &statusMsg, bool close, const std::string &contentType, int contentLen,
-                     const std::string &body, http::HttpResponse *resp);
 
 private:
     void initialize();
