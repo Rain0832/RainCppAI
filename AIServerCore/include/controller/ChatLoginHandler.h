@@ -3,7 +3,6 @@
 #include "3rdparty/JsonUtil.h"
 #include "HttpServer/include/router/RouterHandler.h"
 #include "server/ChatServer.h"
-#include "storage/MysqlUtil.h"
 
 class ChatLoginHandler : public http::router::RouterHandler
 {
@@ -14,7 +13,7 @@ public:
     //   server: 业务服务器指针。
     explicit ChatLoginHandler(ChatServer* server) : server_(server) {}
 
-    // 处理用户登录请求。
+    // 处理用户登录请求（使用 AuthService 进行 argon2id 密码验证）。
     //
     // Args:
     //   req: HTTP 请求对象。
@@ -22,17 +21,5 @@ public:
     void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 
 private:
-    // 根据用户名和密码查询用户 ID。
-    //
-    // Args:
-    //   username: 用户名。
-    //   password: 密码。
-    //
-    // Returns:
-    //   查询成功返回用户 ID，失败返回 -1。
-    int queryUserId(const std::string& username, const std::string& password);
-
-private:
     ChatServer* server_;
-    storage::MysqlUtil mysqlUtil_;
 };

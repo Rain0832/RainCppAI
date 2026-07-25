@@ -1,4 +1,5 @@
 #include "controller/ChatRegisterHandler.h"
+#include "Service/AuthService.h"
 #include "Common/Http/ApiResult.h"
 
 void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
