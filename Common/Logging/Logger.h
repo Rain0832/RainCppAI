@@ -8,7 +8,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/daily_file_sink.h>
 
-#include "Common/Logging/LogContext.h"
+#include "Logging/LogContext.h"
 
 namespace common {
 
@@ -53,8 +53,8 @@ private:
 
 // ---------------------------------------------------------------------------
 // Convenience macros
-// ---------------------------------------------------------------------------
 
 #define SPDLOG_INFO_TAG(tag)  common::LogStream(__FILE__, __LINE__, spdlog::level::info, tag).stream()
 #define SPDLOG_WARN_TAG(tag)  common::LogStream(__FILE__, __LINE__, spdlog::level::warn, tag).stream()
 #define SPDLOG_ERROR_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::err,  tag).stream()
+#define SPDLOG_DEBUG_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::debug, tag).stream()

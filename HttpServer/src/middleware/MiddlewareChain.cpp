@@ -1,4 +1,5 @@
 #include "../../include/middleware/MiddlewareChain.h"
+#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
@@ -35,7 +36,7 @@ void MiddlewareChain::processAfter(HttpResponse& response)
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "Error in middleware after processing: " << e.what();
+        SPDLOG_ERROR_TAG("HTTP") << "Error in middleware after processing: " << e.what();
     }
 }
 

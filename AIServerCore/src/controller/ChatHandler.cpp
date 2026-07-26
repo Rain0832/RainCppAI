@@ -2,6 +2,7 @@
 #include "controller/ChatHandler.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Auth/JwtService.h"
+#include "Common/Logging/Logger.h"
 
 void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -49,7 +50,7 @@ void ChatHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
         FileUtil fileOperater(reqFile);
         if (!fileOperater.isValid())
         {
-            LOG_WARN << reqFile << "not exist.";
+            SPDLOG_WARN_TAG("HTTP") << reqFile << "not exist.";
             fileOperater.resetDefaultFile();
         }
 

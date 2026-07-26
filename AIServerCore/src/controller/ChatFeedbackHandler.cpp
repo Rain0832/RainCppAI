@@ -1,13 +1,14 @@
 #include "controller/ChatFeedbackHandler.h"
 #include "Common/Http/ApiResult.h"
 #include "storage/MysqlUtil.h"
+#include "Common/Logging/Logger.h"
 
 void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     auto contentType = req.getHeader("Content-Type");
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
     {
-        LOG_INFO << "[FEEDBACK] Invalid request";
+        SPDLOG_INFO_TAG("FEED") << "[FEEDBACK] Invalid request";
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(false);
         resp->setContentType("application/json");
@@ -55,7 +56,7 @@ void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpRespons
             "INSERT INTO feedback (account_id, content) VALUES (?, ?)",
             accountId, content);
 
-        LOG_INFO << "[FEEDBACK] Submitted by userId=" << accountId
+        SPDLOG_INFO_TAG("FEED") << "[FEEDBACK] Submitted by userId=" << accountId
                  << " content_len=" << content.size();
 
         json success;
@@ -70,7 +71,7 @@ void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "[FEEDBACK] Exception: " << e.what();
+        SPDLOG_ERROR_TAG("FEED") << "[FEEDBACK] Exception: " << e.what();
         std::string body = common::ApiResult::fail(500, "Internal server error").dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
         resp->setCloseConnection(false);

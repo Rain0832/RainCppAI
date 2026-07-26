@@ -1,4 +1,5 @@
 #include "../../include/ssl/SslConnection.h"
+#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 #include <openssl/err.h>
@@ -24,7 +25,7 @@ SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
     ssl_ = SSL_new(ctx_->getNativeHandle());
     if (!ssl_)
     {
-        LOG_ERROR << "Failed to create SSL object: " << ERR_error_string(ERR_get_error(), nullptr);
+        SPDLOG_ERROR_TAG("SSL") << "Failed to create SSL object: " << ERR_error_string(ERR_get_error(), nullptr);
         return;
     }
 
@@ -34,7 +35,7 @@ SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
 
     if (!readBio_ || !writeBio_)
     {
-        LOG_ERROR << "Failed to create BIO objects";
+        SPDLOG_ERROR_TAG("SSL") << "Failed to create BIO objects";
         SSL_free(ssl_);
         ssl_ = nullptr;
         return;
@@ -70,7 +71,7 @@ void SslConnection::send(const void* data, size_t len)
 {
     if (state_ != SSLState::ESTABLISHED)
     {
-        LOG_ERROR << "Cannot send data before SSL handshake is complete";
+        SPDLOG_ERROR_TAG("SSL") << "Cannot send data before SSL handshake is complete";
         return;
     }
 
@@ -78,7 +79,7 @@ void SslConnection::send(const void* data, size_t len)
     if (written <= 0)
     {
         int err = SSL_get_error(ssl_, written);
-        LOG_ERROR << "SSL_write failed: " << ERR_error_string(err, nullptr);
+        SPDLOG_ERROR_TAG("SSL") << "SSL_write failed: " << ERR_error_string(err, nullptr);
         return;
     }
 
@@ -131,14 +132,14 @@ void SslConnection::handleHandshake()
     if (ret == 1)
     {
         state_ = SSLState::ESTABLISHED;
-        LOG_INFO << "SSL handshake completed successfully";
-        LOG_INFO << "Using cipher: " << SSL_get_cipher(ssl_);
-        LOG_INFO << "Protocol version: " << SSL_get_version(ssl_);
+        SPDLOG_INFO_TAG("SSL") << "SSL handshake completed successfully";
+        SPDLOG_INFO_TAG("SSL") << "Using cipher: " << SSL_get_cipher(ssl_);
+        SPDLOG_INFO_TAG("SSL") << "Protocol version: " << SSL_get_version(ssl_);
 
         // 握手完成后，确保设置了正确的回调
         if (!messageCallback_)
         {
-            LOG_WARN << "No message callback set after SSL handshake";
+            SPDLOG_WARN_TAG("SSL") << "No message callback set after SSL handshake";
         }
         return;
     }
@@ -157,7 +158,7 @@ void SslConnection::handleHandshake()
         char errBuf[256];
         unsigned long errCode = ERR_get_error();
         ERR_error_string_n(errCode, errBuf, sizeof(errBuf));
-        LOG_ERROR << "SSL handshake failed: " << errBuf;
+        SPDLOG_ERROR_TAG("SSL") << "SSL handshake failed: " << errBuf;
         conn_->shutdown();  // 关闭连接
         break;
     }
@@ -206,7 +207,7 @@ void SslConnection::handleError(SSLError error)
     case SSLError::SSL:
     case SSLError::SYSCALL:
     case SSLError::UNKNOWN:
-        LOG_ERROR << "SSL error occurred: " << ERR_error_string(ERR_get_error(), nullptr);
+        SPDLOG_ERROR_TAG("SSL") << "SSL error occurred: " << ERR_error_string(ERR_get_error(), nullptr);
         state_ = SSLState::ERROR;
         conn_->shutdown();
         break;

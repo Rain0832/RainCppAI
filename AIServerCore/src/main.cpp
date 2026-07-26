@@ -2,6 +2,7 @@
 #include <muduo/base/TimeZone.h>
 #include <muduo/net/EventLoop.h>
 #include <muduo/net/TcpServer.h>
+#include "Common/Logging/Logger.h"
 
 #include <chrono>
 #include <iostream>
@@ -16,7 +17,7 @@
 
 int main(int argc, char *argv[])
 {
-    LOG_INFO << "pid = " << getpid();
+    SPDLOG_INFO_TAG("MAIN") << "pid = " << getpid();
     std::string serverName = "ChatServer";
     auto &cfg = common::ConfigManager::instance();
     cfg.load("../config.json");
@@ -24,7 +25,7 @@ int main(int argc, char *argv[])
     std::string dbPass = cfg.get("db.password", "");
     if (dbPass.empty())
     {
-        LOG_WARN << "DB_PASSWORD env var is not set; if config.json has no password, DB connection will fail";
+        SPDLOG_WARN_TAG("MAIN") << "DB_PASSWORD env var is not set; if config.json has no password, DB connection will fail";
     }
     int port = cfg.getInt("server.port", 80);
     //

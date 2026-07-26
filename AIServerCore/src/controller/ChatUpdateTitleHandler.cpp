@@ -1,4 +1,5 @@
 #include "controller/ChatUpdateTitleHandler.h"
+#include "Common/Logging/Logger.h"
 
 void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -52,7 +53,7 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "ChatUpdateTitleHandler exception: " << e.what();
+        SPDLOG_ERROR_TAG("AI") << "ChatUpdateTitleHandler exception: " << e.what();
         json f;
         f["status"] = "error";
         f["message"] = "Internal server error";

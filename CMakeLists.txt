@@ -93,8 +93,8 @@ target_link_libraries(aiengine PUBLIC sodium)
 
 # ==== 静态库：HttpServer ====
 add_library(httpserver STATIC ${HTTP_SERVER_SRC})
-target_include_directories(httpserver PUBLIC ${PROJECT_SOURCE_DIR}/HttpServer/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common)
-target_link_libraries(httpserver PUBLIC muduo_net muduo_base OpenSSL::SSL OpenSSL::Crypto pthread)
+target_include_directories(httpserver PUBLIC ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/HttpServer/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common)
+target_link_libraries(httpserver PUBLIC muduo_net muduo_base OpenSSL::SSL OpenSSL::Crypto pthread spdlog::spdlog)
 
 # ==== 静态库：Storage ====
 add_library(storage STATIC ${STORAGE_SRC})

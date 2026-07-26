@@ -1,5 +1,6 @@
 #include "controller/ChatSseHandler.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 
 #include "common/AISessionIdGenerator.h"
 #include "llm/AIHelper.h"
@@ -57,7 +58,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
             provider = j.contains("provider") ? j["provider"].get<std::string>() : "aliyun";
         }
 
-        LOG_INFO << "Received chat request: provider=" << provider << ", model=" << modelType;
+        SPDLOG_INFO_TAG("AI") << "Received chat request: provider=" << provider << ", model=" << modelType;
 
         // provider → DB api_key provider 映射
         const std::string dbProvider = (provider == "volcengine") ? "doubao" : "dashscope";

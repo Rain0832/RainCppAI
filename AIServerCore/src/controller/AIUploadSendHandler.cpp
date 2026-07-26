@@ -1,12 +1,13 @@
 #include "controller/AIUploadSendHandler.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 
 void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     try
     {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
+        SPDLOG_INFO_TAG("UPLOAD") << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
         if (session->getValue("isLoggedIn") != "true")
         {
             json errorResp = common::ApiResult::fail(400, "Unauthorized").toJson();
@@ -90,7 +91,7 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "AIUploadSendHandler exception: " << e.what();
+        SPDLOG_ERROR_TAG("UPLOAD") << "AIUploadSendHandler exception: " << e.what();
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = "Image processing failed";

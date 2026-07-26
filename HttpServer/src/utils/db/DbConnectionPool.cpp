@@ -1,4 +1,5 @@
 #include "../../../include/utils/db/DbConnectionPool.h"
+#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
@@ -32,7 +33,7 @@ void DbConnectionPool::init(const std::string& host, const std::string& user, co
     }
 
     initialized_ = true;
-    LOG_INFO << "Database connection pool initialized with " << poolSize << " connections";
+    SPDLOG_INFO_TAG("DB") << "Database connection pool initialized with " << poolSize << " connections";
 }
 
 DbConnectionPool::DbConnectionPool()
@@ -48,7 +49,7 @@ DbConnectionPool::~DbConnectionPool()
     {
         connections_.pop();
     }
-    LOG_INFO << "Database connection pool destroyed";
+    SPDLOG_INFO_TAG("DB") << "Database connection pool destroyed";
 }
 
 // 修改获取连接的函数
@@ -80,7 +81,7 @@ std::shared_ptr<DbConnection> DbConnectionPool::getConnection()
         // 在锁外检查连接
         if (!conn->ping())
         {
-            LOG_WARN << "Connection lost, attempting to reconnect...";
+            SPDLOG_WARN_TAG("DB") << "Connection lost, attempting to reconnect...";
             conn->reconnect();
         }
 
@@ -94,7 +95,7 @@ std::shared_ptr<DbConnection> DbConnectionPool::getConnection()
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "Failed to get connection: " << e.what();
+        SPDLOG_ERROR_TAG("DB") << "Failed to get connection: " << e.what();
         {
             std::lock_guard<std::mutex> lock(mutex_);
             connections_.push(conn);
@@ -144,7 +145,7 @@ void DbConnectionPool::checkConnections()
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_ERROR << "Failed to reconnect: " << e.what();
+                        SPDLOG_ERROR_TAG("DB") << "Failed to reconnect: " << e.what();
                     }
                 }
             }
@@ -153,7 +154,7 @@ void DbConnectionPool::checkConnections()
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR << "Error in check thread: " << e.what();
+            SPDLOG_ERROR_TAG("DB") << "Error in check thread: " << e.what();
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
     }

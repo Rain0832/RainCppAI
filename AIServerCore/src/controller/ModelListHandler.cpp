@@ -1,4 +1,5 @@
 #include "controller/ModelListHandler.h"
+#include "Common/Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
@@ -23,7 +24,7 @@ void ModelListHandler::handle(const http::HttpRequest &req, http::HttpResponse *
       ss << f.rdbuf();
       cached_json = ss.str();
       cached_mtime = st.st_mtime;
-      LOG_INFO << "models.json changed, reloaded from disk";
+      SPDLOG_INFO_TAG("MODEL") << "models.json changed, reloaded from disk";
     }
   }
 

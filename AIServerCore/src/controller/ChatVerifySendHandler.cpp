@@ -2,6 +2,7 @@
 #include "Common/Mail/MailSender.h"
 #include "Common/Http/ApiResult.h"
 #include "Repository/VerificationCodeRepository.h"
+#include "Common/Logging/Logger.h"
 
 #include <random>
 #include <regex>
@@ -26,7 +27,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
     auto contentType = req.getHeader("Content-Type");
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
     {
-        LOG_INFO << "[MAIL] Invalid verify/send request: Content-Type=" << contentType;
+        SPDLOG_INFO_TAG("MAIL") << "[MAIL] Invalid verify/send request: Content-Type=" << contentType;
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(false);
         resp->setContentType("application/json");
@@ -67,7 +68,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
         int recentCount = vcRepo.countRecentByEmail(email, "register", 60);
         if (recentCount > 0)
         {
-            LOG_INFO << "[MAIL] Rate limit hit for " << email;
+            SPDLOG_INFO_TAG("MAIL") << "[MAIL] Rate limit hit for " << email;
             std::string body = common::ApiResult::fail(429, "Verification code already sent, please wait 60s").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k429TooManyRequests, "Too Many Requests");
             resp->setCloseConnection(false);
@@ -79,7 +80,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
 
         // Generate 6-digit code
         std::string code = generateCode();
-        LOG_INFO << "[MAIL] Generated code for " << email << " code=" << code;
+        SPDLOG_INFO_TAG("MAIL") << "[MAIL] Generated code for " << email << " code=" << code;
 
         // Save to DB
         vcRepo.create(email, code, "register");
@@ -96,7 +97,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
 
         if (result.success)
         {
-            LOG_INFO << "[MAIL] Code sent successfully to " << email;
+            SPDLOG_INFO_TAG("MAIL") << "[MAIL] Code sent successfully to " << email;
             json data;
             data["message"] = "Verification code sent";
             data["expires_in"] = 600;
@@ -109,8 +110,8 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
         }
         else
         {
-            LOG_ERROR << "[MAIL] Failed to send to " << email << ": " << result.message;
-        LOG_INFO << "[MAIL] Verification code was: " << code << " (email failed, but you can still use this code)";
+            SPDLOG_ERROR_TAG("MAIL") << "[MAIL] Failed to send to " << email << ": " << result.message;
+        SPDLOG_INFO_TAG("MAIL") << "[MAIL] Verification code was: " << code << " (email failed, but you can still use this code)";
             std::string respBody = common::ApiResult::fail(500, "Failed to send email: " + result.message).dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
             resp->setCloseConnection(false);
@@ -121,7 +122,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "[MAIL] VerifySend exception: " << e.what();
+        SPDLOG_ERROR_TAG("MAIL") << "[MAIL] VerifySend exception: " << e.what();
         std::string body = common::ApiResult::fail(500, "Internal server error").dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
         resp->setCloseConnection(false);

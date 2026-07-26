@@ -6,6 +6,7 @@
 #include "Service/AuthService.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Auth/JwtService.h"
+#include "Common/Logging/Logger.h"
 
 void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -13,7 +14,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     auto contentType = req.getHeader("Content-Type");
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
     {
-        LOG_INFO << "Invalid login request: Content-Type=" << contentType
+        SPDLOG_INFO_TAG("AUTH") << "Invalid login request: Content-Type=" << contentType
                  << " body_size=" << req.getBody().size();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(true);
@@ -132,7 +133,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "Login exception: " << e.what();
+        SPDLOG_ERROR_TAG("AUTH") << "Login exception: " << e.what();
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = "Internal server error";

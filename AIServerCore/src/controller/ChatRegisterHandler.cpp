@@ -5,6 +5,7 @@
 #include "Repository/InviteCodeRepository.h"
 #include "Repository/VerificationCodeRepository.h"
 #include "storage/MysqlUtil.h"
+#include "Common/Logging/Logger.h"
 
 void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -46,7 +47,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
         json invite = inviteRepo.findByCode(inviteCode);
         if (invite.empty())
         {
-            LOG_INFO << "[REGISTER] Invalid invite code for " << email;
+            SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Invalid invite code for " << email;
             std::string body = common::ApiResult::fail(400, "Invalid invite code").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
             resp->setCloseConnection(false);
@@ -70,7 +71,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
                 email, code, "register");
             if (!res || !res->next() || !res->getBoolean("is_used"))
             {
-                LOG_INFO << "[REGISTER] Email code not verified for " << email;
+                SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Email code not verified for " << email;
                 std::string body = common::ApiResult::fail(400, "Email verification code not verified").dump();
                 resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
                 resp->setCloseConnection(false);
@@ -86,7 +87,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
         json account = auth.registerWithInviteCode(username, password, email);
         if (account.empty())
         {
-            LOG_INFO << "[REGISTER] Username taken: " << username;
+            SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Username taken: " << username;
             std::string body = common::ApiResult::fail(409, "Username already exists").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k409Conflict, "Conflict");
             resp->setCloseConnection(false);
@@ -97,7 +98,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
         }
         if (account.contains("error") && account["error"] == "email_taken")
         {
-            LOG_INFO << "[REGISTER] Email taken: " << email;
+            SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Email taken: " << email;
             std::string body = common::ApiResult::fail(409, "Email already registered").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k409Conflict, "Conflict");
             resp->setCloseConnection(false);
@@ -108,7 +109,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
         }
 
         long long userId = account["id"].get<long long>();
-        LOG_INFO << "[REGISTER] Account created: " << username << " uid=" << userId;
+        SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Account created: " << username << " uid=" << userId;
 
         // Step 4: Sign JWT + set cookie (immediate login)
         common::JwtService jwtService;
@@ -128,7 +129,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "[REGISTER] Exception: " << e.what();
+        SPDLOG_ERROR_TAG("AUTH") << "[REGISTER] Exception: " << e.what();
         std::string body = common::ApiResult::fail(500, "Internal server error").dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
         resp->setCloseConnection(false);

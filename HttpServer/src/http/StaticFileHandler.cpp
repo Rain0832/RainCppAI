@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include "Logging/Logger.h"
 
 namespace http
 {
@@ -14,20 +15,20 @@ StaticFileHandler::StaticFileHandler(const std::string& resourceRoot) : resource
 void StaticFileHandler::handle(const HttpRequest& req, HttpResponse* resp)
 {
     std::string urlPath = req.path();
-    LOG_INFO << "[StaticFile] Request: " << urlPath;
+    SPDLOG_INFO_TAG("HTTP") << "[StaticFile] Request: " << urlPath;
     if (!isPathSafe(urlPath))
     {
-        LOG_WARN << "[StaticFile] Unsafe path rejected: " << urlPath;
+        SPDLOG_WARN_TAG("HTTP") << "[StaticFile] Unsafe path rejected: " << urlPath;
         resp->setStatusCode(HttpResponse::k404NotFound);
         resp->setBody("404 Not Found");
         return;
     }
     std::string filePath = resourceRoot_ + "web" + urlPath;
-    LOG_INFO << "[StaticFile] Resolved to: " << filePath;
+    SPDLOG_INFO_TAG("HTTP") << "[StaticFile] Resolved to: " << filePath;
     std::ifstream file(filePath, std::ios::binary);
     if (!file)
     {
-        LOG_WARN << "[StaticFile] File not found: " << filePath;
+        SPDLOG_WARN_TAG("HTTP") << "[StaticFile] File not found: " << filePath;
         resp->setStatusCode(HttpResponse::k404NotFound);
         resp->setBody("404 Not Found");
         return;
@@ -35,7 +36,7 @@ void StaticFileHandler::handle(const HttpRequest& req, HttpResponse* resp)
     std::ostringstream ss;
     ss << file.rdbuf();
     std::string content = ss.str();
-    LOG_INFO << "[StaticFile] Served " << content.size() << " bytes, MIME: " << getMimeType(urlPath);
+    SPDLOG_INFO_TAG("HTTP") << "[StaticFile] Served " << content.size() << " bytes, MIME: " << getMimeType(urlPath);
     resp->setVersion(req.getVersion());
     resp->setStatusMessage("OK");
     resp->setContentType(getMimeType(urlPath));

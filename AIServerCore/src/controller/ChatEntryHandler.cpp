@@ -1,4 +1,5 @@
 #include "controller/ChatEntryHandler.h"
+#include "Common/Logging/Logger.h"
 
 void ChatEntryHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -6,7 +7,7 @@ void ChatEntryHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     FileUtil fileOperater(reqFile);
     if (!fileOperater.isValid())
     {
-        LOG_WARN << reqFile << " not exist";
+        SPDLOG_WARN_TAG("HTTP") << reqFile << " not exist";
         fileOperater.resetDefaultFile();
     }
 

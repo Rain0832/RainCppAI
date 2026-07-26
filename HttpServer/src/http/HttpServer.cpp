@@ -1,4 +1,5 @@
 #include "../../include/http/HttpServer.h"
+#include "Logging/Logger.h"
 
 #include <any>
 #include <functional>
@@ -25,7 +26,7 @@ HttpServer::HttpServer(int port, const std::string& name, bool useSSL, muduo::ne
 // 服务器运行函数
 void HttpServer::start()
 {
-    LOG_WARN << "HttpServer[" << server_.name() << "] starts listening on" << server_.ipPort();
+    SPDLOG_WARN_TAG("HTTP") << "HttpServer[" << server_.name() << "] starts listening on" << server_.ipPort();
     server_.start();
     mainLoop_.loop();
 }
@@ -47,7 +48,7 @@ void HttpServer::setSslConfig(const ssl::SslConfig& config)
         sslCtx_ = std::make_unique<ssl::SslContext>(config);
         if (!sslCtx_->initialize())
         {
-            LOG_ERROR << "Failed to initialize SSL context";
+            SPDLOG_ERROR_TAG("HTTP") << "Failed to initialize SSL context";
             abort();
         }
     }
@@ -84,19 +85,19 @@ void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
         // 这层判断只是代表是否支持ssl
         if (useSSL_)
         {
-            LOG_INFO << "onMessage useSSL_ is true";
+            SPDLOG_INFO_TAG("HTTP") << "onMessage useSSL_ is true";
             // 1.查找对应的SSL连接
             auto it = sslConns_.find(conn);
             if (it != sslConns_.end())
             {
-                LOG_INFO << "onMessage sslConns_ is not empty";
+                SPDLOG_INFO_TAG("HTTP") << "onMessage sslConns_ is not empty";
                 // 2. SSL连接处理数据
                 it->second->onRead(conn, buf, receiveTime);
 
                 // 3. 如果 SSL 握手还未完成，直接返回
                 if (!it->second->isHandshakeCompleted())
                 {
-                    LOG_INFO << "onMessage sslConns_ is not empty";
+                    SPDLOG_INFO_TAG("HTTP") << "onMessage sslConns_ is not empty";
                     return;
                 }
 
@@ -107,7 +108,7 @@ void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
 
                 // 5. 使用解密后的数据进行HTTP 处理
                 buf = decryptedBuf;  // 将 buf 指向解密后的数据
-                LOG_INFO << "onMessage decryptedBuf is not empty";
+                SPDLOG_INFO_TAG("HTTP") << "onMessage decryptedBuf is not empty";
             }
         }
         // HttpContext对象用于解析出buf中的请求报文，并把报文的关键信息封装到HttpRequest对象中
@@ -128,7 +129,7 @@ void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
     catch (const std::exception& e)
     {
         // 捕获异常，返回错误信息
-        LOG_ERROR << "Exception in onMessage: " << e.what();
+        SPDLOG_ERROR_TAG("HTTP") << "Exception in onMessage: " << e.what();
         conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
         conn->shutdown();
     }
@@ -174,7 +175,7 @@ void HttpServer::handleRequest(const HttpRequest& req, HttpResponse* resp)
         // 路由处理
         if (!router_.route(mutableReq, resp))
         {
-            LOG_DEBUG << "No route matched: " << req.method() << " " << req.path();
+            SPDLOG_DEBUG_TAG("HTTP") << "No route matched: " << req.method() << " " << req.path();
             resp->setStatusCode(HttpResponse::k404NotFound);
             resp->setStatusMessage("Not Found");
             resp->setCloseConnection(true);

@@ -1,6 +1,7 @@
 // ChatServer.cpp - AI聊天服务器实现文件
 
 #include "server/ChatServer.h"
+#include "Common/Logging/Logger.h"
 
 #include "Common/Config/ConfigManager.h"
 #include "middleware/AuthMiddleware.h"
@@ -42,7 +43,7 @@ ChatServer::ChatServer(int port, const std::string &name, muduo::net::TcpServer:
 
 void ChatServer::initialize()
 {
-    LOG_INFO << "ChatServer initializing ...";
+    SPDLOG_INFO_TAG("HTTP") << "ChatServer initializing ...";
 
     // 初始化MySQL数据库连接池
     auto& cfg = common::ConfigManager::instance();
@@ -192,7 +193,7 @@ void ChatServer::initDatabase()
     try
     {
         initAllTables();
-        LOG_INFO << "Database tables initialized (8 tables with FK)";
+        SPDLOG_INFO_TAG("HTTP") << "Database tables initialized (8 tables with FK)";
     }
     catch (const std::exception& e)
     {
@@ -213,9 +214,9 @@ void ChatServer::initDatabase()
 
 void ChatServer::initChatMessage()
 {
-    LOG_INFO << "Loading chat history from database ...";
+    SPDLOG_INFO_TAG("HTTP") << "Loading chat history from database ...";
     readDataFromMySQL();
-    LOG_INFO << "Chat history loaded successfully";
+    SPDLOG_INFO_TAG("HTTP") << "Chat history loaded successfully";
 }
 
 void ChatServer::readDataFromMySQL()
@@ -278,7 +279,7 @@ void ChatServer::readDataFromMySQL()
         helper->restoreMessage(content, ts_ms, role);
     }
 
-    LOG_INFO << "Chat history restore complete";
+    SPDLOG_INFO_TAG("HTTP") << "Chat history restore complete";
 }
 
 void ChatServer::setThreadNum(int numThreads)
@@ -376,7 +377,7 @@ void ChatServer::packageResp(const std::string &version, http::HttpResponse::Htt
 {
     if (resp == nullptr)
     {
-        LOG_ERROR << "Response pointer is null";
+        SPDLOG_ERROR_TAG("HTTP") << "Response pointer is null";
         return;
     }
 
@@ -390,11 +391,11 @@ void ChatServer::packageResp(const std::string &version, http::HttpResponse::Htt
         resp->setContentLength(contentLen);
         resp->setBody(body);
 
-        LOG_INFO << "Response packaged successfully";
+        SPDLOG_INFO_TAG("HTTP") << "Response packaged successfully";
     }
     catch (const std::exception &e)
     {
-        LOG_ERROR << "Error in packageResp: " << e.what();
+        SPDLOG_ERROR_TAG("HTTP") << "Error in packageResp: " << e.what();
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
         resp->setStatusMessage("Internal Server Error");
         resp->setCloseConnection(true);
@@ -436,7 +437,7 @@ void ChatServer::evictIfNeeded()
                     chatInformation.erase(uit);
                 }
             }
-            LOG_INFO << "LRU evicted session: userId=" << uid << " sessionId=" << sid;
+            SPDLOG_INFO_TAG("HTTP") << "LRU evicted session: userId=" << uid << " sessionId=" << sid;
         }
     }
 }

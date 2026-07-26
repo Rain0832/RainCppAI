@@ -1,5 +1,6 @@
 #include "controller/ChatHistoryHandler.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 
 void ChatHistoryHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
 {
@@ -78,7 +79,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest &req, http::HttpResponse
             catch (const std::exception &dbErr)
             {
                 // DB 查询失败则返回空历史，不影响主流程
-                LOG_ERROR << "DB fallback failed: " << dbErr.what();
+                SPDLOG_ERROR_TAG("DB") << "DB fallback failed: " << dbErr.what();
             }
         }
 

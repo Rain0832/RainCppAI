@@ -1,5 +1,6 @@
 #include "controller/AIMenuHandler.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 
 void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -7,7 +8,7 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
     {
         // 通过会话管理器验证登录状态
         auto session = server_->getSessionManager()->getSession(req, resp);
-        LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
+        SPDLOG_INFO_TAG("AI") << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
         if (session->getValue("isLoggedIn") != "true")
         {
             json errorResp = common::ApiResult::fail(400, "Unauthorized").toJson();
@@ -26,7 +27,7 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         FileUtil fileOperater(reqFile);
         if (!fileOperater.isValid())
         {
-            LOG_WARN << reqFile << "not exist.";
+            SPDLOG_WARN_TAG("AI") << reqFile << "not exist.";
             fileOperater.resetDefaultFile();
         }
 
@@ -52,7 +53,7 @@ void AIMenuHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR << "AIMenuHandler exception: " << e.what();
+        SPDLOG_ERROR_TAG("AI") << "AIMenuHandler exception: " << e.what();
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = "Internal server error";

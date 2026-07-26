@@ -1,4 +1,5 @@
 #include "../../../include/utils/db/DbConnection.h"
+#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
@@ -30,12 +31,12 @@ DbConnection::DbConnection(const std::string& host, const std::string& user, con
             std::unique_ptr<sql::Statement> stmt(conn_->createStatement());
             stmt->execute("SET NAMES utf8mb4");
 
-            LOG_INFO << "Database connection established";
+            SPDLOG_INFO_TAG("DB") << "Database connection established";
         }
     }
     catch (const sql::SQLException& e)
     {
-        LOG_ERROR << "Failed to create database connection: " << e.what();
+        SPDLOG_ERROR_TAG("DB") << "Failed to create database connection: " << e.what();
         throw DbException(e.what());
     }
 }
@@ -50,7 +51,7 @@ DbConnection::~DbConnection()
     {
         // 析构函数中不抛出异常
     }
-    LOG_INFO << "Database connection closed";
+    SPDLOG_INFO_TAG("DB") << "Database connection closed";
 }
 
 bool DbConnection::ping()
@@ -64,7 +65,7 @@ bool DbConnection::ping()
     }
     catch (const sql::SQLException& e)
     {
-        LOG_ERROR << "Ping failed: " << e.what();
+        SPDLOG_ERROR_TAG("DB") << "Ping failed: " << e.what();
         return false;
     }
 }
@@ -105,7 +106,7 @@ void DbConnection::reconnect()
     }
     catch (const sql::SQLException& e)
     {
-        LOG_ERROR << "Reconnect failed: " << e.what();
+        SPDLOG_ERROR_TAG("DB") << "Reconnect failed: " << e.what();
         throw DbException(e.what());
     }
 }
@@ -138,7 +139,7 @@ void DbConnection::cleanup()
     }
     catch (const std::exception& e)
     {
-        LOG_WARN << "Error cleaning up connection: " << e.what();
+        SPDLOG_WARN_TAG("DB") << "Error cleaning up connection: " << e.what();
         try
         {
             reconnect();

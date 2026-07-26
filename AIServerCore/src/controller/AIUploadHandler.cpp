@@ -1,12 +1,13 @@
 #include "controller/AIUploadHandler.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 
 void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     try
     {
         auto session = server_->getSessionManager()->getSession(req, resp);
-        LOG_INFO << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
+        SPDLOG_INFO_TAG("UPLOAD") << "session->getValue(\"isLoggedIn\") = " << session->getValue("isLoggedIn");
         if (session->getValue("isLoggedIn") != "true")
         {
             json errorResp = common::ApiResult::fail(400, "Unauthorized").toJson();
@@ -24,7 +25,7 @@ void AIUploadHandler::handle(const http::HttpRequest& req, http::HttpResponse* r
         FileUtil fileOperater(reqFile);
         if (!fileOperater.isValid())
         {
-            LOG_WARN << reqFile << "not exist.";
+            SPDLOG_WARN_TAG("UPLOAD") << reqFile << "not exist.";
             fileOperater.resetDefaultFile();
         }
 

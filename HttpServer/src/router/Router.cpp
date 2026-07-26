@@ -1,4 +1,5 @@
 #include "../../include/router/Router.h"
+#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
@@ -12,7 +13,7 @@ void Router::registerHandler(HttpRequest::Method method, const std::string& path
     RouteKey key {method, path};
     if (handlers_.find(key) != handlers_.end())
     {
-        LOG_ERROR << "Router::registerHandler: handler already exists";
+        SPDLOG_ERROR_TAG("HTTP") << "Router::registerHandler: handler already exists";
         return;
     }
     handlers_[key] = std::move(handler);
