@@ -110,6 +110,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
         else
         {
             LOG_ERROR << "[MAIL] Failed to send to " << email << ": " << result.message;
+        LOG_INFO << "[MAIL] Verification code was: " << code << " (email failed, but you can still use this code)";
             std::string respBody = common::ApiResult::fail(500, "Failed to send email: " + result.message).dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
             resp->setCloseConnection(false);
