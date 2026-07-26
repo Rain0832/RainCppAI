@@ -8,19 +8,24 @@ const $$ = s => document.querySelectorAll(s);
 function initTheme() {
     const t = localStorage.getItem('rain-theme') || 'light';
     document.documentElement.setAttribute('data-theme', t);
-    $('#themeToggle').textContent = t === 'dark' ? '🌙' : '☀️';
+    $('#themeToggle').textContent = t === 'dark' ? '\u{1F319}' : '\u2600\uFE0F';
 }
 
 $('#themeToggle').onclick = () => {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('rain-theme', next);
-    $('#themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+    $('#themeToggle').textContent = next === 'dark' ? '\u{1F319}' : '\u2600\uFE0F';
 };
 
 initTheme();
 
+// Tab switching: login shows panel, register redirects to /register
 $$('.tab').forEach(tab => tab.onclick = () => {
+    if (tab.dataset.tab === 'register') {
+        window.location.href = '/register';
+        return;
+    }
     $$('.tab').forEach(t => t.classList.remove('active'));
     $$('.form-panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
@@ -34,7 +39,7 @@ function showToast(msg, dur = 2000) {
     setTimeout(() => t.classList.remove('show'), dur);
 }
 
-// 如果已登录，直接跳转到聊天页
+// If already logged in, redirect to chat
 if (sessionStorage.getItem('userId')) window.location.href = '/chat';
 
 $('#login-form').onsubmit = e => {
@@ -55,9 +60,4 @@ $('#login-form').onsubmit = e => {
             setTimeout(() => window.location.href = '/chat', 500);
         }
     }).catch(e => { if (!['dup', 'auth'].includes(e.message)) showToast('操作失败'); });
-};
-
-$('#register-form').onsubmit = e => {
-    e.preventDefault();
-    window.location.href = '/register';
 };
