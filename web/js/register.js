@@ -43,13 +43,13 @@
 
   // Theme toggle
   const tt = $("themeToggle");
-  const saved = localStorage.getItem("theme");
+  const saved = localStorage.getItem("rain-theme") || "light";
   if (saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
   tt.textContent = saved === "dark" ? "\u{1F319}" : "\u2600\uFE0F";
   tt.onclick = () => {
     const isDark = document.documentElement.getAttribute("data-theme") === "dark";
     document.documentElement.setAttribute("data-theme", isDark ? "" : "dark");
-    localStorage.setItem("theme", isDark ? "" : "dark");
+    localStorage.setItem("rain-theme", isDark ? "dark" : "light");
     tt.textContent = isDark ? "\u2600\uFE0F" : "\u{1F319}";
   };
 
