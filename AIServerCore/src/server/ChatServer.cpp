@@ -5,7 +5,7 @@
 
 #include "Common/Config/ConfigManager.h"
 #include "middleware/AuthMiddleware.h"
-#include "middleware/RequestIdMiddleware.h"
+#include "middleware/RequestIdMiddleware.h"\n#include "middleware/RateLimitMiddleware.h"
 #include "Common/Logging/Logger.h"
 
 #include "controller/AIMenuHandler.h"
@@ -374,6 +374,10 @@ void ChatServer::initializeMiddleware()
     // RequestId middleware
     auto reqIdMiddleware = std::make_shared<http::middleware::RequestIdMiddleware>();
     httpServer_.addMiddleware(reqIdMiddleware);
+
+    // RateLimit middleware: 10 req/min per user for /api/chat/*
+    auto rateLimitMiddleware = std::make_shared<http::middleware::RateLimitMiddleware>();
+    httpServer_.addMiddleware(rateLimitMiddleware);
 }
 
 void ChatServer::packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,
