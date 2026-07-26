@@ -105,6 +105,8 @@ public:
     // 返回值：请求头映射表的常量引用。
     const std::map<std::string, std::string>& headers() const { return headers_; }
 
+    void addHeader(const std::string& key, const std::string& value) { headers_[key] = value; }
+
     // 设置请求体内容。
     // 参数：
     // - body：请求体字符串。

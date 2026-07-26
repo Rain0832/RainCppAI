@@ -3,6 +3,7 @@
 #include "server/ChatServer.h"
 
 #include "Common/Config/ConfigManager.h"
+#include "middleware/AuthMiddleware.h"
 
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
@@ -357,6 +358,9 @@ void ChatServer::initializeMiddleware()
     // 安全响应头中间件：CSP / HSTS / X-Frame-Options / X-Content-Type-Options / X-XSS-Protection
     auto secHeaders = std::make_shared<http::middleware::SecurityHeadersMiddleware>();
     httpServer_.addMiddleware(secHeaders);
+
+    auto authMiddleware = std::make_shared<http::middleware::AuthMiddleware>();
+    httpServer_.addMiddleware(authMiddleware);
 }
 
 void ChatServer::packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,

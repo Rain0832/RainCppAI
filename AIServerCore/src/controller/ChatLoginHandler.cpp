@@ -5,6 +5,7 @@
 #include "controller/ChatLoginHandler.h"
 #include "Service/AuthService.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Auth/JwtService.h"
 
 void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -84,6 +85,12 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
                 json successResp;
                 successResp["success"] = true;
                 successResp["userId"] = userId;
+
+                std::string role = account.value("role", "user");
+                common::JwtService jwtService;
+                std::string token = jwtService.sign(userId, role);
+                resp->addHeader("Set-Cookie", "jwt=" + token + "; HttpOnly; Path=/; Max-Age=3600; SameSite=Lax");
+
                 std::string successBody = successResp.dump(4);
 
                 resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");

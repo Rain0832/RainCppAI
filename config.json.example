@@ -40,5 +40,8 @@
     "port": 465,
     "username": "",
     "password": ""
+  },
+  "jwt": {
+    "secret": "change-this-to-a-random-secret"
   }
 }

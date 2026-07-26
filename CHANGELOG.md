@@ -362,6 +362,33 @@
 
 # v2
 
+## Plan 3 - User System Upgrade
+
+> Plan 2 v2.4.0. Plan 3 has 6 SPs (v2.4.1 ~ v2.4.6), final v2.5.0.
+
+##### v2.4.3 - SP 3.3 JWT Service + AuthMiddleware + Login JWT
+- [Common] JwtService: HS256 JWT sign/verify via OpenSSL, no new dependency
+- [HttpServer] AuthMiddleware: intercept /api/*, validate JWT from httpOnly cookie
+- [HttpServer] HttpRequest: add addHeader() for middleware context passing
+- [AIServerCore] ChatLoginHandler: sign JWT + set httpOnly cookie on login
+- [Infra] config.json.example: add jwt.secret config
+- [Infra] CMakeLists.txt: add Common/Auth/JwtService.cpp
+
+##### v2.4.2 - SP 3.2 QQ SMTP mail + VerificationCodeRepository + verify API
+- [Common] MailSender: libcurl SMTPS based QQ mail sender
+- [AIServerCore] VerificationCodeRepository: create/findByEmailAndCode/markUsed/countRecent
+- [AIServerCore] ChatVerifySendHandler: POST /api/verify/send
+- [AIServerCore] ChatVerifyCheckHandler: POST /api/verify/check
+- [AIServerCore] ChatServer: register routes
+- [Infra] CMakeLists: add MailSender.cpp
+- [Infra] config.json: add mail section
+
+##### v2.4.1 - SP 3.1 InviteCodeRepository + invite code verify API
+- [AIServerCore] InviteCodeRepository: findByCode / incrementUsedCount
+- [AIServerCore] ChatInviteVerifyHandler: POST /api/invite/verify
+- [AIServerCore] ChatServer: register route
+- Add [INVITE] TAG to log messages
+
 ## Plan 2 — 安全加固
 
 > Plan 1 最终版本 v2.3.0。Plan 2 共 7 个 SP（v2.3.1 ~ v2.3.7），最终版本 v2.4.0。
