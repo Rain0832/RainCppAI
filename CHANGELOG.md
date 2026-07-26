@@ -360,58 +360,9 @@
 - **【Plan 1 总结】架构重构完成**：ChatServer 去 friend → Repository/Service 分层 → ThreadPool/ApiResult/ConfigManager 公用化 → 数据库 8 表全量重设计 →前端功能回归通过
 
 
-# v2
-
-## Plan 3 - User System Upgrade
-
-> Plan 2 v2.4.0. Plan 3 has 6 SPs (v2.4.1 ~ v2.4.6), final v2.5.0.
-
-
-##### v2.4.4 - SP 3.4 Register flow integration
-- [AIServerCore] AuthService: add registerWithInviteCode() with email validation
-- [AIServerCore] AccountRepository: add findByEmail()
-- [AIServerCore] ChatRegisterHandler: rewrite with 4-step verify-then-register flow
-- [AIServerCore] Logging: add [REGISTER] TAG
-
-
-##### v2.4.6 - SP 3.6 Frontend multi-step register page
-- [web] register.html: 5-step registration page with stepper UI
-- [web] register.js: multi-step form with invite code/email/verify/register flow
-- [AIServerCore] ChatEntryHandler: add page parameter for serving register.html
-- [AIServerCore] ChatServer: add /register route
-- [Docs] CHANGELOG v2.4.6
-##### v2.4.5 - SP 3.5 Feedback API
-- [AIServerCore] ChatFeedbackHandler: POST /api/feedback
-- Protected by AuthMiddleware via X-Auth-UserId header
-- Content truncated at 5000 chars
-- Add [FEEDBACK] TAG to log messages
-##### v2.4.3 - SP 3.3 JWT Service + AuthMiddleware + Login JWT
-- [Common] JwtService: HS256 JWT sign/verify via OpenSSL, no new dependency
-- [HttpServer] AuthMiddleware: intercept /api/*, validate JWT from httpOnly cookie
-- [HttpServer] HttpRequest: add addHeader() for middleware context passing
-- [AIServerCore] ChatLoginHandler: sign JWT + set httpOnly cookie on login
-- [Infra] config.json.example: add jwt.secret config
-- [Infra] CMakeLists.txt: add Common/Auth/JwtService.cpp
-
-##### v2.4.2 - SP 3.2 QQ SMTP mail + VerificationCodeRepository + verify API
-- [Common] MailSender: libcurl SMTPS based QQ mail sender
-- [AIServerCore] VerificationCodeRepository: create/findByEmailAndCode/markUsed/countRecent
-- [AIServerCore] ChatVerifySendHandler: POST /api/verify/send
-- [AIServerCore] ChatVerifyCheckHandler: POST /api/verify/check
-- [AIServerCore] ChatServer: register routes
-- [Infra] CMakeLists: add MailSender.cpp
-- [Infra] config.json: add mail section
-
-##### v2.4.1 - SP 3.1 InviteCodeRepository + invite code verify API
-- [AIServerCore] InviteCodeRepository: findByCode / incrementUsedCount
-- [AIServerCore] ChatInviteVerifyHandler: POST /api/invite/verify
-- [AIServerCore] ChatServer: register route
-- Add [INVITE] TAG to log messages
 
 ## Plan 2 — 安全加固
-
-> Plan 1 最终版本 v2.3.0。Plan 2 共 7 个 SP（v2.3.1 ~ v2.3.7），最终版本 v2.4.0。
-
+### v2.3
 ##### v2.3.1 — 密码 argon2id 哈希
 - **【Security】libsodium 集成**：`Common/Crypto/PasswordHash.h` `hashPassword()` / `verifyPassword()` argon2id 哈希
 - **【AuthService】注册/登录迁移至 argon2id**：`registerAccount()` 哈希后存储，`login()` 验证哈希
@@ -460,3 +411,50 @@
 - **【AIServerCore】ChatServer.h 单 public:/private: 结构重构**：移除死 friend forward declarations，整合为干净的访问控制
 - **【AIServerCore】6 个 Handler 直接成员访问替换为公共获取器调用**（onlineUsers_ / ImageRecognizerMap / chatInformation 等 → getter 代理）
 - **【Docs】DEVELOP_STANDARD.md 新增 clang-format 格式化规则**
+
+
+## Plan 3 — User System Upgrade
+> Plan 2 v2.4.0. Plan 3 has 6 SPs (v2.4.1 ~ v2.4.6), final v2.5.0.
+### v2.4
+
+##### v2.4.1 - SP 3.1 InviteCodeRepository + invite code verify API
+- [AIServerCore] InviteCodeRepository: findByCode / incrementUsedCount
+- [AIServerCore] ChatInviteVerifyHandler: POST /api/invite/verify
+- [AIServerCore] ChatServer: register route
+- Add [INVITE] TAG to log messages
+
+##### v2.4.2 - SP 3.2 QQ SMTP mail + VerificationCodeRepository + verify API
+- [Common] MailSender: libcurl SMTPS based QQ mail sender
+- [AIServerCore] VerificationCodeRepository: create/findByEmailAndCode/markUsed/countRecent
+- [AIServerCore] ChatVerifySendHandler: POST /api/verify/send
+- [AIServerCore] ChatVerifyCheckHandler: POST /api/verify/check
+- [AIServerCore] ChatServer: register routes
+- [Infra] CMakeLists: add MailSender.cpp
+- [Infra] config.json: add mail section
+
+##### v2.4.3 - SP 3.3 JWT Service + AuthMiddleware + Login JWT
+- [Common] JwtService: HS256 JWT sign/verify via OpenSSL, no new dependency
+- [HttpServer] AuthMiddleware: intercept /api/*, validate JWT from httpOnly cookie
+- [HttpServer] HttpRequest: add addHeader() for middleware context passing
+- [AIServerCore] ChatLoginHandler: sign JWT + set httpOnly cookie on login
+- [Infra] config.json.example: add jwt.secret config
+- [Infra] CMakeLists.txt: add Common/Auth/JwtService.cpp
+
+##### v2.4.4 - SP 3.4 Register flow integration
+- [AIServerCore] AuthService: add registerWithInviteCode() with email validation
+- [AIServerCore] AccountRepository: add findByEmail()
+- [AIServerCore] ChatRegisterHandler: rewrite with 4-step verify-then-register flow
+- [AIServerCore] Logging: add [REGISTER] TAG
+
+
+##### v2.4.5 - SP 3.5 Feedback API
+- [AIServerCore] ChatFeedbackHandler: POST /api/feedback
+- Protected by AuthMiddleware via X-Auth-UserId header
+- Content truncated at 5000 chars
+- Add [FEEDBACK] TAG to log messages
+##### v2.4.6 - SP 3.6 Frontend multi-step register page
+- [web] register.html: 5-step registration page with stepper UI
+- [web] register.js: multi-step form with invite code/email/verify/register flow
+- [AIServerCore] ChatEntryHandler: add page parameter for serving register.html
+- [AIServerCore] ChatServer: add /register route
+- [Docs] CHANGELOG v2.4.6
