@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <stdexcept>
+#include "AIServerCore/include/Repository/CallLogRepository.h"
 
 AIHelper::AIHelper(storage::MysqlUtil *mysqlUtil, common::ThreadPool *threadPool)
     : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
@@ -53,6 +54,15 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                                  std::string provider, std::string apiKey, std::string ragId, std::string modelId,
                                  StreamCallback onChunk, std::string endpointId, bool isNewSession)
 {
+    auto _callStart = std::chrono::steady_clock::now();
+    auto _logCall = [&](const std::string& status, const std::string& errMsg = "") {
+        auto _end = std::chrono::steady_clock::now();
+        int _dur = std::chrono::duration_cast<std::chrono::milliseconds>(_end - _callStart).count();
+        if (userId > 0) {
+            CallLogRepository _repo;
+            _repo.insert(static_cast<long long>(userId), sessionId, modelId, provider, _dur, status, errMsg);
+        }
+    };
     bool expected = false;
     if (!processing_.compare_exchange_strong(expected, true))
     {
@@ -169,6 +179,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                                             effectiveModel);
                 }
 
+        _logCall("success");
                 return textContent;
             }
 
@@ -230,6 +241,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                 messages_.push_back({"assistant", roundResponse, strategy->getModel(), "", tsNow});
             }
             pushMessageToMysql(userId, userName, "assistant", roundResponse, tsNow, sessionId, strategy->getModel());
+            _logCall("success");
             return roundResponse;
         }
     }
