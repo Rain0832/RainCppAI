@@ -366,6 +366,18 @@
 
 > Plan 2 v2.4.0. Plan 3 has 6 SPs (v2.4.1 ~ v2.4.6), final v2.5.0.
 
+
+##### v2.4.4 - SP 3.4 Register flow integration
+- [AIServerCore] AuthService: add registerWithInviteCode() with email validation
+- [AIServerCore] AccountRepository: add findByEmail()
+- [AIServerCore] ChatRegisterHandler: rewrite with 4-step verify-then-register flow
+- [AIServerCore] Logging: add [REGISTER] TAG
+
+##### v2.4.5 - SP 3.5 Feedback API
+- [AIServerCore] ChatFeedbackHandler: POST /api/feedback
+- Protected by AuthMiddleware via X-Auth-UserId header
+- Content truncated at 5000 chars
+- Add [FEEDBACK] TAG to log messages
 ##### v2.4.3 - SP 3.3 JWT Service + AuthMiddleware + Login JWT
 - [Common] JwtService: HS256 JWT sign/verify via OpenSSL, no new dependency
 - [HttpServer] AuthMiddleware: intercept /api/*, validate JWT from httpOnly cookie
