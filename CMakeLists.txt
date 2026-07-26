@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
+find_package(spdlog REQUIRED)
 find_package(OpenCV REQUIRED)
 
 # MySQL Connector
@@ -78,6 +79,8 @@ set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/Common/Crypto/PasswordHash.cpp
     ${PROJECT_SOURCE_DIR}/Common/Config/ConfigManager.cpp
     ${PROJECT_SOURCE_DIR}/Common/Mail/MailSender.cpp
+    ${PROJECT_SOURCE_DIR}/Common/Logging/LogContext.cpp
+    ${PROJECT_SOURCE_DIR}/Common/Logging/Logger.cpp
     ${PROJECT_SOURCE_DIR}/Common/Auth/JwtService.cpp
 )
 
@@ -111,6 +114,7 @@ target_include_directories(http_server PRIVATE
     /usr/local/include/jdbc
     /usr/local/onnxruntime/include)
 target_link_libraries(http_server PRIVATE -Wl,--whole-archive aiengine -Wl,--no-whole-archive httpserver storage pthread)
+target_link_libraries(http_server PRIVATE spdlog::spdlog)
 
 # ==== GoogleTest ====
 include(FetchContent)

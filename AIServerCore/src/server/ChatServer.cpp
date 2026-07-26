@@ -4,6 +4,7 @@
 
 #include "Common/Config/ConfigManager.h"
 #include "middleware/AuthMiddleware.h"
+#include "Common/Logging/Logger.h"
 
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
@@ -46,6 +47,7 @@ void ChatServer::initialize()
     // 初始化MySQL数据库连接池
     auto& cfg = common::ConfigManager::instance();
     cfg.load("../config.json");
+    common::Logger::init(cfg.get("log.level", "info"), cfg.get("log.path", "logs/app"));
     std::string dbConn = cfg.get("db.host", "127.0.0.1") + ":" + std::to_string(cfg.getInt("db.port", 3307));
     storage::MysqlUtil::init(dbConn, cfg.get("db.user", "chat"), cfg.get("db.password", ""),
                               cfg.get("db.name", "ChatHttpServer"), cfg.getInt("db.pool_size", 5));
