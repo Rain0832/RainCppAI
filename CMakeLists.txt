@@ -77,6 +77,7 @@ set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/AIServerCore/src/main.cpp
     ${PROJECT_SOURCE_DIR}/Common/Crypto/PasswordHash.cpp
     ${PROJECT_SOURCE_DIR}/Common/Config/ConfigManager.cpp
+    ${PROJECT_SOURCE_DIR}/Common/Mail/MailSender.cpp
 )
 
 # ==== 静态库：AIEngine ====

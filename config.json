@@ -1,15 +1,44 @@
 {
-  "server": { "port": 80, "threads": 4 },
-  "db": { "host": "127.0.0.1", "port": 3307, "user": "chat", "password": "", "name": "ChatHttpServer", "pool_size": 5 },
-  "paths": { "resource_root": "../", "mcp_config": "../mcp_config.json", "models_config": "../models.json" },
-  "mcp": { "python": "/root/RainCppAI/.venv/bin/python" },
-  "ai": { "thread_pool_size": 8, "max_tool_rounds": 5, "max_sessions": 500 },
+  "server": {
+    "port": 80,
+    "threads": 4
+  },
+  "db": {
+    "host": "127.0.0.1",
+    "port": 3307,
+    "user": "chat",
+    "password": "",
+    "name": "ChatHttpServer",
+    "pool_size": 5
+  },
+  "paths": {
+    "resource_root": "../",
+    "mcp_config": "../mcp_config.json",
+    "models_config": "../models.json"
+  },
+  "mcp": {
+    "python": "/root/RainCppAI/.venv/bin/python"
+  },
+  "ai": {
+    "thread_pool_size": 8,
+    "max_tool_rounds": 5,
+    "max_sessions": 500
+  },
   "cors": {
-    "allowed_origins": ["http://localhost:8080", "http://127.0.0.1:8080"],
+    "allowed_origins": [
+      "http://localhost:8080",
+      "http://127.0.0.1:8080"
+    ],
     "allow_credentials": true
   },
   "security": {
     "hsts_enabled": true,
     "x_frame_options": "DENY"
+  },
+  "mail": {
+    "host": "smtp.qq.com",
+    "port": 465,
+    "username": "",
+    "password": ""
   }
 }

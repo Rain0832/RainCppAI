@@ -14,6 +14,8 @@
 #include "controller/ChatHistoryHandler.h"
 #include "controller/ChatLoginHandler.h"
 #include "controller/ChatInviteVerifyHandler.h"
+#include "controller/ChatVerifySendHandler.h"
+#include "controller/ChatVerifyCheckHandler.h"
 #include "controller/ChatLogoutHandler.h"
 #include "controller/ChatRegisterHandler.h"
 #include "controller/ChatSessionsHandler.h"
@@ -297,6 +299,10 @@ void ChatServer::initializeRouter()
 
     // Invite code verification
     httpServer_.Post("/api/invite/verify", std::make_shared<ChatInviteVerifyHandler>(this));
+
+    // Verification code
+    httpServer_.Post("/api/verify/send", std::make_shared<ChatVerifySendHandler>(this));
+    httpServer_.Post("/api/verify/check", std::make_shared<ChatVerifyCheckHandler>(this));
     httpServer_.Post("/user/logout", std::make_shared<ChatLogoutHandler>(this));
 
     // 聊天功能路由
