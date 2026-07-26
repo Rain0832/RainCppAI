@@ -86,10 +86,10 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
 
         // Send email
         std::ostringstream body;
-        body << "Your Dr.Rain verification code:\\n\\n";
-        body << "    " << code << "\\n\\n";
-        body << "This code will expire in 10 minutes.\\n";
-        body << "If you did not request this code, please ignore this email.\\n";
+        body << "Your Dr.Rain verification code:\r\n\r\n";
+        body << "    " << code << "\r\n\r\n";
+        body << "This code will expire in 10 minutes.\r\n";
+        body << "If you did not request this code, please ignore this email.\r\n";
 
         common::MailSender mailer;
         auto result = mailer.send(email, "Dr.Rain Registration Verification Code", body.str());
