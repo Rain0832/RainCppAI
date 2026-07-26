@@ -8,6 +8,7 @@ class AccountRepository
 {
 public:
     json findByUsername(const std::string& username);
+    json findByEmail(const std::string& email);
     json findById(long long id);
     json create(const std::string& username, const std::string& passwordHash,
                 const std::string& email = "");

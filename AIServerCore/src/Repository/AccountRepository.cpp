@@ -86,3 +86,16 @@ json AccountRepository::listAll()
     }
     return arr;
 }
+
+json AccountRepository::findByEmail(const std::string& email)
+{
+    storage::MysqlUtil mu;
+    auto res = mu.executeQuery("SELECT id FROM accounts WHERE email = ?", email);
+    if (res && res->next())
+    {
+        json j;
+        j["id"] = res->getInt64("id");
+        return j;
+    }
+    return {};
+}

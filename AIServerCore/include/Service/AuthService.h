@@ -7,5 +7,7 @@ public:
     json login(const std::string& username, const std::string& password);
     json registerAccount(const std::string& username, const std::string& password,
                          const std::string& email = "");
+    json registerWithInviteCode(const std::string& username, const std::string& password,
+                                  const std::string& email);
     bool isUsernameTaken(const std::string& username);
 };
