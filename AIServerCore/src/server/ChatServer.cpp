@@ -5,6 +5,7 @@
 
 #include "Common/Config/ConfigManager.h"
 #include "middleware/AuthMiddleware.h"
+#include "middleware/RequestIdMiddleware.h"
 #include "Common/Logging/Logger.h"
 
 #include "controller/AIMenuHandler.h"
@@ -369,6 +370,10 @@ void ChatServer::initializeMiddleware()
 
     auto authMiddleware = std::make_shared<http::middleware::AuthMiddleware>();
     httpServer_.addMiddleware(authMiddleware);
+
+    // RequestId middleware
+    auto reqIdMiddleware = std::make_shared<http::middleware::RequestIdMiddleware>();
+    httpServer_.addMiddleware(reqIdMiddleware);
 }
 
 void ChatServer::packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,
