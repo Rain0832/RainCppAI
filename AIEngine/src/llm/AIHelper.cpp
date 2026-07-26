@@ -532,17 +532,54 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
                                       static_cast<long long>(userId));
         if (modelName.empty())
         {
+            // payload / tool_call_id 为空时不写入 JSON 列，让其默认为 NULL
+            bool hasPayload = !payload.empty();
+            bool hasToolId = !toolCallId.empty();
+            if (hasPayload || hasToolId)
+            {
+                std::string extraCols;
+                if (hasPayload) extraCols += ", payload";
+                if (hasToolId) extraCols += ", tool_call_id";
+                std::string extraVals = std::string(hasPayload ? ", ?" : "") + std::string(hasToolId ? ", ?" : "");
+                std::string sql = "INSERT INTO messages (session_id, role, content" + extraCols + ") VALUES (?, ?, ?" + extraVals + ")";
+                if (hasPayload && hasToolId)
+                    mysqlUtil_->executeUpdate(sql, sessionId, role, userInput, payload, toolCallId);
+                else if (hasPayload)
+                    mysqlUtil_->executeUpdate(sql, sessionId, role, userInput, payload);
+                else
+                    mysqlUtil_->executeUpdate(sql, sessionId, role, userInput, toolCallId);
+            }
+            else
+            {
             mysqlUtil_->executeUpdate(
-                "INSERT INTO messages (session_id, role, content, payload, tool_call_id) VALUES (?, ?, ?, ?, ?)",
-                sessionId, role, userInput, payload,
-                toolCallId);
+                    "INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)",
+                    sessionId, role, userInput);
+            }
         }
         else
         {
+            bool hasPayload = !payload.empty();
+            bool hasToolId = !toolCallId.empty();
+            if (hasPayload || hasToolId)
+            {
+                std::string extraCols;
+                if (hasPayload) extraCols += ", payload";
+                if (hasToolId) extraCols += ", tool_call_id";
+                std::string extraVals = std::string(hasPayload ? ", ?" : "") + std::string(hasToolId ? ", ?" : "");
+                std::string sql = "INSERT INTO messages (session_id, role, content" + extraCols + ", model) VALUES (?, ?, ?" + extraVals + ", ?)";
+                if (hasPayload && hasToolId)
+                    mysqlUtil_->executeUpdate(sql, sessionId, role, userInput, payload, toolCallId, modelName);
+                else if (hasPayload)
+                    mysqlUtil_->executeUpdate(sql, sessionId, role, userInput, payload, modelName);
+                else
+                    mysqlUtil_->executeUpdate(sql, sessionId, role, userInput, toolCallId, modelName);
+            }
+            else
+            {
             mysqlUtil_->executeUpdate(
-                "INSERT INTO messages (session_id, role, content, payload, model, tool_call_id) VALUES (?, ?, ?, ?, ?, ?)",
-                sessionId, role, userInput, payload, modelName,
-                toolCallId);
+                    "INSERT INTO messages (session_id, role, content, model) VALUES (?, ?, ?, ?)",
+                    sessionId, role, userInput, modelName);
+            }
         }
     }
     catch (const std::exception &e)

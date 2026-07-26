@@ -6,15 +6,23 @@
 
 static void sendSseChunk(const muduo::net::TcpConnectionPtr &conn, const std::string &data)
 {
-    if (!conn || !conn->connected()) return;
     std::string frame = "data: " + data + "\n\n";
-    conn->send(frame);  // TcpConnection::send() 内置线程安全
+    conn->getLoop()->runInLoop(
+        [conn, frame]()
+        {
+            if (conn->connected())
+                conn->send(frame);
+        });
 }
 
 static void sendSseDone(const muduo::net::TcpConnectionPtr &conn)
 {
-    if (conn && conn->connected())
-        conn->send("data: [DONE]\n\n");
+    conn->getLoop()->runInLoop(
+        [conn]()
+        {
+            if (conn->connected())
+                conn->send("data: [DONE]\n\n");
+        });
 }
 
 void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
@@ -76,7 +84,6 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         // 获取/创建 AIHelperPtr（读写锁）
         std::shared_ptr<AIHelper> AIHelperPtr;
         {
-            LOG_DEBUG << "[ChatSseHandler] acquire shared lock for chatInfo (userId=" << userId << ", shard=" << (userId%16) << ")";
             std::shared_lock<std::shared_mutex> rlock(server_->getChatInfoMutex(userId));
             auto uit = server_->getChatInformation().find(userId);
             if (uit != server_->getChatInformation().end())
@@ -88,7 +95,6 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         }
         if (!AIHelperPtr)
         {
-            LOG_DEBUG << "[ChatSseHandler] acquire unique lock for chatInfo (userId=" << userId << ", shard=" << (userId%16) << ")";
             std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex(userId));
             auto &us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
@@ -110,12 +116,10 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
 
         // SSE 握手：在 IO 线程中立即发送响应头
         conn->getLoop()->runInLoop(
-            [conn, req, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider, isNewSession]()
+            [conn, req]()
             {
-                if (!conn->connected()) {
-                    LOG_WARN << "[SSE] Handshake skipped: connection not connected";
+                if (!conn->connected())
                     return;
-                }
                 std::string sseHeader = "HTTP/1.1 200 OK\r\n"
                                         "Content-Type: text/event-stream\r\n"
                                         "Cache-Control: no-cache\r\n"
@@ -123,16 +127,21 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                                         "Access-Control-Allow-Origin: *\r\n"
                                         "\r\n";
                 conn->send(sseHeader);
-                LOG_INFO << "[SSE] Handshake sent";
+            });
 
-                // 在 IO 线程内同步执行 AI 调用（避免跨线程唤醒管道问题）
+        // 提交流式 AI 调用到线程池
+        server_->getAiThreadPool().submit(
+            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
+             provider, isNewSession]()
+            {
                 try
                 {
+                    // 新会话：先发送 sessionId 事件让前端知道
                     if (isNewSession)
                     {
                         json sidEvent;
                         sidEvent["sessionId"] = sessionId;
-                        conn->send("data: " + sidEvent.dump() + "\n\n");
+                        sendSseChunk(conn, sidEvent.dump());
                     }
 
                     AIHelperPtr->chatStream(
@@ -144,21 +153,18 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                                 return false;
                             json data;
                             data["token"] = token;
-                            conn->send("data: " + data.dump() + "\n\n");
+                            sendSseChunk(conn, data.dump());
                             return true;
                         },
                         "", isNewSession);
-                    if (conn->connected())
-                        conn->send("data: [DONE]\n\n");
+                    sendSseDone(conn);
                 }
                 catch (const std::exception &e)
                 {
                     json err;
                     err["error"] = e.what();
-                    if (conn->connected())
-                        conn->send("data: " + err.dump() + "\n\n");
-                    if (conn->connected())
-                        conn->send("data: [DONE]\n\n");
+                    sendSseChunk(conn, err.dump());
+                    sendSseDone(conn);
                 }
             });
     }

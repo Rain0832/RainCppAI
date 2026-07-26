@@ -359,6 +359,57 @@
 - **【Docs】`mcp_config.json` 添加 MCP_PYTHON 环境变量注释**
 - **【Plan 1 总结】架构重构完成**：ChatServer 去 friend → Repository/Service 分层 → ThreadPool/ApiResult/ConfigManager 公用化 → 数据库 8 表全量重设计 →前端功能回归通过
 
+
+# v2
+
+## Plan 2 — 安全加固
+
+> Plan 1 最终版本 v2.3.0。Plan 2 共 7 个 SP（v2.3.1 ~ v2.3.7），最终版本 v2.4.0。
+
+##### v2.3.1 — 密码 argon2id 哈希
+- **【Security】libsodium 集成**：`Common/Crypto/PasswordHash.h` `hashPassword()` / `verifyPassword()` argon2id 哈希
+- **【AuthService】注册/登录迁移至 argon2id**：`registerAccount()` 哈希后存储，`login()` 验证哈希
+- **【Handler】ChatLoginHandler / ChatRegisterHandler 迁移至 AuthService**，移除裸 SQL 查询
+- **【CMake】target_link_libraries(aiengine PUBLIC sodium)**
+
+##### v2.3.2 — 工具调用上下文持久化
+- **【AIHelper】pushMessageToMysql / addMessage 签名 bool is_user → const string &role**
+- **【AIHelper】insert messages 支持 payload / tool_call_id 写入**
+- **【AIHelper】tool_calls / tool 结果补写 MySQL**：解决重启后上下文断裂
+- **【ChatSseHandler】chatStream 线程安全回调更新**
+
+##### v2.3.3 — 登录失败锁定
+- **【accounts】新增 failed_attempts / locked_until 字段**：5 次失败 / 15 分钟锁定
+- **【AuthService::login()】** 锁定检查 → 失败自增 → 达阈值锁定 → 成功重置
+- **【ChatLoginHandler】** 区分锁定（429 "账号已锁定，请X分钟后重试"）vs 密码错误（401）
+- **【HttpResponse.h】** 新增 `k429TooManyRequests`
+
+##### v2.3.4 — CORS allowlist + 安全响应头
+- **【新增】SecurityHeadersMiddleware**：CSP / HSTS / X-Frame-Options / X-Content-Type-Options / X-XSS-Protection
+- **【CorsConfig.h】** allowedOrigins `{"*"}` → `{}`（强制显式 allowlist）
+- **【ChatServer::initializeMiddleware()】** CORS allowlist + SecurityHeadersMiddleware 注册
+- **【config.json】** 新增 `cors` / `security` 段
+
+##### v2.3.5 — chatInformation 分片锁
+- **【ChatServer.h】** `rwMutexForChatInfo` → `std::array<shared_mutex, 16>`（userId % 16）
+- **【ChatSseHandler / ChatHistoryHandler】** `getChatInfoMutex()` → `getChatInfoMutex(userId)`
+
+##### v2.3.6 — 错误脱敏 + 图片上传校验
+- **【AIMenuHandler / ChatUpdateTitleHandler / AIUploadSendHandler】** `e.what()` 不暴露给客户端 → `"Internal server error"` + `LOG_ERROR`
+- **【AIUploadSendHandler】** 图片 base64 大小限制 ≤ 10 MB + 最小 12 字节
+
+##### v2.3.7 — DB 凭据环境变量化 + CVE 审计
+- **【新增】SECURITY.md**：依赖清单（OpenSSL 3.0.13 / libcurl 8.5.0 / libsodium 1.0.18 / OpenCV 4.6.0）+ 环境变量文档
+- **【main.cpp】** 启动时检查 `DB_PASSWORD` 环境变量，未设置则警告
+
+##### 编译修复 + Bugfix (post-v2.3.7)
+- **【AIHelper】pushMessageToMysql 重复调用修复 + payload/tool_call_id 空值INSERT 动态SQL**
+- **【SecurityHeadersMiddleware】CSP script-src 白名单加 cdn.jsdelivr.net**
+- **【AIHelper::executeCurlStream】** curl_easy_perform 返回值检查 + `LOG_ERROR`
+- **【ChatSseHandler】SSE 诊断日志回退，恢复原始线程池模型**
+
+- **【Plan 2 总结】安全加固完成**：argon2id → 工具调用持久化 → 登录锁定 → CORS/HSTS/CSP → 分片锁 → 错误脱敏 → 依赖审计
+
 ##### 编译修复 (post-v2.2.13)
 - **【AIServerCore】ChatServer.h 单 public:/private: 结构重构**：移除死 friend forward declarations，整合为干净的访问控制
 - **【AIServerCore】6 个 Handler 直接成员访问替换为公共获取器调用**（onlineUsers_ / ImageRecognizerMap / chatInformation 等 → getter 代理）
