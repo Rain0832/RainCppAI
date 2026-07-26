@@ -2,12 +2,12 @@
 
 void ChatEntryHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
-    std::string reqFile = server_->getResourceRoot() + "web/entry.html";
+    std::string reqFile = server_->getResourceRoot() + "web/" + page_;
     FileUtil fileOperater(reqFile);
     if (!fileOperater.isValid())
     {
         LOG_WARN << reqFile << " not exist";
-        fileOperater.resetDefaultFile();  // 404 NOT FOUND
+        fileOperater.resetDefaultFile();
     }
 
     std::vector<char> buffer(fileOperater.size());

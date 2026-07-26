@@ -294,6 +294,7 @@ void ChatServer::initializeRouter()
     // 入口页面路由
     httpServer_.Get("/", std::make_shared<ChatEntryHandler>(this));
     httpServer_.Get("/entry", std::make_shared<ChatEntryHandler>(this));
+    httpServer_.Get("/register", std::make_shared<ChatEntryHandler>(this, "register.html"));
 
     // 用户认证路由
     httpServer_.Post("/login", std::make_shared<ChatLoginHandler>(this));

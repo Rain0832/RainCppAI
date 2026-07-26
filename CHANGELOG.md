@@ -373,6 +373,13 @@
 - [AIServerCore] ChatRegisterHandler: rewrite with 4-step verify-then-register flow
 - [AIServerCore] Logging: add [REGISTER] TAG
 
+
+##### v2.4.6 - SP 3.6 Frontend multi-step register page
+- [web] register.html: 5-step registration page with stepper UI
+- [web] register.js: multi-step form with invite code/email/verify/register flow
+- [AIServerCore] ChatEntryHandler: add page parameter for serving register.html
+- [AIServerCore] ChatServer: add /register route
+- [Docs] CHANGELOG v2.4.6
 ##### v2.4.5 - SP 3.5 Feedback API
 - [AIServerCore] ChatFeedbackHandler: POST /api/feedback
 - Protected by AuthMiddleware via X-Auth-UserId header

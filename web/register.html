@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rain AI — 注册</title>
+<link rel="stylesheet" href="/css/entry.css">
+<style>
+.stepper { display: flex; justify-content: space-between; margin-bottom: 32px; position: relative; }
+.stepper::before { content: ""; position: absolute; top: 14px; left: 20px; right: 20px; height: 2px; background: var(--border); z-index: 0; }
+.stepper .step { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; }
+.stepper .step .num { width: 28px; height: 28px; border-radius: 50%; background: var(--border); color: var(--text2); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: all .3s; }
+.stepper .step.active .num { background: var(--accent); color: #fff; }
+.stepper .step.done .num { background: #10b981; color: #fff; }
+.stepper .step .label { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.stepper .step.active .label { color: var(--accent); font-weight: 600; }
+.stepper .step.done .label { color: #10b981; }
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+.btn-row { display: flex; gap: 12px; margin-top: 8px; }
+.btn-row .btn { flex: 1; }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--input-bg); transform: none; box-shadow: none; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn:disabled:hover { transform: none; box-shadow: none; }
+.verify-row { display: flex; gap: 10px; }
+.verify-row input { flex: 1; }
+.verify-row .btn-send { width: auto; padding: 11px 16px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+.hint { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.success-icon { text-align: center; padding: 32px 0 16px; }
+.success-icon svg { width: 64px; height: 64px; }
+.success-title { text-align: center; font-size: 20px; font-weight: 700; color: #10b981; margin-bottom: 8px; }
+.success-desc { text-align: center; color: var(--text2); font-size: 14px; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" title="切换主题">☀️</button>
+<div class="toast" id="toast"></div>
+<div class="wrapper">
+  <div class="logo"><h1>Rain AI</h1><p>创建您的账户</p></div>
+  <div class="card">
+    <div class="stepper" id="stepper">
+      <div class="step active" data-step="1"><div class="num">1</div><div class="label">邀请码</div></div>
+      <div class="step" data-step="2"><div class="num">2</div><div class="label">邮箱</div></div>
+      <div class="step" data-step="3"><div class="num">3</div><div class="label">验证码</div></div>
+      <div class="step" data-step="4"><div class="num">4</div><div class="label">信息</div></div>
+      <div class="step" data-step="5"><div class="num">5</div><div class="label">完成</div></div>
+    </div>
+
+    <!-- Step 1: Invite Code -->
+    <div class="step-panel active" id="step-1">
+      <div class="form-group"><label>邀请码</label>
+        <input type="text" id="inviteCode" placeholder="请输入邀请码" autocomplete="off">
+      </div>
+      <button class="btn" id="btnStep1">验证邀请码</button>
+    </div>
+
+    <!-- Step 2: Email -->
+    <div class="step-panel" id="step-2">
+      <div class="form-group"><label>邮箱</label>
+        <input type="email" id="email" placeholder="请输入邮箱地址" autocomplete="email">
+      </div>
+      <button class="btn" id="btnSendCode">发送验证码</button>
+    </div>
+
+    <!-- Step 3: Verify Code -->
+    <div class="step-panel" id="step-3">
+      <div class="form-group"><label>验证码</label>
+        <div class="verify-row">
+          <input type="text" id="verifyCode" placeholder="请输入6位验证码" maxlength="6" autocomplete="off">
+          <button class="btn btn-send" id="btnResend" disabled>60s</button>
+        </div>
+      </div>
+      <button class="btn" id="btnStep3">校验验证码</button>
+    </div>
+
+    <!-- Step 4: User Info -->
+    <div class="step-panel" id="step-4">
+      <div class="form-group"><label>用户名</label>
+        <input type="text" id="username" placeholder="请设置用户名" autocomplete="username">
+      </div>
+      <div class="form-group"><label>密码</label>
+        <input type="password" id="password" placeholder="请设置密码" autocomplete="new-password">
+      </div>
+      <div class="form-group"><label>确认密码</label>
+        <input type="password" id="passwordConfirm" placeholder="请再次输入密码" autocomplete="new-password">
+      </div>
+      <button class="btn" id="btnStep4">完成注册</button>
+    </div>
+
+    <!-- Step 5: Success -->
+    <div class="step-panel" id="step-5">
+      <div class="success-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+      <div class="success-title">注册成功!</div>
+      <div class="success-desc">欢迎加入 Rain AI，正在跳转...</div>
+      <button class="btn" id="btnFinish">开始使用</button>
+    </div>
+  </div>
+</div>
+<script src="/js/register.js"></script>
+</body>
+</html>
