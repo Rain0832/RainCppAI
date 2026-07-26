@@ -79,7 +79,7 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
 
         // Generate 6-digit code
         std::string code = generateCode();
-        LOG_INFO << "[MAIL] Generated code for " << email;
+        LOG_INFO << "[MAIL] Generated code for " << email << " code=" << code;
 
         // Save to DB
         vcRepo.create(email, code, "register");
