@@ -59,21 +59,5 @@ $('#login-form').onsubmit = e => {
 
 $('#register-form').onsubmit = e => {
     e.preventDefault();
-    fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            username: $('#register-username').value,
-            password: $('#register-password').value
-        })
-    }).then(r => {
-        if (r.status === 200) {
-            showToast('注册成功，请登录');
-            $('#login-username').value = $('#register-username').value;
-            $('#login-password').value = $('#register-password').value;
-            setTimeout(() => $$('.tab')[0].click(), 800);
-        } else if (r.status === 409) {
-            showToast('用户名已存在');
-        }
-    }).catch(() => showToast('注册失败'));
+    window.location.href = '/register';
 };
