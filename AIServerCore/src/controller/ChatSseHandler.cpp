@@ -1,5 +1,6 @@
-#include "controller/ChatSseHandler.h"
+﻿#include "controller/ChatSseHandler.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Auth/JwtService.h"
 #include "Common/Logging/Logger.h"
 
 #include "common/AISessionIdGenerator.h"
@@ -30,18 +31,37 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
 {
     try
     {
-        auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true")
-        {
-            json e = common::ApiResult::fail(400, "Unauthorized").toJson();
-            std::string b = e.dump();
-            server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
-                                 "application/json", b.size(), b, resp);
-            return;
-        }
+        long long userId = 0;
+        std::string username;
 
-        int userId = std::stoi(session->getValue("userId"));
-        std::string username = session->getValue("username");
+        auto session = server_->getSessionManager()->getSession(req, resp);
+        if (session->getValue("isLoggedIn") == "true") {
+            userId = std::stoll(session->getValue("userId"));
+            username = session->getValue("username");
+        } else {
+            std::string ck = req.getHeader("Cookie");
+            std::string tok;
+            size_t pos = ck.find("jwt=");
+            if (pos != std::string::npos) {
+                pos += 4;
+                size_t end = ck.find(';', pos);
+                tok = (end == std::string::npos) ? ck.substr(pos) : ck.substr(pos, end - pos);
+            }
+            if (!tok.empty()) {
+                common::JwtService js;
+                json pld = js.verify(tok);
+                if (!pld.empty()) {
+                    userId = pld["sub"].get<long long>();
+                    username = "user" + std::to_string(userId);
+                }
+            }
+            if (userId == 0) {
+                json e = common::ApiResult::fail(401, "Unauthorized").toJson();
+                std::string b = e.dump();
+                server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true, "application/json", (int)b.size(), b, resp);
+                return;
+            }
+        }
 
         std::string userQuestion, modelType, sessionId, ragId, provider;
         auto body = req.getBody();

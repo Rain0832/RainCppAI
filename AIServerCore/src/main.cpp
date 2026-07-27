@@ -15,6 +15,14 @@
 
 #include "Common/Config/ConfigManager.h"
 
+
+// Redirect muduo logs to spdlog
+void muduoLogRedirect(const char* msg, int len) {
+    auto logger = spdlog::get("rain");
+    if (!logger) return;
+    std::string m(msg, len > 0 ? len - 1 : 0);
+    logger->info("[MUDUO] {}", m);
+}
 int main(int argc, char *argv[])
 {
     SPDLOG_INFO_TAG("MAIN") << "pid = " << getpid();
@@ -47,6 +55,7 @@ int main(int argc, char *argv[])
     muduo::Logger::setLogLevel(muduo::Logger::DEBUG);
     // 日志时区设为东八区 (CST)，方便国内排查
     muduo::Logger::setTimeZone(muduo::TimeZone(8 * 3600, "CST"));
+    muduo::Logger::setOutput(muduoLogRedirect);
     ChatServer server(port, serverName);
     server.setThreadNum(cfg.getInt("server.threads", 4));
 
