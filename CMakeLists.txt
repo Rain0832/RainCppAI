@@ -82,6 +82,7 @@ set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/Common/Logging/LogContext.cpp
     ${PROJECT_SOURCE_DIR}/Common/Logging/Logger.cpp
     ${PROJECT_SOURCE_DIR}/Common/Logging/Redactor.cpp
+    ${PROJECT_SOURCE_DIR}/Common/Metrics/MetricsCollector.cpp
     ${PROJECT_SOURCE_DIR}/Common/RateLimit/TokenBucket.cpp
     ${PROJECT_SOURCE_DIR}/Common/Auth/JwtService.cpp
 )

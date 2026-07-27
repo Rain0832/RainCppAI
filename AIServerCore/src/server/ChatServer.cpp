@@ -5,7 +5,8 @@
 
 #include "Common/Config/ConfigManager.h"
 #include "middleware/AuthMiddleware.h"
-#include "middleware/RequestIdMiddleware.h"\n#include "middleware/RateLimitMiddleware.h"
+#include "middleware/RequestIdMiddleware.h"
+#include "middleware/RateLimitMiddleware.h"
 #include "Common/Logging/Logger.h"
 
 #include "controller/AIMenuHandler.h"
@@ -29,6 +30,8 @@
 #include "controller/ChatUpdateTitleHandler.h"
 #include "controller/McpHandler.h"
 #include "controller/ModelListHandler.h"
+#include "controller/HealthHandler.h"
+#include "controller/MetricsHandler.h"
 #include "http/StaticFileHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
@@ -299,6 +302,8 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/", std::make_shared<ChatEntryHandler>(this));
     httpServer_.Get("/entry", std::make_shared<ChatEntryHandler>(this));
     httpServer_.Get("/register", std::make_shared<ChatEntryHandler>(this, "register.html"));
+    httpServer_.Get("/health", std::make_shared<HealthHandler>(this));
+    httpServer_.Get("/metrics", std::make_shared<MetricsHandler>(this));
 
     // 用户认证路由
     httpServer_.Post("/login", std::make_shared<ChatLoginHandler>(this));
