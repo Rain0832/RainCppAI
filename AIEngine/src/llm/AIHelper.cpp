@@ -80,7 +80,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         strategy->setApiKey(apiKey);
     if (!ragId.empty())
         strategy->setRagId(ragId);
-    LOG_INFO << "endpointId=" << endpointId;
+    SPDLOG_INFO_TAG("AI") << "endpointId=" << endpointId;
     if (!endpointId.empty())
         strategy->setEndpointId(endpointId);
     if (strategy->getApiKey().empty())
@@ -140,7 +140,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         payload["stream"] = true;
 
         // 审计日志：记录发起 LLM 请求前的关键信息
-        LOG_INFO << "[LLM Request] userId: " << userId << " | sessionId: " << sessionId
+        SPDLOG_INFO_TAG("AI") << "[LLM Request] userId: " << userId << " | sessionId: " << sessionId
                  << " | provider: " << provider << " | model: " << effectiveModel
                  << " | payload: " << payload.dump();
 
@@ -208,7 +208,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
             // ── 执行所有工具并加入历史 ──
             for (auto &tc : toolCalls)
             {
-                LOG_INFO << "MCP tool call: " << tc.name << " args=" << tc.arguments.dump();
+                SPDLOG_INFO_TAG("AI") << "MCP tool call: " << tc.name << " args=" << tc.arguments.dump();
                 json toolResult;
                 try
                 {
@@ -232,7 +232,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
         }
         catch (const std::exception &)
         {
-            LOG_ERROR << "[LLM Response] parse/stream failed, treating as plain text";
+            SPDLOG_ERROR_TAG("AI") << "[LLM Response] parse/stream failed, treating as plain text";
             auto tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
                              std::chrono::system_clock::now().time_since_epoch())
                              .count();
@@ -281,7 +281,7 @@ std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onCh
 
     if (curlRes != CURLE_OK)
     {
-        LOG_ERROR << "[LLM API] curl failed: " << curl_easy_strerror(curlRes)
+        SPDLOG_ERROR_TAG("AI") << "[LLM API] curl failed: " << curl_easy_strerror(curlRes)
                   << " | url: " << strategy->getApiUrl();
         throw std::runtime_error(std::string("LLM API call failed: ") + curl_easy_strerror(curlRes));
     }
@@ -343,7 +343,7 @@ size_t AIHelper::StreamWriteCallback(void *contents, size_t size, size_t nmemb, 
         // 拦截非 SSE 格式的 API 原生错误响应（HTTP 400/401 等）
         if (!line.empty() && line[0] == '{')
         {
-            LOG_ERROR << "[API Raw Error] " << line;
+            SPDLOG_ERROR_TAG("AI") << "[API Raw Error] " << line;
             continue;
         }
 
@@ -596,6 +596,6 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
     }
     catch (const std::exception &e)
     {
-        LOG_ERROR << "pushMessageToMysql failed: " << e.what();
+        SPDLOG_ERROR_TAG("AI") << "pushMessageToMysql failed: " << e.what();
     }
 }
