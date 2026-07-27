@@ -48,8 +48,19 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         if (!body.empty())
         {
             auto j = json::parse(body);
-            if (j.contains("question"))
+            if (j.contains("question")) {
                 userQuestion = j["question"];
+                if (userQuestion.length() > 5000) {
+                    resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
+                    resp->setCloseConnection(false);
+                    resp->setContentType("application/json");
+                    json err = common::ApiResult::fail(400, "Content too long, max 5000 characters").toJson();
+                    std::string body = err.dump();
+                    resp->setContentLength(body.size());
+                    resp->setBody(body);
+                    return;
+                }
+            }
             if (j.contains("sessionId"))
                 sessionId = j["sessionId"];
             if (j.contains("ragId"))

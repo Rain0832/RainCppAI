@@ -5,6 +5,7 @@
 #include "controller/ChatLoginHandler.h"
 #include "Service/AuthService.h"
 #include "Common/Http/ApiResult.h"
+#include "Common/Logging/Redactor.h"
 #include "Common/Auth/JwtService.h"
 #include "Common/Logging/Logger.h"
 
@@ -133,7 +134,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     }
     catch (const std::exception& e)
     {
-        SPDLOG_ERROR_TAG("AUTH") << "Login exception: " << e.what();
+        SPDLOG_ERROR_TAG("AUTH") << "Login exception: " << common::Redactor::mask(std::string(e.what()));
         json failureResp;
         failureResp["status"] = "error";
         failureResp["message"] = "Internal server error";
