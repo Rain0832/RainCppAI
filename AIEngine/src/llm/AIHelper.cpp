@@ -1,9 +1,9 @@
 #include "llm/AIHelper.h"
+#include "Common/Logging/Logger.h"
 
 #include <chrono>
 #include <stdexcept>
 #include "AIServerCore/include/Repository/CallLogRepository.h"
-#include <Logger.h>
 
 AIHelper::AIHelper(storage::MysqlUtil *mysqlUtil, common::ThreadPool *threadPool)
     : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
