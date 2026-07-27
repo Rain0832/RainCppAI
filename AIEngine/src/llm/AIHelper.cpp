@@ -3,6 +3,7 @@
 #include <chrono>
 #include <stdexcept>
 #include "AIServerCore/include/Repository/CallLogRepository.h"
+#include <Logger.h>
 
 AIHelper::AIHelper(storage::MysqlUtil *mysqlUtil, common::ThreadPool *threadPool)
     : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
@@ -55,10 +56,12 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                                  StreamCallback onChunk, std::string endpointId, bool isNewSession)
 {
     auto _callStart = std::chrono::steady_clock::now();
-    auto _logCall = [&](const std::string& status, const std::string& errMsg = "") {
+    auto _logCall = [&](const std::string &status, const std::string &errMsg = "")
+    {
         auto _end = std::chrono::steady_clock::now();
         int _dur = std::chrono::duration_cast<std::chrono::milliseconds>(_end - _callStart).count();
-        if (userId > 0) {
+        if (userId > 0)
+        {
             CallLogRepository _repo;
             _repo.insert(static_cast<long long>(userId), sessionId, modelId, provider, _dur, status, errMsg);
         }
@@ -141,8 +144,8 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
 
         // 审计日志：记录发起 LLM 请求前的关键信息
         SPDLOG_INFO_TAG("AI") << "[LLM Request] userId: " << userId << " | sessionId: " << sessionId
-                 << " | provider: " << provider << " | model: " << effectiveModel
-                 << " | payload: " << payload.dump();
+                              << " | provider: " << provider << " | model: " << effectiveModel
+                              << " | payload: " << payload.dump();
 
         // 流式请求：累积完整响应 + SSE 回调给前端
         auto roundStreamCb = onChunk; // 复用前端回调
@@ -179,7 +182,7 @@ std::string AIHelper::chatStream(int userId, std::string userName, std::string s
                                             effectiveModel);
                 }
 
-        _logCall("success");
+                _logCall("success");
                 return textContent;
             }
 
@@ -282,7 +285,7 @@ std::string AIHelper::executeCurlStream(const json &payload, StreamCallback onCh
     if (curlRes != CURLE_OK)
     {
         SPDLOG_ERROR_TAG("AI") << "[LLM API] curl failed: " << curl_easy_strerror(curlRes)
-                  << " | url: " << strategy->getApiUrl();
+                               << " | url: " << strategy->getApiUrl();
         throw std::runtime_error(std::string("LLM API call failed: ") + curl_easy_strerror(curlRes));
     }
 
@@ -541,7 +544,7 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
     try
     {
         mysqlUtil_->executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)", sessionId,
-                                      static_cast<long long>(userId));
+                                  static_cast<long long>(userId));
         if (modelName.empty())
         {
             // payload / tool_call_id 为空时不写入 JSON 列，让其默认为 NULL
@@ -550,8 +553,10 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
             if (hasPayload || hasToolId)
             {
                 std::string extraCols;
-                if (hasPayload) extraCols += ", payload";
-                if (hasToolId) extraCols += ", tool_call_id";
+                if (hasPayload)
+                    extraCols += ", payload";
+                if (hasToolId)
+                    extraCols += ", tool_call_id";
                 std::string extraVals = std::string(hasPayload ? ", ?" : "") + std::string(hasToolId ? ", ?" : "");
                 std::string sql = "INSERT INTO messages (session_id, role, content" + extraCols + ") VALUES (?, ?, ?" + extraVals + ")";
                 if (hasPayload && hasToolId)
@@ -563,7 +568,7 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
             }
             else
             {
-            mysqlUtil_->executeUpdate(
+                mysqlUtil_->executeUpdate(
                     "INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)",
                     sessionId, role, userInput);
             }
@@ -575,8 +580,10 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
             if (hasPayload || hasToolId)
             {
                 std::string extraCols;
-                if (hasPayload) extraCols += ", payload";
-                if (hasToolId) extraCols += ", tool_call_id";
+                if (hasPayload)
+                    extraCols += ", payload";
+                if (hasToolId)
+                    extraCols += ", tool_call_id";
                 std::string extraVals = std::string(hasPayload ? ", ?" : "") + std::string(hasToolId ? ", ?" : "");
                 std::string sql = "INSERT INTO messages (session_id, role, content" + extraCols + ", model) VALUES (?, ?, ?" + extraVals + ", ?)";
                 if (hasPayload && hasToolId)
@@ -588,7 +595,7 @@ void AIHelper::pushMessageToMysql(int userId, const std::string &userName, const
             }
             else
             {
-            mysqlUtil_->executeUpdate(
+                mysqlUtil_->executeUpdate(
                     "INSERT INTO messages (session_id, role, content, model) VALUES (?, ?, ?, ?)",
                     sessionId, role, userInput, modelName);
             }
