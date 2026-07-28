@@ -458,3 +458,26 @@
 - [AIServerCore] ChatEntryHandler: add page parameter for serving register.html
 - [AIServerCore] ChatServer: add /register route
 - [Docs] CHANGELOG v2.4.6
+
+
+
+## Plan 5 — Admin 后台 & Dr.Rain 品牌化
+### v2.5
+> **管理后台** — RBAC 鉴权 + SSR 看板 + SSE 推送 + 用户管理 + Dr.Rain 品牌化
+
+##### v2.5.0 — SP 5.1 AdminAuthMiddleware
+- [HttpServer] AdminAuthMiddleware: 拦截 /admin/* 请求，读取 X-Auth-Role 校验 admin 权限
+- [AIServerCore] ChatServer::initializeMiddleware() 注册 AdminAuthMiddleware（在 AuthMiddleware 之后）
+
+##### v2.5.1 — SP 5.2 Admin 实时看板
+- [AIServerCore] AdminRepository: getDashboardStats() call_logs 聚合查询（今日调用量/provider分布/状态分布/活跃用户/Top5模型）
+- [AIServerCore] AdminDashboardHandler: GET /admin/dashboard SSR 返回 dashboard.html
+- [AIServerCore] AdminSseHandler: GET /admin/sse SSE 每 10 秒推送实时统计 JSON
+- [web] dashboard.html: 侧边栏 + EventSource 实时看板（卡片/柱状图/模型排行）
+
+##### v2.5.2 — SP 5.3 用户管理 & Dr.Rain 品牌化
+- [AIServerCore] AdminRepository: getUsers() 全量用户查询 + toggleUserDisable() 启禁用切换
+- [AIServerCore] AdminUsersHandler: GET /admin/api/users JSON 用户列表
+- [AIServerCore] AdminToggleUserHandler: POST /admin/api/users/toggle 禁用/启用接口
+- [web] dashboard.html: Tab 切换架构，用户管理面板（表格/搜索/角色徽章/禁用按钮 + Toast 反馈）
+- [web] Dr.Rain 品牌化: 渐变色 Logo、蓝紫渐变 Sidebar、版本号 v2.2.0、中文字体栈
