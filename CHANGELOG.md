@@ -463,21 +463,27 @@
 
 ## Plan 5 — Admin 后台 & Dr.Rain 品牌化
 ### v2.5
-> **管理后台** — RBAC 鉴权 + SSR 看板 + SSE 推送 + 用户管理 + Dr.Rain 品牌化
+> v2.5.0 = Plan 4 最终发布版（安全加固 + 用户系统升级基线），以下为 Plan 5 增量
 
-##### v2.5.0 — SP 5.1 AdminAuthMiddleware
+##### v2.5.1 — SP 5.1 AdminAuthMiddleware
 - [HttpServer] AdminAuthMiddleware: 拦截 /admin/* 请求，读取 X-Auth-Role 校验 admin 权限
 - [AIServerCore] ChatServer::initializeMiddleware() 注册 AdminAuthMiddleware（在 AuthMiddleware 之后）
 
-##### v2.5.1 — SP 5.2 Admin 实时看板
+##### v2.5.2 — SP 5.2 Admin 实时看板
 - [AIServerCore] AdminRepository: getDashboardStats() call_logs 聚合查询（今日调用量/provider分布/状态分布/活跃用户/Top5模型）
 - [AIServerCore] AdminDashboardHandler: GET /admin/dashboard SSR 返回 dashboard.html
 - [AIServerCore] AdminSseHandler: GET /admin/sse SSE 每 10 秒推送实时统计 JSON
 - [web] dashboard.html: 侧边栏 + EventSource 实时看板（卡片/柱状图/模型排行）
 
-##### v2.5.2 — SP 5.3 用户管理 & Dr.Rain 品牌化
+##### v2.5.3 — SP 5.3 用户管理 & Dr.Rain 品牌化
 - [AIServerCore] AdminRepository: getUsers() 全量用户查询 + toggleUserDisable() 启禁用切换
 - [AIServerCore] AdminUsersHandler: GET /admin/api/users JSON 用户列表
 - [AIServerCore] AdminToggleUserHandler: POST /admin/api/users/toggle 禁用/启用接口
 - [web] dashboard.html: Tab 切换架构，用户管理面板（表格/搜索/角色徽章/禁用按钮 + Toast 反馈）
 - [web] Dr.Rain 品牌化: 渐变色 Logo、蓝紫渐变 Sidebar、版本号 v2.2.0、中文字体栈
+
+##### v2.5.4 — SP 5.4 Admin 日志查看器
+- [AIServerCore] AdminLogsHandler: GET /admin/logs SSR 返回日志查看页面
+- [AIServerCore] 日志读取引擎: 逆序分块读取文件最后 200 行，按日志级别着色（INFO=绿/WARN=橙/ERROR=红/DEBUG=灰）
+- [web] logs.html: Dr.Rain 风格日志查看器模板，含级别图例 + 30s 自动刷新 + 倒计时
+- [web] dashboard.html: 侧边栏新增「日志查看」导航入口
