@@ -7,6 +7,10 @@
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
+#include "controller/AdminDashboardHandler.h"
+#include "controller/AdminSseHandler.h"
+#include "controller/AdminToggleUserHandler.h"
+#include "controller/AdminUsersHandler.h"
 #include "controller/ApiKeyHandler.h"
 #include "controller/ChatDeleteSessionHandler.h"
 #include "controller/ChatEntryHandler.h"
@@ -350,6 +354,12 @@ void ChatServer::initializeRouter()
 
     // MCP Server 路由（标准 JSON-RPC 2.0）
     httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));
+
+    // Admin 后台路由
+    httpServer_.Get("/admin/dashboard", std::make_shared<AdminDashboardHandler>(this));
+    httpServer_.Get("/admin/sse", std::make_shared<AdminSseHandler>(this));
+    httpServer_.Get("/admin/api/users", std::make_shared<AdminUsersHandler>(this));
+    httpServer_.Post("/admin/api/users/toggle", std::make_shared<AdminToggleUserHandler>(this));
 }
 
 void ChatServer::initializeSession()

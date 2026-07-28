@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dr.Rain — 管理后台</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar { width: 230px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); color: #a2a3b7; padding: 0; display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.sidebar .brand .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #2196f3 0%, #7c4dff 100%); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -1px; }
+.sidebar .brand .name { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+.sidebar .brand .name span { color: #7c4dff; }
+.sidebar nav { padding: 8px 0; flex: 1; }
+.sidebar nav a { color: #8890a8; text-decoration: none; padding: 11px 20px; display: flex; align-items: center; gap: 10px; font-size: 14px; transition: all .2s; border-left: 3px solid transparent; }
+.sidebar nav a:hover { color: #c8d0e0; background: rgba(255,255,255,.04); }
+.sidebar nav a.active { color: #fff; background: rgba(33,150,243,.15); border-left-color: #2196f3; }
+.sidebar nav a .icon { width: 20px; text-align: center; font-size: 15px; }
+.sidebar .side-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.08); font-size: 11px; color: #556; }
+.sidebar .side-footer .ver { color: #2196f3; }
+
+/* ── Main ── */
+.main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+.main .page { display: none; }
+.main .page.active { display: block; }
+.main h2 { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+.main h2 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2196f3; }
+
+/* ── Cards ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card { background: #fff; border-radius: 12px; padding: 22px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: transform .15s, box-shadow .15s; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.card .label { font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 500; }
+.card .value { font-size: 30px; font-weight: 700; color: #1a1a2e; }
+.card .sub { font-size: 12px; color: #aaa; margin-top: 6px; }
+
+/* ── Section ── */
+.section { background: #fff; border-radius: 12px; padding: 22px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px; }
+.section h3 { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.bar { display: flex; align-items: center; margin: 7px 0; font-size: 13px; }
+.bar .name { width: 120px; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .fill-wrap { flex: 1; height: 22px; background: #f0f2f5; border-radius: 6px; overflow: hidden; margin: 0 10px; }
+.bar .fill { height: 100%; border-radius: 6px; transition: width .4s ease; }
+.bar .count { width: 50px; text-align: right; color: #888; font-variant-numeric: tabular-nums; font-weight: 500; }
+.updated { font-size: 12px; color: #aaa; margin-top: 16px; display: flex; align-items: center; gap: 6px; }
+.updated .live { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* ── User Table ── */
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.toolbar .search { padding: 8px 14px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 13px; width: 240px; outline: none; transition: border-color .2s; }
+.toolbar .search:focus { border-color: #2196f3; }
+.toolbar .count { font-size: 13px; color: #888; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { text-align: left; padding: 12px 14px; background: #f8f9fb; color: #666; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #eee; }
+tbody td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; color: #333; }
+tbody tr { transition: background .15s; }
+tbody tr:hover { background: #f8f9ff; }
+.role-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.role-badge.admin { background: #e3f2fd; color: #1565c0; }
+.role-badge.user { background: #f3e5f5; color: #7b1fa2; }
+.role-badge.org { background: #e8f5e9; color: #2e7d32; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.active { background: #4caf50; }
+.status-dot.disabled { background: #f44336; }
+.btn { padding: 6px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.btn-warn { background: #fff3e0; color: #e65100; }
+.btn-warn:hover { background: #ffe0b2; }
+.btn-ok { background: #e8f5e9; color: #2e7d32; }
+.btn-ok:hover { background: #c8e6c9; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.loading { text-align: center; padding: 32px; color: #aaa; }
+.toast { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 500; z-index: 999; animation: slideIn .3s ease; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.toast.success { background: #4caf50; }
+.toast.error { background: #f44336; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo">R</div>
+    <div class="name">Dr.<span>Rain</span></div>
+  </div>
+  <nav>
+    <a href="#" class="active" data-page="dashboard"><span class="icon">📊</span>实时看板</a>
+    <a href="#" data-page="users"><span class="icon">👥</span>用户管理</a>
+  </nav>
+  <div class="side-footer">
+    RainCppAI <span class="ver">v2.2.0</span> — Admin Panel
+  </div>
+</aside>
+
+<main class="main">
+  <!-- ═══ 实时看板 ═══ -->
+  <div class="page active" id="page-dashboard">
+    <h2><span class="dot"></span>实时看板</h2>
+    <div class="cards">
+      <div class="card"><div class="label">今日调用量</div><div class="value" id="totalCalls">--</div><div class="sub">call_logs 今日汇总</div></div>
+      <div class="card"><div class="label">活跃用户</div><div class="value" id="activeUsers">--</div><div class="sub">今日有调用的账户</div></div>
+      <div class="card"><div class="label">成功率</div><div class="value" id="successRate">--</div><div class="sub">success / total</div></div>
+    </div>
+    <div class="section"><h3>按 Provider 分布</h3><div id="byProvider"></div></div>
+    <div class="section"><h3>按状态分布</h3><div id="byStatus"></div></div>
+    <div class="section"><h3>Top 5 模型</h3><div id="topModels"></div></div>
+    <div class="updated"><span class="live"></span><span id="updatedAt">等待数据...</span></div>
+  </div>
+
+  <!-- ═══ 用户管理 ═══ -->
+  <div class="page" id="page-users">
+    <h2><span class="dot"></span>用户管理</h2>
+    <div class="section">
+      <div class="toolbar">
+        <input type="text" class="search" placeholder="🔍 搜索用户名或邮箱..." oninput="filterUsers()">
+        <span class="count" id="userCount">共 0 个账户</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>注册时间</th><th>最后登录</th><th>操作</th></tr>
+        </thead>
+        <tbody id="userTbody">
+          <tr><td colspan="8" class="loading">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+// ═══ Tab 切换 ═══
+document.querySelectorAll('.sidebar nav a').forEach(a => {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
+    this.classList.add('active');
+    const page = this.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    if (page === 'users') loadUsers();
+  });
+});
+
+// ═══ SSE 实时看板 ═══
+const COLORS = { success: '#4caf50', error: '#f44336', timeout: '#ff9800', aliyun: '#2196f3', volcengine: '#9c27b0', doubao: '#9c27b0', dashscope: '#2196f3' };
+const evt = new EventSource('/admin/sse');
+evt.onmessage = function(e) {
+  const d = JSON.parse(e.data);
+  if (d.error) return;
+  document.getElementById('totalCalls').textContent = d.total_calls || 0;
+  document.getElementById('activeUsers').textContent = d.active_users || 0;
+  const total = d.total_calls || 1;
+  const succ = (d.by_status && d.by_status.success) ? d.by_status.success : 0;
+  document.getElementById('successRate').textContent = total ? Math.round(succ / total * 100) + '%' : '--';
+  renderBars('byProvider', d.by_provider || {});
+  renderBars('byStatus', d.by_status || {});
+  renderModelList(d.top_models || []);
+  document.getElementById('updatedAt').textContent = '更新于 ' + new Date().toLocaleTimeString();
+};
+function renderBars(id, data) {
+  const el = document.getElementById(id);
+  const vals = Object.values(data);
+  const max = Math.max(1, ...vals);
+  el.innerHTML = Object.entries(data).map(([k, v]) =>
+    '<div class="bar"><span class="name">' + k + '</span><div class="fill-wrap"><div class="fill" style="width:' + (v/max*100) + '%; background:' + (COLORS[k] || '#607d8b') + '"></div></div><span class="count">' + v + '</span></div>'
+  ).join('') || '<span style="color:#aaa;font-size:13px">暂无数据</span>';
+}
+function renderModelList(models) {
+  const el = document.getElementById('topModels');
+  if (!models.length) { el.innerHTML = '<span style="color:#aaa;font-size:13px">暂无数据</span>'; return; }
+  const max = Math.max(1, ...models.map(m => m.count));
+  el.innerHTML = models.map(m =>
+    '<div class="bar"><span class="name">' + m.model + '</span><div class="fill-wrap"><div class="fill" style="width:' + (m.count/max*100) + '%; background:#607d8b"></div></div><span class="count">' + m.count + '</span></div>'
+  ).join('');
+}
+
+// ═══ 用户管理 ═══
+let allUsers = [];
+
+async function loadUsers() {
+  try {
+    const resp = await fetch('/admin/api/users');
+    const data = await resp.json();
+    if (data.success && data.data && data.data.users) {
+      allUsers = data.data.users;
+      renderUserTable(allUsers);
+    } else {
+      document.getElementById('userTbody').innerHTML = '<tr><td colspan="8" class="loading">加载失败</td></tr>';
+    }
+  } catch (err) {
+    document.getElementById('userTbody').innerHTML = '<tr><td colspan="8" class="loading">请求失败: ' + err.message + '</td></tr>';
+  }
+}
+
+function renderUserTable(users) {
+  const tbody = document.getElementById('userTbody');
+  document.getElementById('userCount').textContent = '共 ' + users.length + ' 个账户';
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">暂无用户</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(u => {
+    const roleLabel = { admin: '管理员', user: '普通用户', org: '组织' }[u.role] || u.role;
+    const statusHtml = u.is_disabled
+      ? '<span class="status-dot disabled"></span>已禁用'
+      : '<span class="status-dot active"></span>正常';
+    const btnHtml = u.is_disabled
+      ? '<button class="btn btn-ok" onclick="toggleUser(' + u.id + ',false)">启 用</button>'
+      : '<button class="btn btn-warn" onclick="toggleUser(' + u.id + ',true)">禁 用</button>';
+    return '<tr>' +
+      '<td>' + u.id + '</td>' +
+      '<td><strong>' + esc(u.username) + '</strong></td>' +
+      '<td>' + esc(u.email || '—') + '</td>' +
+      '<td><span class="role-badge ' + u.role + '">' + roleLabel + '</span></td>' +
+      '<td>' + statusHtml + '</td>' +
+      '<td>' + fmtDate(u.created_at) + '</td>' +
+      '<td>' + fmtDate(u.last_login_at) + '</td>' +
+      '<td>' + btnHtml + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function filterUsers() {
+  const q = document.querySelector('.search').value.toLowerCase();
+  const filtered = allUsers.filter(u =>
+    u.username.toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+  );
+  renderUserTable(filtered);
+}
+
+async function toggleUser(userId, disabled) {
+  const action = disabled ? '禁用' : '启用';
+  if (!confirm('确认' + action + '用户 #' + userId + '？')) return;
+  try {
+    const resp = await fetch('/admin/api/users/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, disabled: disabled })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast(action + '成功', 'success');
+      loadUsers();
+    } else {
+      showToast((data.error && data.error.message) || action + '失败', 'error');
+    }
+  } catch (err) {
+    showToast('请求失败: ' + err.message, 'error');
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtDate(s) { if (!s) return '—'; return s.replace('T', ' ').substring(0, 19); }
+</script>
+</body>
+</html>
