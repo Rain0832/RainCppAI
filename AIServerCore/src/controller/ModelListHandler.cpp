@@ -1,7 +1,6 @@
 #include "controller/ModelListHandler.h"
 #include "Common/Logging/Logger.h"
 
-#include <muduo/base/Logging.h>
 
 #include <fstream>
 #include <sstream>

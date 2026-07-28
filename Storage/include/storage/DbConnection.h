@@ -2,7 +2,6 @@
 #include <cppconn/connection.h>
 #include <cppconn/prepared_statement.h>
 #include <cppconn/resultset.h>
-#include <muduo/base/Logging.h>
 #include <mysql/mysql.h>
 #include <mysql_driver.h>
 
@@ -11,6 +10,7 @@
 #include <mutex>
 #include <string>
 
+#include "Common/Logging/Logger.h"
 #include "DbException.h"
 
 namespace storage
@@ -42,7 +42,7 @@ public:
         }
         catch (const sql::SQLException& e)
         {
-            LOG_ERROR << "Query failed: " << e.what() << ", SQL: " << sql;
+            SPDLOG_ERROR_TAG("DB") << "Query failed: " << e.what() << ", SQL: " << sql;
             throw DbException(e.what());
         }
     }
@@ -58,7 +58,7 @@ public:
         }
         catch (const sql::SQLException& e)
         {
-            LOG_ERROR << "Update failed: " << e.what() << ", SQL: " << sql;
+            SPDLOG_ERROR_TAG("DB") << "Update failed: " << e.what() << ", SQL: " << sql;
             throw DbException(e.what());
         }
     }

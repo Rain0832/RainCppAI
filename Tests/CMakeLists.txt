@@ -6,4 +6,6 @@ add_test(NAME test_config COMMAND test_config)
 
 add_executable(test_db_pool test_db_pool.cpp)
 target_link_libraries(test_db_pool gtest_main storage muduo_net muduo_base)
+target_link_libraries(test_db_pool spdlog::spdlog)
+target_sources(test_db_pool PRIVATE ${PROJECT_SOURCE_DIR}/Common/Logging/Logger.cpp ${PROJECT_SOURCE_DIR}/Common/Logging/LogContext.cpp)
 add_test(NAME test_db_pool COMMAND test_db_pool)

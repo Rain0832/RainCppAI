@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <muduo/base/Logging.h>
 #include <muduo/net/EventLoop.h>
 #include <muduo/net/TcpServer.h>
 #include <sys/stat.h>

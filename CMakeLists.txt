@@ -102,6 +102,7 @@ target_link_libraries(httpserver PUBLIC muduo_net muduo_base OpenSSL::SSL OpenSS
 # ==== 静态库：Storage ====
 add_library(storage STATIC ${STORAGE_SRC})
 target_include_directories(storage PUBLIC ${PROJECT_SOURCE_DIR}/Storage/include)
+target_include_directories(storage PUBLIC ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/Common)
 target_link_libraries(storage PUBLIC ${MYSQLCPPCONN_LIBRARY} ${MYSQLCLIENT_LIBRARY})
 
 # ==== 可执行文件（AIServerCore + main）====

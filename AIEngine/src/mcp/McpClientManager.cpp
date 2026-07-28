@@ -3,7 +3,7 @@
 #include <curl/curl.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <muduo/base/Logging.h>
+#include "Common/Logging/Logger.h"
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -32,7 +32,7 @@ void McpClientManager::loadFromConfig(const std::string& configPath)
     std::ifstream file(configPath);
     if (!file.is_open())
     {
-        LOG_WARN << "[McpClientManager] Cannot open config: " << configPath;
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Cannot open config: " << configPath;
         return;
     }
 
@@ -41,7 +41,7 @@ void McpClientManager::loadFromConfig(const std::string& configPath)
 
     if (!config.contains("mcpServers"))
     {
-        LOG_WARN << "[McpClientManager] No 'mcpServers' section in config";
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] No 'mcpServers' section in config";
         return;
     }
 
@@ -59,7 +59,7 @@ void McpClientManager::reloadFromConfig(const std::string& configPath)
     std::ifstream file(configPath);
     if (!file.is_open())
     {
-        LOG_WARN << "[McpClientManager] reload: Cannot open config: " << configPath;
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] reload: Cannot open config: " << configPath;
         return;
     }
 
@@ -68,7 +68,7 @@ void McpClientManager::reloadFromConfig(const std::string& configPath)
 
     if (!config.contains("mcpServers"))
     {
-        LOG_WARN << "[McpClientManager] reload: No 'mcpServers' section";
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] reload: No 'mcpServers' section";
         return;
     }
 
@@ -103,7 +103,7 @@ void McpClientManager::reloadFromConfig(const std::string& configPath)
         }
     }
 
-    LOG_INFO << "[McpClientManager] reload complete, active servers: " << serverToClient_.size();
+    SPDLOG_INFO_TAG("MCP") << "[McpClientManager] reload complete, active servers: " << serverToClient_.size();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -116,7 +116,7 @@ void McpClientManager::unregisterServer(const std::string& name)
         return;
 
     size_t idx = it->second;
-    LOG_INFO << "[McpClientManager] Shutting down server '" << name << "' (client[" << idx << "])";
+    SPDLOG_INFO_TAG("MCP") << "[McpClientManager] Shutting down server '" << name << "' (client[" << idx << "])";
 
     clients_[idx]->stop();
 
@@ -140,11 +140,11 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
     std::string transport = serverDef.value("transport", "");
     if (transport.empty())
     {
-        LOG_WARN << "[McpClientManager] Server '" << name << "' has no transport, skipped";
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Server '" << name << "' has no transport, skipped";
         return;
     }
 
-    LOG_INFO << "[McpClientManager] Registering server '" << name << "' transport=" << transport;
+    SPDLOG_INFO_TAG("MCP") << "[McpClientManager] Registering server '" << name << "' transport=" << transport;
 
     std::shared_ptr<McpClient> client;
 
@@ -154,7 +154,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         std::string command = serverDef.value("command", "");
         if (command.empty())
         {
-            LOG_WARN << "[McpClientManager] Stdio server '" << name << "' missing 'command'";
+            SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Stdio server '" << name << "' missing 'command'";
             return;
         }
 
@@ -174,7 +174,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         int pipe_in[2], pipe_out[2];
         if (pipe(pipe_in) != 0 || pipe(pipe_out) != 0)
         {
-            LOG_WARN << "[McpClientManager] Stdio server '" << name << "' pipe() failed";
+            SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Stdio server '" << name << "' pipe() failed";
             return;
         }
 
@@ -194,7 +194,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         }
         else if (pid < 0)
         {
-            LOG_WARN << "[McpClientManager] Stdio server '" << name << "' fork() failed";
+            SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Stdio server '" << name << "' fork() failed";
             close(pipe_in[0]);
             close(pipe_in[1]);
             close(pipe_out[0]);
@@ -212,7 +212,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         fcntl(write_fd, F_SETFL, fcntl(write_fd, F_GETFL) | O_NONBLOCK);
         fcntl(read_fd, F_SETFL, fcntl(read_fd, F_GETFL) | O_NONBLOCK);
 
-        LOG_INFO << "[McpClientManager] Forked process PID=" << pid << " command=" << command;
+        SPDLOG_INFO_TAG("MCP") << "[McpClientManager] Forked process PID=" << pid << " command=" << command;
 
         // ═══════════════════════════════════════════════════════
         // MCP 初始化握手 (initialize → initialized notification)
@@ -254,30 +254,30 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                             if (resp.value("id", "") == "init-1" && !resp.contains("error"))
                             {
                                 handshakeOk = true;
-                                LOG_INFO << "[McpClientManager] initialize handshake OK";
+                                SPDLOG_INFO_TAG("MCP") << "[McpClientManager] initialize handshake OK";
                             }
                             else
                             {
-                                LOG_WARN << "[McpClientManager] initialize response error: " << line;
+                                SPDLOG_WARN_TAG("MCP") << "[McpClientManager] initialize response error: " << line;
                             }
                         }
                         catch (...)
                         {
-                            LOG_WARN << "[McpClientManager] initialize response parse failed: " << line;
+                            SPDLOG_WARN_TAG("MCP") << "[McpClientManager] initialize response parse failed: " << line;
                         }
                         break;
                     }
                 }
                 else if (n == 0)
                 {
-                    LOG_WARN << "[McpClientManager] initialize EOF (child exited)";
+                    SPDLOG_WARN_TAG("MCP") << "[McpClientManager] initialize EOF (child exited)";
                     break;
                 }
                 else
                 {
                     if (errno != EAGAIN && errno != EWOULDBLOCK)
                     {
-                        LOG_WARN << "[McpClientManager] initialize read error: " << strerror(errno);
+                        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] initialize read error: " << strerror(errno);
                         break;
                     }
                     usleep(10000);  // 10ms
@@ -286,7 +286,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
             if (!handshakeOk)
             {
-                LOG_ERROR << "[McpClientManager] MCP handshake failed for '" << name
+                SPDLOG_ERROR_TAG("MCP") << "[McpClientManager] MCP handshake failed for '" << name
                           << "', terminating child PID=" << pid;
                 close(read_fd);
                 close(write_fd);
@@ -303,7 +303,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
             std::string initDoneStr = initDone.dump() + "\n";
             ssize_t w2 = write(write_fd, initDoneStr.c_str(), initDoneStr.size());
             (void)w2;
-            LOG_INFO << "[McpClientManager] Sent notifications/initialized";
+            SPDLOG_INFO_TAG("MCP") << "[McpClientManager] Sent notifications/initialized";
         }
 
         // 全双工 StdioClient（pipe + fork）
@@ -427,7 +427,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         std::string url = serverDef.value("url", "");
         if (url.empty())
         {
-            LOG_WARN << "[McpClientManager] SSE server '" << name << "' missing 'url'";
+            SPDLOG_WARN_TAG("MCP") << "[McpClientManager] SSE server '" << name << "' missing 'url'";
             return;
         }
 
@@ -504,7 +504,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
                 if (res != CURLE_OK)
                 {
-                    LOG_WARN << "[McpSseClient] SSE GET to " << url_ << " failed: " << curl_easy_strerror(res);
+                    SPDLOG_WARN_TAG("MCP") << "[McpSseClient] SSE GET to " << url_ << " failed: " << curl_easy_strerror(res);
                     return false;
                 }
 
@@ -512,11 +512,11 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                 endpoint_ = parseSseEndpoint(response);
                 if (endpoint_.empty())
                 {
-                    LOG_WARN << "[McpSseClient] No 'endpoint' in SSE response from " << url_;
+                    SPDLOG_WARN_TAG("MCP") << "[McpSseClient] No 'endpoint' in SSE response from " << url_;
                     return false;
                 }
 
-                LOG_INFO << "[McpSseClient] SSE connected, endpoint=" << endpoint_;
+                SPDLOG_INFO_TAG("MCP") << "[McpSseClient] SSE connected, endpoint=" << endpoint_;
                 return true;
             }
 
@@ -608,7 +608,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
     }
     else
     {
-        LOG_WARN << "[McpClientManager] Unknown transport '" << transport << "' for server '" << name << "'";
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Unknown transport '" << transport << "' for server '" << name << "'";
         return;
     }
 
@@ -618,7 +618,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
         size_t idx = clients_.size();
         clients_.push_back(client);
         serverToClient_[name] = idx;
-        LOG_INFO << "[McpClientManager] Server '" << name << "' registered at client[" << idx << "]";
+        SPDLOG_INFO_TAG("MCP") << "[McpClientManager] Server '" << name << "' registered at client[" << idx << "]";
     }
 }
 
@@ -658,11 +658,11 @@ json McpClientManager::discoverAllTools()
         }
         catch (const std::exception& e)
         {
-            LOG_WARN << "[McpClientManager] tools/list failed for client " << i << ": " << e.what();
+            SPDLOG_WARN_TAG("MCP") << "[McpClientManager] tools/list failed for client " << i << ": " << e.what();
         }
     }
 
-    LOG_INFO << "[McpClientManager] discoverAllTools: " << allTools.size() << " remote tools";
+    SPDLOG_INFO_TAG("MCP") << "[McpClientManager] discoverAllTools: " << allTools.size() << " remote tools";
     return allTools;
 }
 
@@ -679,6 +679,7 @@ json McpClientManager::callTool(const std::string& name, const json& args)
         throw std::runtime_error("Tool not found in any MCP client: " + name);
     }
 
-    LOG_INFO << "[McpClientManager] callTool '" << name << "' → client[" << it->second << "]";
+    SPDLOG_INFO_TAG("MCP") << "[McpClientManager] callTool '" << name << "' → client[" << it->second << "]";
     return clients_[it->second]->callTool(name, args);
 }
+#include "Common/Logging/Logger.h"

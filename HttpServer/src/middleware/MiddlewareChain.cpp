@@ -1,7 +1,6 @@
 #include "../../include/middleware/MiddlewareChain.h"
 #include "Logging/Logger.h"
 
-#include <muduo/base/Logging.h>
 
 namespace http
 {

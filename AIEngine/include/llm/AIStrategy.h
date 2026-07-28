@@ -6,7 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include <muduo/base/Logging.h>
 
 #include "3rdparty/JsonUtil.h"
 #include "common/Message.h"

@@ -1,5 +1,6 @@
-#include "middleware/RateLimitMiddleware.h"\n#include <memory>
-#include "Logging/Logger.h"\n#include "Logging/Logger.h"
+#include "middleware/RateLimitMiddleware.h"
+#include <memory>
+#include "Logging/Logger.h"
 #include "Common/Http/ApiResult.h"
 
 namespace http { namespace middleware {

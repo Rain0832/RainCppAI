@@ -1,7 +1,6 @@
 #include "http/StaticFileHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
-#include <muduo/base/Logging.h>
 #include <algorithm>
 #include <fstream>
 #include <sstream>

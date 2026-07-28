@@ -1,10 +1,10 @@
 #pragma once
 
-#include <muduo/base/Logging.h>
-
 #include <fstream>
 #include <string>
 #include <vector>
+
+#include "Common/Logging/Logger.h"
 
 class FileUtil
 {
@@ -37,11 +37,11 @@ public:
     {
         if (file_.read(buffer.data(), size()))
         {
-            LOG_INFO << "File content load into memory (" << size() << " bytes)";
+            SPDLOG_INFO_TAG("HTTP") << "File content load into memory (" << size() << " bytes)";
         }
         else
         {
-            LOG_ERROR << "File read failed";
+            SPDLOG_ERROR_TAG("HTTP") << "File read failed";
         }
     }
 

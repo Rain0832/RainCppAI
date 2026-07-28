@@ -1,6 +1,6 @@
 #include "mcp/AIToolRegistry.h"
 
-#include <muduo/base/Logging.h>
+#include "Common/Logging/Logger.h"
 
 #include <fstream>
 
@@ -20,14 +20,14 @@ void AIToolRegistry::loadFromConfig(const std::string& configPath)
 
     if (!mcpManager_)
     {
-        LOG_WARN << "[AIToolRegistry] McpClientManager not injected, skipping loadFromConfig";
+        SPDLOG_WARN_TAG("MCP") << "[AIToolRegistry] McpClientManager not injected, skipping loadFromConfig";
         return;
     }
 
     std::ifstream file(configPath);
     if (!file.is_open())
     {
-        LOG_WARN << "[AIToolRegistry] Cannot open config: " << configPath;
+        SPDLOG_WARN_TAG("MCP") << "[AIToolRegistry] Cannot open config: " << configPath;
         return;
     }
 
@@ -36,7 +36,7 @@ void AIToolRegistry::loadFromConfig(const std::string& configPath)
 
     if (!config.contains("mcpServers"))
     {
-        LOG_WARN << "[AIToolRegistry] No 'mcpServers' in config";
+        SPDLOG_WARN_TAG("MCP") << "[AIToolRegistry] No 'mcpServers' in config";
         return;
     }
 
@@ -46,7 +46,7 @@ void AIToolRegistry::loadFromConfig(const std::string& configPath)
         mcpManager_->registerServer(name, serverDef);
     }
 
-    LOG_INFO << "[AIToolRegistry] Registered servers from config";
+    SPDLOG_INFO_TAG("MCP") << "[AIToolRegistry] Registered servers from config";
 }
 
 // ─── invoke ─────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ json AIToolRegistry::invoke(const std::string& name, const json& args) const
     if (!mcpManager_)
         throw std::runtime_error("McpClientManager not injected");
 
-    LOG_INFO << "[AIToolRegistry] Tool '" << name << "' → McpClientManager";
+    SPDLOG_INFO_TAG("MCP") << "[AIToolRegistry] Tool '" << name << "' → McpClientManager";
     return mcpManager_->callTool(name, args);
 }
 

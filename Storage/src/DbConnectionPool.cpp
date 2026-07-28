@@ -1,6 +1,6 @@
 #include "storage/DbConnectionPool.h"
 
-#include <muduo/base/Logging.h>
+#include "Common/Logging/Logger.h"
 
 #include "storage/DbException.h"
 
@@ -30,7 +30,7 @@ namespace storage
         }
 
         initialized_ = true;
-        LOG_INFO << "Database connection pool initialized with " << poolSize << " connections";
+        SPDLOG_INFO_TAG("DB") << "Database connection pool initialized with " << poolSize << " connections";
     }
 
     DbConnectionPool::DbConnectionPool()
@@ -52,7 +52,7 @@ namespace storage
         {
             connections_.pop();
         }
-        LOG_INFO << "Database connection pool destroyed";
+        SPDLOG_INFO_TAG("DB") << "Database connection pool destroyed";
     }
 
     // 修改获取连接的函数
@@ -85,7 +85,7 @@ namespace storage
             // 在锁外检查连接
             if (!conn->ping())
             {
-                LOG_WARN << "Connection lost, attempting to reconnect...";
+                SPDLOG_WARN_TAG("DB") << "Connection lost, attempting to reconnect...";
                 conn->reconnect();
             }
 
@@ -99,7 +99,7 @@ namespace storage
         }
         catch (const std::exception &e)
         {
-            LOG_ERROR << "Failed to get connection: " << e.what();
+            SPDLOG_ERROR_TAG("DB") << "Failed to get connection: " << e.what();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 connections_.push(conn);
@@ -149,7 +149,7 @@ namespace storage
                         }
                         catch (const std::exception &e)
                         {
-                            LOG_ERROR << "Failed to reconnect: " << e.what();
+                            SPDLOG_ERROR_TAG("DB") << "Failed to reconnect: " << e.what();
                         }
                     }
                 }
@@ -158,7 +158,7 @@ namespace storage
             }
             catch (const std::exception &e)
             {
-                LOG_ERROR << "Error in check thread: " << e.what();
+                SPDLOG_ERROR_TAG("DB") << "Error in check thread: " << e.what();
                 std::this_thread::sleep_for(std::chrono::seconds(5));
             }
         }
