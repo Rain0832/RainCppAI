@@ -11,14 +11,14 @@
 class ModelListHandler : public http::router::RouterHandler
 {
 public:
-  explicit ModelListHandler(ChatServer *server, const std::string &projectRoot)
-      : server_(server), projectRoot_(projectRoot)
-  {
-  }
+    explicit ModelListHandler(ChatServer* server, const std::string& projectRoot)
+        : server_(server), projectRoot_(projectRoot)
+    {
+    }
 
-  void handle(const http::HttpRequest &req, http::HttpResponse *resp) override;
+    void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 
 private:
-  ChatServer *server_;
-  std::string projectRoot_;
+    ChatServer* server_;
+    std::string projectRoot_;
 };

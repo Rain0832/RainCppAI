@@ -1,6 +1,6 @@
 #include "../../include/middleware/MiddlewareChain.h"
-#include "Logging/Logger.h"
 
+#include "Logging/Logger.h"
 
 namespace http
 {

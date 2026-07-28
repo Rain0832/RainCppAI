@@ -1,27 +1,27 @@
 #pragma once
 
 #include <memory>
+#include <spdlog/sinks/daily_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <string>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/daily_file_sink.h>
-
 #include "Logging/LogContext.h"
 
-namespace common {
+namespace common
+{
 
 /// Initialise spdlog with dual sinks:
 ///   - stdout: colored, human-readable (keeps [TAG] style)
 ///   - file:   JSON format, daily rolling, 7-day retention
-class Logger {
+class Logger
+{
 public:
     /// Must be called once at server startup.
     /// @param log_level  "trace","debug","info","warn","error"
     /// @param log_path   Base path for log file (e.g. "logs/app")
-    static void init(const std::string& log_level = "info",
-                     const std::string& log_path = "logs/app");
+    static void init(const std::string& log_level = "info", const std::string& log_path = "logs/app");
 
     /// Get the spdlog logger instance (named "rain").
     static std::shared_ptr<spdlog::logger> instance();
@@ -31,15 +31,20 @@ public:
 // LogStream — stream-style log builder with auto [TAG] detection
 // ---------------------------------------------------------------------------
 
-class LogStream {
+class LogStream
+{
 public:
-    LogStream(const char* file, int line, spdlog::level::level_enum lv,
-              const std::string& tag = "")
-        : lv_(lv), tag_(tag), file_(file), line_(line) {}
+    LogStream(const char* file, int line, spdlog::level::level_enum lv, const std::string& tag = "")
+        : lv_(lv), tag_(tag), file_(file), line_(line)
+    {
+    }
 
     ~LogStream();
 
-    std::ostringstream& stream() { return ss_; }
+    std::ostringstream& stream()
+    {
+        return ss_;
+    }
 
 private:
     std::ostringstream ss_;
@@ -49,12 +54,12 @@ private:
     int line_;
 };
 
-} // namespace common
+}  // namespace common
 
 // ---------------------------------------------------------------------------
 // Convenience macros
 
-#define SPDLOG_INFO_TAG(tag)  common::LogStream(__FILE__, __LINE__, spdlog::level::info, tag).stream()
-#define SPDLOG_WARN_TAG(tag)  common::LogStream(__FILE__, __LINE__, spdlog::level::warn, tag).stream()
-#define SPDLOG_ERROR_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::err,  tag).stream()
+#define SPDLOG_INFO_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::info, tag).stream()
+#define SPDLOG_WARN_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::warn, tag).stream()
+#define SPDLOG_ERROR_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::err, tag).stream()
 #define SPDLOG_DEBUG_TAG(tag) common::LogStream(__FILE__, __LINE__, spdlog::level::debug, tag).stream()

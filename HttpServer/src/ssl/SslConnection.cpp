@@ -1,8 +1,9 @@
 #include "../../include/ssl/SslConnection.h"
-#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 #include <openssl/err.h>
+
+#include "Logging/Logger.h"
 
 namespace ssl
 {
@@ -18,7 +19,12 @@ static BIO_METHOD* createCustomBioMethod()
 }
 
 SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
-    : ssl_(nullptr), ctx_(ctx), conn_(conn), state_(SSLState::HANDSHAKE), readBio_(nullptr), writeBio_(nullptr),
+    : ssl_(nullptr),
+      ctx_(ctx),
+      conn_(conn),
+      state_(SSLState::HANDSHAKE),
+      readBio_(nullptr),
+      writeBio_(nullptr),
       messageCallback_(nullptr)
 {
     // 创建 SSL 对象
@@ -49,8 +55,8 @@ SslConnection::SslConnection(const TcpConnectionPtr& conn, SslContext* ctx)
     SSL_set_mode(ssl_, SSL_MODE_ENABLE_PARTIAL_WRITE);
 
     // 设置连接回调
-    conn_->setMessageCallback(std::bind(&SslConnection::onRead, this, std::placeholders::_1, std::placeholders::_2,
-                                        std::placeholders::_3));
+    conn_->setMessageCallback(
+        std::bind(&SslConnection::onRead, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 SslConnection::~SslConnection()
@@ -147,21 +153,21 @@ void SslConnection::handleHandshake()
     int err = SSL_get_error(ssl_, ret);
     switch (err)
     {
-    case SSL_ERROR_WANT_READ:
-    case SSL_ERROR_WANT_WRITE:
-        // 正常的握手过程，需要继续
-        break;
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+            // 正常的握手过程，需要继续
+            break;
 
-    default:
-    {
-        // 获取详细的错误信息
-        char errBuf[256];
-        unsigned long errCode = ERR_get_error();
-        ERR_error_string_n(errCode, errBuf, sizeof(errBuf));
-        SPDLOG_ERROR_TAG("SSL") << "SSL handshake failed: " << errBuf;
-        conn_->shutdown();  // 关闭连接
-        break;
-    }
+        default:
+        {
+            // 获取详细的错误信息
+            char errBuf[256];
+            unsigned long errCode = ERR_get_error();
+            ERR_error_string_n(errCode, errBuf, sizeof(errBuf));
+            SPDLOG_ERROR_TAG("SSL") << "SSL handshake failed: " << errBuf;
+            conn_->shutdown();  // 关闭连接
+            break;
+        }
     }
 }
 
@@ -181,18 +187,18 @@ SSLError SslConnection::getLastError(int ret)
     int err = SSL_get_error(ssl_, ret);
     switch (err)
     {
-    case SSL_ERROR_NONE:
-        return SSLError::NONE;
-    case SSL_ERROR_WANT_READ:
-        return SSLError::WANT_READ;
-    case SSL_ERROR_WANT_WRITE:
-        return SSLError::WANT_WRITE;
-    case SSL_ERROR_SYSCALL:
-        return SSLError::SYSCALL;
-    case SSL_ERROR_SSL:
-        return SSLError::SSL;
-    default:
-        return SSLError::UNKNOWN;
+        case SSL_ERROR_NONE:
+            return SSLError::NONE;
+        case SSL_ERROR_WANT_READ:
+            return SSLError::WANT_READ;
+        case SSL_ERROR_WANT_WRITE:
+            return SSLError::WANT_WRITE;
+        case SSL_ERROR_SYSCALL:
+            return SSLError::SYSCALL;
+        case SSL_ERROR_SSL:
+            return SSLError::SSL;
+        default:
+            return SSLError::UNKNOWN;
     }
 }
 
@@ -200,27 +206,26 @@ void SslConnection::handleError(SSLError error)
 {
     switch (error)
     {
-    case SSLError::WANT_READ:
-    case SSLError::WANT_WRITE:
-        // 需要等待更多数据或写入缓冲区可用
-        break;
-    case SSLError::SSL:
-    case SSLError::SYSCALL:
-    case SSLError::UNKNOWN:
-        SPDLOG_ERROR_TAG("SSL") << "SSL error occurred: " << ERR_error_string(ERR_get_error(), nullptr);
-        state_ = SSLState::ERROR;
-        conn_->shutdown();
-        break;
-    default:
-        break;
+        case SSLError::WANT_READ:
+        case SSLError::WANT_WRITE:
+            // 需要等待更多数据或写入缓冲区可用
+            break;
+        case SSLError::SSL:
+        case SSLError::SYSCALL:
+        case SSLError::UNKNOWN:
+            SPDLOG_ERROR_TAG("SSL") << "SSL error occurred: " << ERR_error_string(ERR_get_error(), nullptr);
+            state_ = SSLState::ERROR;
+            conn_->shutdown();
+            break;
+        default:
+            break;
     }
 }
 
 int SslConnection::bioWrite(BIO* bio, const char* data, int len)
 {
     SslConnection* conn = static_cast<SslConnection*>(BIO_get_data(bio));
-    if (!conn)
-        return -1;
+    if (!conn) return -1;
 
     conn->conn_->send(data, len);
     return len;
@@ -229,8 +234,7 @@ int SslConnection::bioWrite(BIO* bio, const char* data, int len)
 int SslConnection::bioRead(BIO* bio, char* data, int len)
 {
     SslConnection* conn = static_cast<SslConnection*>(BIO_get_data(bio));
-    if (!conn)
-        return -1;
+    if (!conn) return -1;
 
     size_t readable = conn->readBuffer_.readableBytes();
     if (readable == 0)
@@ -248,10 +252,10 @@ long SslConnection::bioCtrl(BIO* bio, int cmd, long num, void* ptr)
 {
     switch (cmd)
     {
-    case BIO_CTRL_FLUSH:
-        return 1;
-    default:
-        return 0;
+        case BIO_CTRL_FLUSH:
+            return 1;
+        default:
+            return 0;
     }
 }
 

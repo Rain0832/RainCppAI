@@ -3,11 +3,13 @@
 #include <atomic>
 #include <chrono>
 
-namespace common {
+namespace common
+{
 
 /// Thread-safe token bucket rate limiter.
 /// Uses atomic operations + chrono for lock-free refill.
-class TokenBucket {
+class TokenBucket
+{
 public:
     TokenBucket(int maxTokens = 10, double refillPerSec = 10.0 / 60.0);
 
@@ -25,4 +27,4 @@ private:
     double refillPerUs_;  // tokens per microsecond
 };
 
-} // namespace common
+}  // namespace common

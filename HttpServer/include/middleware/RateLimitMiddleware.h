@@ -3,18 +3,25 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "middleware/Middleware.h"
 #include "Common/RateLimit/TokenBucket.h"
+#include "middleware/Middleware.h"
 
-namespace http { namespace middleware {
+namespace http
+{
+namespace middleware
+{
 
 /// Rate limit middleware: max 10 requests/min per user for /api/chat/*.
-class RateLimitMiddleware : public Middleware {
+class RateLimitMiddleware : public Middleware
+{
 public:
     RateLimitMiddleware(int maxTokens = 10, double refillPerSec = 10.0 / 60.0)
-        : maxTokens_(maxTokens), refillPerSec_(refillPerSec) {}
+        : maxTokens_(maxTokens), refillPerSec_(refillPerSec)
+    {
+    }
     void before(HttpRequest& request) override;
     void after(HttpResponse& response) override {}
+
 private:
     common::TokenBucket& getBucket(long long userId);
     std::mutex mutex_;
@@ -23,4 +30,5 @@ private:
     double refillPerSec_;
 };
 
-}} // namespace http::middleware
+}  // namespace middleware
+}  // namespace http

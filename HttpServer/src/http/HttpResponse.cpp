@@ -37,7 +37,8 @@ void HttpResponse::appendToBuffer(muduo::net::Buffer* outputBuf) const
     outputBuf->append(body_);
 }
 
-void HttpResponse::setStatusLine(const std::string& version, HttpStatusCode statusCode,
+void HttpResponse::setStatusLine(const std::string& version,
+                                 HttpStatusCode statusCode,
                                  const std::string& statusMessage)
 {
     httpVersion_ = version;

@@ -1,10 +1,14 @@
 #include "Repository/CallLogRepository.h"
+
 #include "storage/MysqlUtil.h"
 
-bool CallLogRepository::insert(long long accountId, const std::string& sessionId,
-                                const std::string& model, const std::string& provider,
-                                int durationMs, const std::string& status,
-                                const std::string& errorMessage)
+bool CallLogRepository::insert(long long accountId,
+                               const std::string& sessionId,
+                               const std::string& model,
+                               const std::string& provider,
+                               int durationMs,
+                               const std::string& status,
+                               const std::string& errorMessage)
 {
     storage::MysqlUtil mu;
     try

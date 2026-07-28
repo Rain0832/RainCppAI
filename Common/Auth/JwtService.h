@@ -4,11 +4,13 @@
 
 #include "JsonUtil.h"
 
-namespace common {
+namespace common
+{
 
 /// JWT token service using HS256 (HMAC-SHA256) via OpenSSL.
 /// No external JWT library required.
-class JwtService {
+class JwtService
+{
 public:
     /// Load secret from ConfigManager ("jwt.secret")
     JwtService();
@@ -29,7 +31,10 @@ public:
     json verify(const std::string& token) const;
 
     /// Get the secret (for use by AuthMiddleware)
-    const std::string& secret() const { return secret_; }
+    const std::string& secret() const
+    {
+        return secret_;
+    }
 
 private:
     static std::string base64UrlEncode(const std::string& data);
@@ -39,4 +44,4 @@ private:
     std::string secret_;
 };
 
-} // namespace common
+}  // namespace common

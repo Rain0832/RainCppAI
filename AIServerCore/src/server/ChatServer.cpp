@@ -1,45 +1,44 @@
 // ChatServer.cpp - AI聊天服务器实现文件
 
 #include "server/ChatServer.h"
-#include "Common/Logging/Logger.h"
 
 #include "Common/Config/ConfigManager.h"
-#include "middleware/AuthMiddleware.h"
-#include "middleware/RequestIdMiddleware.h"
-#include "middleware/RateLimitMiddleware.h"
 #include "Common/Logging/Logger.h"
-
 #include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/ApiKeyHandler.h"
 #include "controller/ChatDeleteSessionHandler.h"
 #include "controller/ChatEntryHandler.h"
+#include "controller/ChatFeedbackHandler.h"
 #include "controller/ChatHandler.h"
 #include "controller/ChatHistoryHandler.h"
-#include "controller/ChatLoginHandler.h"
 #include "controller/ChatInviteVerifyHandler.h"
-#include "controller/ChatVerifySendHandler.h"
-#include "controller/ChatVerifyCheckHandler.h"
-#include "controller/ChatFeedbackHandler.h"
+#include "controller/ChatLoginHandler.h"
 #include "controller/ChatLogoutHandler.h"
 #include "controller/ChatRegisterHandler.h"
 #include "controller/ChatSessionsHandler.h"
 #include "controller/ChatSpeechHandler.h"
 #include "controller/ChatSseHandler.h"
 #include "controller/ChatUpdateTitleHandler.h"
-#include "controller/McpHandler.h"
-#include "controller/ModelListHandler.h"
+#include "controller/ChatVerifyCheckHandler.h"
+#include "controller/ChatVerifySendHandler.h"
 #include "controller/HealthHandler.h"
+#include "controller/McpHandler.h"
 #include "controller/MetricsHandler.h"
-#include "http/StaticFileHandler.h"
+#include "controller/ModelListHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "http/HttpServer.h"
+#include "http/StaticFileHandler.h"
+#include "middleware/AdminAuthMiddleware.h"
+#include "middleware/AuthMiddleware.h"
+#include "middleware/RateLimitMiddleware.h"
+#include "middleware/RequestIdMiddleware.h"
 
 using namespace http;
 
-ChatServer::ChatServer(int port, const std::string &name, muduo::net::TcpServer::Option option)
+ChatServer::ChatServer(int port, const std::string& name, muduo::net::TcpServer::Option option)
     : httpServer_(port, name, option)
 {
     initialize();
@@ -55,7 +54,7 @@ void ChatServer::initialize()
     common::Logger::init(cfg.get("log.level", "info"), cfg.get("log.path", "logs/app"));
     std::string dbConn = cfg.get("db.host", "127.0.0.1") + ":" + std::to_string(cfg.getInt("db.port", 3307));
     storage::MysqlUtil::init(dbConn, cfg.get("db.user", "chat"), cfg.get("db.password", ""),
-                              cfg.get("db.name", "ChatHttpServer"), cfg.getInt("db.pool_size", 5));
+                             cfg.get("db.name", "ChatHttpServer"), cfg.getInt("db.pool_size", 5));
 
     initDatabase();
     initializeSession();
@@ -201,8 +200,8 @@ void ChatServer::initDatabase()
     }
     catch (const std::exception& e)
     {
-        std::cerr << "First attempt to init database tables failed: " << e.what()
-                  << " -- retrying after 2s ..." << std::endl;
+        std::cerr << "First attempt to init database tables failed: " << e.what() << " -- retrying after 2s ..."
+                  << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(2));
         try
         {
@@ -227,18 +226,19 @@ void ChatServer::readDataFromMySQL()
 {
     // Phase 2: 从新的 messages 表读取，JOIN sessions 获取用户 ID
     // 通过 sessions.user_id 关联，按 created_at 排序保证消息顺序
-    std::string sql = "SELECT m.session_id, s.account_id AS user_id, m.role, m.content, "
-                      "UNIX_TIMESTAMP(m.created_at) * 1000 AS ts_ms "
-                      "FROM messages m "
-                      "INNER JOIN sessions s ON m.session_id = s.id "
-                      "ORDER BY m.created_at ASC, m.id ASC";
+    std::string sql =
+        "SELECT m.session_id, s.account_id AS user_id, m.role, m.content, "
+        "UNIX_TIMESTAMP(m.created_at) * 1000 AS ts_ms "
+        "FROM messages m "
+        "INNER JOIN sessions s ON m.session_id = s.id "
+        "ORDER BY m.created_at ASC, m.id ASC";
 
-    sql::ResultSet *res;
+    sql::ResultSet* res;
     try
     {
         res = mysqlUtil_.executeQuery(sql);
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         std::cerr << "MySQL query failed: " << e.what() << std::endl;
         return;
@@ -259,13 +259,13 @@ void ChatServer::readDataFromMySQL()
             content = res->getString("content");
             ts_ms = res->getInt64("ts_ms");
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cerr << "Failed to read row: " << e.what() << std::endl;
             continue;
         }
 
-        auto &userSessions = chatInformation[user_id];
+        auto& userSessions = chatInformation[user_id];
 
         std::shared_ptr<AIHelper> helper;
         auto itSession = userSessions.find(session_id);
@@ -322,7 +322,7 @@ void ChatServer::initializeRouter()
 
     // 聊天功能路由
     httpServer_.Get("/chat", std::make_shared<ChatHandler>(this));
-    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this)); // SSE 流式（唯一对话入口）
+    httpServer_.Post("/chat/send-stream", std::make_shared<ChatSseHandler>(this));  // SSE 流式（唯一对话入口）
     httpServer_.Get("/chat/sessions", std::make_shared<ChatSessionsHandler>(this));
     httpServer_.Post("/chat/history", std::make_shared<ChatHistoryHandler>(this));
     httpServer_.Post("/chat/tts", std::make_shared<ChatSpeechHandler>(this));
@@ -363,7 +363,8 @@ void ChatServer::initializeMiddleware()
 {
     // CORS 中间件：内测阶段仅允许本地访问
     http::middleware::CorsConfig corsCfg = http::middleware::CorsConfig::defaultConfig();
-    corsCfg.allowedOrigins = {"http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:8088", "http://127.0.0.1:8088"};
+    corsCfg.allowedOrigins = {"http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:8088",
+                              "http://127.0.0.1:8088"};
     corsCfg.allowCredentials = true;
 
     auto corsMiddleware = std::make_shared<http::middleware::CorsMiddleware>(corsCfg);
@@ -376,6 +377,9 @@ void ChatServer::initializeMiddleware()
     auto authMiddleware = std::make_shared<http::middleware::AuthMiddleware>();
     httpServer_.addMiddleware(authMiddleware);
 
+    auto adminAuthMiddleware = std::make_shared<http::middleware::AdminAuthMiddleware>();
+    httpServer_.addMiddleware(adminAuthMiddleware);
+
     // RequestId middleware
     auto reqIdMiddleware = std::make_shared<http::middleware::RequestIdMiddleware>();
     httpServer_.addMiddleware(reqIdMiddleware);
@@ -385,9 +389,14 @@ void ChatServer::initializeMiddleware()
     httpServer_.addMiddleware(rateLimitMiddleware);
 }
 
-void ChatServer::packageResp(const std::string &version, http::HttpResponse::HttpStatusCode statusCode,
-                             const std::string &statusMsg, bool close, const std::string &contentType, int contentLen,
-                             const std::string &body, http::HttpResponse *resp)
+void ChatServer::packageResp(const std::string& version,
+                             http::HttpResponse::HttpStatusCode statusCode,
+                             const std::string& statusMsg,
+                             bool close,
+                             const std::string& contentType,
+                             int contentLen,
+                             const std::string& body,
+                             http::HttpResponse* resp)
 {
     if (resp == nullptr)
     {
@@ -407,7 +416,7 @@ void ChatServer::packageResp(const std::string &version, http::HttpResponse::Htt
 
         SPDLOG_INFO_TAG("HTTP") << "Response packaged successfully";
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         SPDLOG_ERROR_TAG("HTTP") << "Error in packageResp: " << e.what();
         resp->setStatusCode(http::HttpResponse::k500InternalServerError);
@@ -416,7 +425,7 @@ void ChatServer::packageResp(const std::string &version, http::HttpResponse::Htt
     }
 }
 
-void ChatServer::touchSession(int userId, const std::string &sessionId)
+void ChatServer::touchSession(int userId, const std::string& sessionId)
 {
     std::string key = std::to_string(userId) + ":" + sessionId;
     auto it = lruMap_.find(key);

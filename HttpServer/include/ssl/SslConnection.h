@@ -1,10 +1,9 @@
 #pragma once
+#include <memory>
 #include <muduo/base/noncopyable.h>
 #include <muduo/net/Buffer.h>
 #include <muduo/net/TcpConnection.h>
 #include <openssl/ssl.h>
-
-#include <memory>
 
 #include "SslContext.h"
 
@@ -16,7 +15,7 @@ namespace ssl
  * 用于处理解密后的应用层数据
  */
 using MessageCallback =
-        std::function<void(const std::shared_ptr<muduo::net::TcpConnection>&, muduo::net::Buffer*, muduo::Timestamp)>;
+    std::function<void(const std::shared_ptr<muduo::net::TcpConnection>&, muduo::net::Buffer*, muduo::Timestamp)>;
 
 /**
  * SSL连接封装类
@@ -70,13 +69,19 @@ public:
      * 检查SSL握手是否完成
      * @return true表示握手已完成，可以开始加密通信；false表示握手仍在进行中
      */
-    bool isHandshakeCompleted() const { return state_ == SSLState::ESTABLISHED; }
+    bool isHandshakeCompleted() const
+    {
+        return state_ == SSLState::ESTABLISHED;
+    }
 
     /**
      * 获取解密后的数据缓冲区
      * @return 指向解密缓冲区的指针，包含已解密的应用程序数据
      */
-    muduo::net::Buffer* getDecryptedBuffer() { return &decryptedBuffer_; }
+    muduo::net::Buffer* getDecryptedBuffer()
+    {
+        return &decryptedBuffer_;
+    }
 
     /**
      * BIO写操作回调函数
@@ -114,7 +119,10 @@ public:
      * @param cb 消息回调函数对象
      * 注册回调函数用于处理解密后的应用层数据
      */
-    void setMessageCallback(const MessageCallback& cb) { messageCallback_ = cb; }
+    void setMessageCallback(const MessageCallback& cb)
+    {
+        messageCallback_ = cb;
+    }
 
 private:
     /**

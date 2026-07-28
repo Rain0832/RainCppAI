@@ -1,10 +1,12 @@
 #include "http/StaticFileHandler.h"
-#include "http/HttpRequest.h"
-#include "http/HttpResponse.h"
+
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+
 #include "Logging/Logger.h"
+#include "http/HttpRequest.h"
+#include "http/HttpResponse.h"
 
 namespace http
 {
@@ -55,17 +57,17 @@ std::string StaticFileHandler::getMimeType(const std::string& path)
     if (dot == std::string::npos) return "application/octet-stream";
     std::string ext = path.substr(dot);
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-    if (ext == ".css")  return "text/css";
-    if (ext == ".js")   return "application/javascript";
+    if (ext == ".css") return "text/css";
+    if (ext == ".js") return "application/javascript";
     if (ext == ".html") return "text/html";
     if (ext == ".json") return "application/json";
-    if (ext == ".png")  return "image/png";
+    if (ext == ".png") return "image/png";
     if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
-    if (ext == ".svg")  return "image/svg+xml";
-    if (ext == ".ico")  return "image/x-icon";
+    if (ext == ".svg") return "image/svg+xml";
+    if (ext == ".ico") return "image/x-icon";
     if (ext == ".woff") return "font/woff";
     if (ext == ".woff2") return "font/woff2";
-    if (ext == ".ttf")  return "font/ttf";
+    if (ext == ".ttf") return "font/ttf";
     return "application/octet-stream";
 }
 

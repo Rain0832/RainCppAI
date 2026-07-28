@@ -2,10 +2,12 @@
 
 #include <string>
 
-namespace common {
+namespace common
+{
 
 /// SMTP mail configuration
-struct MailConfig {
+struct MailConfig
+{
     std::string host = "smtp.qq.com";
     int port = 465;
     std::string username;
@@ -13,13 +15,15 @@ struct MailConfig {
 };
 
 /// Result of a mail send operation
-struct MailResult {
+struct MailResult
+{
     bool success = false;
     std::string message;
 };
 
 /// QQ SMTP mail sender via libcurl SMTPS
-class MailSender {
+class MailSender
+{
 public:
     MailSender();
     explicit MailSender(const MailConfig& config);
@@ -34,4 +38,4 @@ private:
     MailConfig config_;
 };
 
-} // namespace common
+}  // namespace common

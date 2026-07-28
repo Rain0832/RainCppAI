@@ -13,10 +13,16 @@ public:
     {
     }
 
-    ~FileUtil() { file_.close(); }
+    ~FileUtil()
+    {
+        file_.close();
+    }
 
     // 判断是否是有效路径
-    bool isValid() const { return file_.is_open(); }
+    bool isValid() const
+    {
+        return file_.is_open();
+    }
 
     // 重置打开默认文件
     void resetDefaultFile()

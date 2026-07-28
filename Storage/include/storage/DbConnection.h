@@ -2,12 +2,11 @@
 #include <cppconn/connection.h>
 #include <cppconn/prepared_statement.h>
 #include <cppconn/resultset.h>
-#include <mysql/mysql.h>
-#include <mysql_driver.h>
-
 #include <cstddef>
 #include <memory>
 #include <mutex>
+#include <mysql/mysql.h>
+#include <mysql_driver.h>
 #include <string>
 
 #include "Common/Logging/Logger.h"
@@ -19,7 +18,9 @@ namespace storage
 class DbConnection
 {
 public:
-    DbConnection(const std::string& host, const std::string& user, const std::string& password,
+    DbConnection(const std::string& host,
+                 const std::string& user,
+                 const std::string& password,
                  const std::string& database);
     ~DbConnection();
 
@@ -31,7 +32,8 @@ public:
     void reconnect();
     void cleanup();
 
-    template <typename... Args> sql::ResultSet* executeQuery(const std::string& sql, Args&&... args)
+    template <typename... Args>
+    sql::ResultSet* executeQuery(const std::string& sql, Args&&... args)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         try
@@ -47,7 +49,8 @@ public:
         }
     }
 
-    template <typename... Args> int executeUpdate(const std::string& sql, Args&&... args)
+    template <typename... Args>
+    int executeUpdate(const std::string& sql, Args&&... args)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         try
@@ -106,7 +109,8 @@ private:
     }
 
     // 特化 int
-    template <typename... Args> void bindParams(sql::PreparedStatement* stmt, int index, int value, Args&&... args)
+    template <typename... Args>
+    void bindParams(sql::PreparedStatement* stmt, int index, int value, Args&&... args)
     {
         stmt->setInt(index, value);
         bindParams(stmt, index + 1, std::forward<Args>(args)...);
@@ -121,14 +125,16 @@ private:
     }
 
     // 特化 bool — 用于 is_deleted TINYINT(1)
-    template <typename... Args> void bindParams(sql::PreparedStatement* stmt, int index, bool value, Args&&... args)
+    template <typename... Args>
+    void bindParams(sql::PreparedStatement* stmt, int index, bool value, Args&&... args)
     {
         stmt->setBoolean(index, value);
         bindParams(stmt, index + 1, std::forward<Args>(args)...);
     }
 
     // 特化 std::nullptr_t — 用于 payload JSON NULL
-    template <typename... Args> void bindParams(sql::PreparedStatement* stmt, int index, std::nullptr_t, Args&&... args)
+    template <typename... Args>
+    void bindParams(sql::PreparedStatement* stmt, int index, std::nullptr_t, Args&&... args)
     {
         stmt->setNull(index, sql::DataType::VARCHAR);
         bindParams(stmt, index + 1, std::forward<Args>(args)...);

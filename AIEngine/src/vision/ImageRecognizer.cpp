@@ -82,16 +82,16 @@ std::string ImageRecognizer::PredictFromMat(const cv::Mat& img_raw)
     size_t input_tensor_size = 1 * 3 * input_height * input_width;
 
     Ort::MemoryInfo memory_info =
-            Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+        Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
     Ort::Value input_tensor =
-            Ort::Value::CreateTensor<float>(memory_info, img.ptr<float>(), input_tensor_size, dims.data(), dims.size());
+        Ort::Value::CreateTensor<float>(memory_info, img.ptr<float>(), input_tensor_size, dims.data(), dims.size());
 
     // Run inference
     const char* input_names[] = {input_name.c_str()};
     const char* output_names[] = {output_name.c_str()};
 
-    auto output_tensors = session->Run(Ort::RunOptions {nullptr}, input_names, &input_tensor, 1, output_names, 1);
+    auto output_tensors = session->Run(Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, 1);
 
     float* output_data = output_tensors.front().GetTensorMutableData<float>();
 

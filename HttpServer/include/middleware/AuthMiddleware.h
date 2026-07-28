@@ -6,8 +6,10 @@
 
 #include "Middleware.h"
 
-namespace http {
-namespace middleware {
+namespace http
+{
+namespace middleware
+{
 
 /// Authentication middleware: validates JWT from httpOnly cookie.
 /// Throws HttpResponse with 401 if token is missing or invalid.
@@ -28,5 +30,5 @@ private:
     std::string secret_;
 };
 
-} // namespace middleware
-} // namespace http
+}  // namespace middleware
+}  // namespace http

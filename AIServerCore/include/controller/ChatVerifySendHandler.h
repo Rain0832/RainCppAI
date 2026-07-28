@@ -8,6 +8,7 @@ class ChatVerifySendHandler : public http::router::RouterHandler
 public:
     explicit ChatVerifySendHandler(ChatServer* server) : server_(server) {}
     void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
+
 private:
     ChatServer* server_;
 };

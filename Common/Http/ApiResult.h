@@ -22,8 +22,14 @@ struct ApiResult
     json data;
     std::optional<ApiError> error;
 
-    static ApiResult ok(json d = json::object()) { return {true, std::move(d), std::nullopt}; }
-    static ApiResult fail(int code, std::string msg) { return {false, json::object(), ApiError{code, std::move(msg)}}; }
+    static ApiResult ok(json d = json::object())
+    {
+        return {true, std::move(d), std::nullopt};
+    }
+    static ApiResult fail(int code, std::string msg)
+    {
+        return {false, json::object(), ApiError{code, std::move(msg)}};
+    }
 
     json toJson() const
     {
@@ -41,7 +47,10 @@ struct ApiResult
         return j;
     }
 
-    std::string dump() const { return toJson().dump(); }
+    std::string dump() const
+    {
+        return toJson().dump();
+    }
 };
 
 }  // namespace common

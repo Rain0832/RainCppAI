@@ -22,21 +22,20 @@
 
 #pragma once
 
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
 #include <muduo/net/EventLoop.h>
 #include <muduo/net/TcpServer.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <functional>
-#include <iostream>
-#include <map>
-#include <memory>
 #include <unordered_map>
 
 #include "../middleware/MiddlewareChain.h"
-#include "../middleware/cors/CorsMiddleware.h"
 #include "../middleware/SecurityHeadersMiddleware.h"
+#include "../middleware/cors/CorsMiddleware.h"
 #include "../router/Router.h"
 #include "../session/SessionManager.h"
 #include "../ssl/SslConnection.h"
@@ -72,7 +71,9 @@ public:
      * @param useSSL 是否启用SSL加密（默认false）
      * @param option muduo网络库配置选项
      */
-    HttpServer(int port, const std::string& name, bool useSSL = false,
+    HttpServer(int port,
+               const std::string& name,
+               bool useSSL = false,
                muduo::net::TcpServer::Option option = muduo::net::TcpServer::kNoReusePort);
 
     /**
@@ -83,7 +84,10 @@ public:
      *
      * @param numThreads 线程数量
      */
-    void setThreadNum(int numThreads) { server_.setThreadNum(numThreads); }
+    void setThreadNum(int numThreads)
+    {
+        server_.setThreadNum(numThreads);
+    }
 
     /**
      * @brief 启动HTTP服务器
@@ -98,7 +102,10 @@ public:
      *
      * @return muduo::net::EventLoop* 主事件循环指针
      */
-    muduo::net::EventLoop* getLoop() const { return server_.getLoop(); }
+    muduo::net::EventLoop* getLoop() const
+    {
+        return server_.getLoop();
+    }
 
     /**
      * @brief 设置HTTP请求回调函数
@@ -107,7 +114,10 @@ public:
      *
      * @param cb HTTP回调函数
      */
-    void setHttpCallback(const HttpCallback& cb) { httpCallback_ = cb; }
+    void setHttpCallback(const HttpCallback& cb)
+    {
+        httpCallback_ = cb;
+    }
 
     /**
      * @brief 注册GET请求路由处理器
@@ -117,7 +127,10 @@ public:
      * @param path URL路径（支持静态路径）
      * @param cb 处理回调函数
      */
-    void Get(const std::string& path, const HttpCallback& cb) { router_.registerCallback(HttpRequest::kGet, path, cb); }
+    void Get(const std::string& path, const HttpCallback& cb)
+    {
+        router_.registerCallback(HttpRequest::kGet, path, cb);
+    }
 
     /**
      * @brief 注册GET请求路由处理器（Handler版本）
@@ -193,14 +206,20 @@ public:
      *
      * @param manager 会话管理器实例
      */
-    void setSessionManager(std::unique_ptr<session::SessionManager> manager) { sessionManager_ = std::move(manager); }
+    void setSessionManager(std::unique_ptr<session::SessionManager> manager)
+    {
+        sessionManager_ = std::move(manager);
+    }
 
     /**
      * @brief 获取会话管理器
      *
      * @return session::SessionManager* 当前会话管理器指针
      */
-    session::SessionManager* getSessionManager() const { return sessionManager_.get(); }
+    session::SessionManager* getSessionManager() const
+    {
+        return sessionManager_.get();
+    }
 
     /**
      * @brief 添加中间件到处理链
@@ -222,7 +241,10 @@ public:
      *
      * @param enable true启用SSL，false禁用SSL
      */
-    void enableSSL(bool enable) { useSSL_ = enable; }
+    void enableSSL(bool enable)
+    {
+        useSSL_ = enable;
+    }
 
     /**
      * @brief 设置SSL配置参数

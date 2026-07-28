@@ -39,8 +39,14 @@ public:
      * 设置 deferred=true，HttpServer::onRequest 将跳过自动发送。
      * Handler 自行通过 getConnection()->send() 发送响应。
      */
-    void setDeferred(bool on) { deferred_ = on; }
-    bool isDeferred() const { return deferred_; }
+    void setDeferred(bool on)
+    {
+        deferred_ = on;
+    }
+    bool isDeferred() const
+    {
+        return deferred_;
+    }
 
     /**
      * @brief 注入/获取底层 TCP 连接
@@ -48,62 +54,92 @@ public:
      * 异步模式下，Handler 通过此连接在任务完成后回写响应。
      * TcpConnectionPtr 是 shared_ptr，线程池持有它可防止连接提前释放。
      */
-    void setConnection(const muduo::net::TcpConnectionPtr& conn) { conn_ = conn; }
-    muduo::net::TcpConnectionPtr getConnection() const { return conn_; }
+    void setConnection(const muduo::net::TcpConnectionPtr& conn)
+    {
+        conn_ = conn;
+    }
+    muduo::net::TcpConnectionPtr getConnection() const
+    {
+        return conn_;
+    }
 
     /**
      * 设置HTTP协议版本
      * @param version 例如"HTTP/1.1"
      * @return 无返回值
      */
-    void setVersion(std::string version) { httpVersion_ = version; }
+    void setVersion(std::string version)
+    {
+        httpVersion_ = version;
+    }
 
     /**
      * 设置响应状态码
      * @param code 响应状态码枚举值
      * @return 无返回值
      */
-    void setStatusCode(HttpStatusCode code) { statusCode_ = code; }
+    void setStatusCode(HttpStatusCode code)
+    {
+        statusCode_ = code;
+    }
 
     /**
      * 获取当前响应状态码
      * @return 当前状态码
      */
-    HttpStatusCode getStatusCode() const { return statusCode_; }
+    HttpStatusCode getStatusCode() const
+    {
+        return statusCode_;
+    }
 
     /**
      * 设置状态短语
      * @param message 状态描述文本，例如"OK"
      * @return 无返回值
      */
-    void setStatusMessage(const std::string message) { statusMessage_ = message; }
+    void setStatusMessage(const std::string message)
+    {
+        statusMessage_ = message;
+    }
 
     /**
      * 设置连接是否关闭
      * @param on 为true表示发送后关闭连接
      * @return 无返回值
      */
-    void setCloseConnection(bool on) { closeConnection_ = on; }
+    void setCloseConnection(bool on)
+    {
+        closeConnection_ = on;
+    }
 
     /**
      * 查询是否关闭连接
      * @return true表示发送后关闭连接
      */
-    bool closeConnection() const { return closeConnection_; }
+    bool closeConnection() const
+    {
+        return closeConnection_;
+    }
 
     /**
      * 设置Content-Type响应头
      * @param contentType MIME类型字符串
      * @return 无返回值
      */
-    void setContentType(const std::string& contentType) { addHeader("Content-Type", contentType); }
+    void setContentType(const std::string& contentType)
+    {
+        addHeader("Content-Type", contentType);
+    }
 
     /**
      * 设置Content-Length响应头
      * @param length 响应体字节长度
      * @return 无返回值
      */
-    void setContentLength(uint64_t length) { addHeader("Content-Length", std::to_string(length)); }
+    void setContentLength(uint64_t length)
+    {
+        addHeader("Content-Length", std::to_string(length));
+    }
 
     /**
      * 添加或覆盖任意响应头
@@ -111,7 +147,10 @@ public:
      * @param value 头部字段值
      * @return 无返回值
      */
-    void addHeader(const std::string& key, const std::string& value) { headers_[key] = value; }
+    void addHeader(const std::string& key, const std::string& value)
+    {
+        headers_[key] = value;
+    }
 
     /**
      * 设置响应体内容

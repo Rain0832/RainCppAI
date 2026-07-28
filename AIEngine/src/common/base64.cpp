@@ -41,15 +41,16 @@
 // two sets of base64 characters needs to be chosen.
 // They differ in their last two characters.
 //
-static const char* base64_chars[2] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                      "abcdefghijklmnopqrstuvwxyz"
-                                      "0123456789"
-                                      "+/",
+static const char* base64_chars[2] = {
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789"
+    "+/",
 
-                                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                      "abcdefghijklmnopqrstuvwxyz"
-                                      "0123456789"
-                                      "-_"};
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789"
+    "-_"};
 
 static unsigned int pos_of_char(const unsigned char chr)
 {
@@ -96,22 +97,26 @@ static std::string insert_linebreaks(std::string str, size_t distance)
     return str;
 }
 
-template <typename String, unsigned int line_length> static std::string encode_with_line_breaks(String s)
+template <typename String, unsigned int line_length>
+static std::string encode_with_line_breaks(String s)
 {
     return insert_linebreaks(base64_encode(s, false), line_length);
 }
 
-template <typename String> static std::string encode_pem(String s)
+template <typename String>
+static std::string encode_pem(String s)
 {
     return encode_with_line_breaks<String, 64>(s);
 }
 
-template <typename String> static std::string encode_mime(String s)
+template <typename String>
+static std::string encode_mime(String s)
 {
     return encode_with_line_breaks<String, 76>(s);
 }
 
-template <typename String> static std::string encode(String s, bool url)
+template <typename String>
+static std::string encode(String s, bool url)
 {
     return base64_encode(reinterpret_cast<const unsigned char*>(s.data()), s.length(), url);
 }
@@ -145,12 +150,12 @@ std::string base64_encode(unsigned char const* bytes_to_encode, size_t in_len, b
         if (pos + 1 < in_len)
         {
             ret.push_back(
-                    base64_chars_[((bytes_to_encode[pos + 0] & 0x03) << 4) + ((bytes_to_encode[pos + 1] & 0xf0) >> 4)]);
+                base64_chars_[((bytes_to_encode[pos + 0] & 0x03) << 4) + ((bytes_to_encode[pos + 1] & 0xf0) >> 4)]);
 
             if (pos + 2 < in_len)
             {
-                ret.push_back(base64_chars_[((bytes_to_encode[pos + 1] & 0x0f) << 2) +
-                                            ((bytes_to_encode[pos + 2] & 0xc0) >> 6)]);
+                ret.push_back(
+                    base64_chars_[((bytes_to_encode[pos + 1] & 0x0f) << 2) + ((bytes_to_encode[pos + 2] & 0xc0) >> 6)]);
                 ret.push_back(base64_chars_[bytes_to_encode[pos + 2] & 0x3f]);
             }
             else
@@ -172,15 +177,15 @@ std::string base64_encode(unsigned char const* bytes_to_encode, size_t in_len, b
     return ret;
 }
 
-template <typename String> static std::string decode(String const& encoded_string, bool remove_linebreaks)
+template <typename String>
+static std::string decode(String const& encoded_string, bool remove_linebreaks)
 {
     //
     // decode(…) is templated so that it can be used with String = const std::string&
     // or std::string_view (requires at least C++17)
     //
 
-    if (encoded_string.empty())
-        return std::string();
+    if (encoded_string.empty()) return std::string();
 
     if (remove_linebreaks)
     {
@@ -237,8 +242,8 @@ template <typename String> static std::string decode(String const& encoded_strin
             // Emit a chunk's second byte (which might not be produced in the last chunk).
             //
             unsigned int pos_of_char_2 = pos_of_char(encoded_string.at(pos + 2));
-            ret.push_back(static_cast<std::string::value_type>(((pos_of_char_1 & 0x0f) << 4) +
-                                                               ((pos_of_char_2 & 0x3c) >> 2)));
+            ret.push_back(
+                static_cast<std::string::value_type>(((pos_of_char_1 & 0x0f) << 4) + ((pos_of_char_2 & 0x3c) >> 2)));
 
             if ((pos + 3 < length_of_string) && encoded_string.at(pos + 3) != '=' && encoded_string.at(pos + 3) != '.')
             {

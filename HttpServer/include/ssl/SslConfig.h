@@ -14,32 +14,86 @@ public:
     ~SslConfig() = default;
 
     // 证书配置
-    void setCertificateFile(const std::string& certFile) { certFile_ = certFile; }
-    void setPrivateKeyFile(const std::string& keyFile) { keyFile_ = keyFile; }
-    void setCertificateChainFile(const std::string& chainFile) { chainFile_ = chainFile; }
+    void setCertificateFile(const std::string& certFile)
+    {
+        certFile_ = certFile;
+    }
+    void setPrivateKeyFile(const std::string& keyFile)
+    {
+        keyFile_ = keyFile;
+    }
+    void setCertificateChainFile(const std::string& chainFile)
+    {
+        chainFile_ = chainFile;
+    }
 
     // 协议版本和加密套件配置
-    void setProtocolVersion(SSLVersion version) { version_ = version; }
-    void setCipherList(const std::string& cipherList) { cipherList_ = cipherList; }
+    void setProtocolVersion(SSLVersion version)
+    {
+        version_ = version;
+    }
+    void setCipherList(const std::string& cipherList)
+    {
+        cipherList_ = cipherList;
+    }
 
     // 客户端验证配置
-    void setVerifyClient(bool verify) { verifyClient_ = verify; }
-    void setVerifyDepth(int depth) { verifyDepth_ = depth; }
+    void setVerifyClient(bool verify)
+    {
+        verifyClient_ = verify;
+    }
+    void setVerifyDepth(int depth)
+    {
+        verifyDepth_ = depth;
+    }
 
     // 会话配置
-    void setSessionTimeout(int seconds) { sessionTimeout_ = seconds; }
-    void setSessionCacheSize(long size) { sessionCacheSize_ = size; }
+    void setSessionTimeout(int seconds)
+    {
+        sessionTimeout_ = seconds;
+    }
+    void setSessionCacheSize(long size)
+    {
+        sessionCacheSize_ = size;
+    }
 
     // Getters
-    const std::string& getCertificateFile() const { return certFile_; }
-    const std::string& getPrivateKeyFile() const { return keyFile_; }
-    const std::string& getCertificateChainFile() const { return chainFile_; }
-    SSLVersion getProtocolVersion() const { return version_; }
-    const std::string& getCipherList() const { return cipherList_; }
-    bool getVerifyClient() const { return verifyClient_; }
-    int getVerifyDepth() const { return verifyDepth_; }
-    int getSessionTimeout() const { return sessionTimeout_; }
-    long getSessionCacheSize() const { return sessionCacheSize_; }
+    const std::string& getCertificateFile() const
+    {
+        return certFile_;
+    }
+    const std::string& getPrivateKeyFile() const
+    {
+        return keyFile_;
+    }
+    const std::string& getCertificateChainFile() const
+    {
+        return chainFile_;
+    }
+    SSLVersion getProtocolVersion() const
+    {
+        return version_;
+    }
+    const std::string& getCipherList() const
+    {
+        return cipherList_;
+    }
+    bool getVerifyClient() const
+    {
+        return verifyClient_;
+    }
+    int getVerifyDepth() const
+    {
+        return verifyDepth_;
+    }
+    int getSessionTimeout() const
+    {
+        return sessionTimeout_;
+    }
+    long getSessionCacheSize() const
+    {
+        return sessionCacheSize_;
+    }
 
 private:
     std::string certFile_;    // 证书文件

@@ -1,10 +1,13 @@
 #include "middleware/AuthMiddleware.h"
-#include "Auth/JwtService.h"
 
 #include <sstream>
 
-namespace http {
-namespace middleware {
+#include "Auth/JwtService.h"
+
+namespace http
+{
+namespace middleware
+{
 
 AuthMiddleware::AuthMiddleware()
 {
@@ -14,30 +17,22 @@ AuthMiddleware::AuthMiddleware()
 
 bool AuthMiddleware::isPublicPath(const std::string& path)
 {
-    return path == "/api/invite/verify"
-        || path == "/api/verify/send"
-        || path == "/api/verify/check"
-        || path == "/login"
-        || path == "/register"
-        || path == "/"
-        || path == "/entry";
+    return path == "/api/invite/verify" || path == "/api/verify/send" || path == "/api/verify/check" ||
+           path == "/login" || path == "/register" || path == "/" || path == "/entry";
 }
 
 std::string AuthMiddleware::extractJwtFromCookie(const HttpRequest& request)
 {
     std::string cookie = request.getHeader("Cookie");
-    if (cookie.empty())
-        return {};
+    if (cookie.empty()) return {};
 
     // Parse: "jwt=<token>; other=val"
     size_t pos = cookie.find("jwt=");
-    if (pos == std::string::npos)
-        return {};
+    if (pos == std::string::npos) return {};
 
-    pos += 4; // skip "jwt="
+    pos += 4;  // skip "jwt="
     size_t end = cookie.find(';', pos);
-    if (end == std::string::npos)
-        return cookie.substr(pos);
+    if (end == std::string::npos) return cookie.substr(pos);
     return cookie.substr(pos, end - pos);
 }
 
@@ -45,10 +40,8 @@ void AuthMiddleware::before(HttpRequest& request)
 {
     // Only protect /api/* paths
     std::string path = request.path();
-    if (path.size() < 4 || path.substr(0, 4) != "/api")
-        return;
-    if (isPublicPath(path))
-        return;
+    if (path.size() < 4 || path.substr(0, 4) != "/api") return;
+    if (isPublicPath(path)) return;
 
     // Extract JWT from cookie
     std::string token = extractJwtFromCookie(request);
@@ -92,5 +85,5 @@ void AuthMiddleware::before(HttpRequest& request)
     request.addHeader("X-Auth-Role", payload["role"].get<std::string>());
 }
 
-} // namespace middleware
-} // namespace http
+}  // namespace middleware
+}  // namespace http

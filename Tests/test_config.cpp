@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include "Common/Config/ConfigManager.h"
 
 TEST(ConfigManagerTest, LoadAndGet)

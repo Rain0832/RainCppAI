@@ -43,5 +43,5 @@ uint64_t AISessionIdGenerator::nextId()
 uint64_t AISessionIdGenerator::currentMillis() const
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
-            .count();
+        .count();
 }

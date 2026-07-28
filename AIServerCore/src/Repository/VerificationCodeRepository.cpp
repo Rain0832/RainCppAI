@@ -1,4 +1,5 @@
 #include "Repository/VerificationCodeRepository.h"
+
 #include "storage/MysqlUtil.h"
 
 json VerificationCodeRepository::create(const std::string& email, const std::string& code, const std::string& purpose)
@@ -11,7 +12,9 @@ json VerificationCodeRepository::create(const std::string& email, const std::str
     return findByEmailAndCode(email, code, purpose);
 }
 
-json VerificationCodeRepository::findByEmailAndCode(const std::string& email, const std::string& code, const std::string& purpose)
+json VerificationCodeRepository::findByEmailAndCode(const std::string& email,
+                                                    const std::string& code,
+                                                    const std::string& purpose)
 {
     storage::MysqlUtil mu;
     auto res = mu.executeQuery(
@@ -38,8 +41,7 @@ json VerificationCodeRepository::findByEmailAndCode(const std::string& email, co
 bool VerificationCodeRepository::markUsed(long long id)
 {
     storage::MysqlUtil mu;
-    int affected = mu.executeUpdate(
-        "UPDATE verification_codes SET is_used = 1 WHERE id = ? AND is_used = 0", id);
+    int affected = mu.executeUpdate("UPDATE verification_codes SET is_used = 1 WHERE id = ? AND is_used = 0", id);
     return affected > 0;
 }
 
@@ -50,7 +52,6 @@ int VerificationCodeRepository::countRecentByEmail(const std::string& email, con
         "SELECT COUNT(*) AS cnt FROM verification_codes "
         "WHERE email = ? AND purpose = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)",
         email, purpose, seconds);
-    if (res && res->next())
-        return res->getInt("cnt");
+    if (res && res->next()) return res->getInt("cnt");
     return 0;
 }

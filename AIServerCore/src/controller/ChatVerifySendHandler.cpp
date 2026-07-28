@@ -1,12 +1,13 @@
 #include "controller/ChatVerifySendHandler.h"
-#include "Common/Mail/MailSender.h"
-#include "Common/Http/ApiResult.h"
-#include "Repository/VerificationCodeRepository.h"
-#include "Common/Logging/Logger.h"
 
 #include <random>
 #include <regex>
 #include <sstream>
+
+#include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
+#include "Common/Mail/MailSender.h"
+#include "Repository/VerificationCodeRepository.h"
 
 static bool isValidEmail(const std::string& email)
 {
@@ -111,7 +112,8 @@ void ChatVerifySendHandler::handle(const http::HttpRequest& req, http::HttpRespo
         else
         {
             SPDLOG_ERROR_TAG("MAIL") << "[MAIL] Failed to send to " << email << ": " << result.message;
-        SPDLOG_INFO_TAG("MAIL") << "[MAIL] Verification code was: " << code << " (email failed, but you can still use this code)";
+            SPDLOG_INFO_TAG("MAIL") << "[MAIL] Verification code was: " << code
+                                    << " (email failed, but you can still use this code)";
             std::string respBody = common::ApiResult::fail(500, "Failed to send email: " + result.message).dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k500InternalServerError, "Internal Server Error");
             resp->setCloseConnection(false);

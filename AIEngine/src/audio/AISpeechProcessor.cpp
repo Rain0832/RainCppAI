@@ -27,8 +27,7 @@ std::string AISpeechProcessor::getAccessToken()
 
     std::string result;
     CURL* curl = curl_easy_init();
-    if (!curl)
-        return "";
+    if (!curl) return "";
 
     curl_easy_setopt(curl, CURLOPT_URL, "https://aip.baidubce.com/oauth/2.0/token");
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
@@ -47,10 +46,8 @@ std::string AISpeechProcessor::getAccessToken()
 
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
-    if (headers)
-        curl_slist_free_all(headers);
-    if (res != CURLE_OK)
-        return "";
+    if (headers) curl_slist_free_all(headers);
+    if (res != CURLE_OK) return "";
 
     try
     {
@@ -71,12 +68,13 @@ std::string AISpeechProcessor::getAccessToken()
 }
 
 // 语音识别
-std::string AISpeechProcessor::recognize(const std::string& speechData, const std::string& format, int rate,
+std::string AISpeechProcessor::recognize(const std::string& speechData,
+                                         const std::string& format,
+                                         int rate,
                                          int channel)
 {
     CURL* curl = curl_easy_init();
-    if (!curl)
-        return "";
+    if (!curl) return "";
 
     std::string result;
 
@@ -107,10 +105,8 @@ std::string AISpeechProcessor::recognize(const std::string& speechData, const st
     CURLcode res = curl_easy_perform(curl);
 
     curl_easy_cleanup(curl);
-    if (headers)
-        curl_slist_free_all(headers);
-    if (res != CURLE_OK)
-        return "";
+    if (headers) curl_slist_free_all(headers);
+    if (res != CURLE_OK) return "";
 
     try
     {
@@ -133,8 +129,8 @@ std::string AISpeechProcessor::recognize(const std::string& speechData, const st
 }
 
 // 语音合成：创建任务 -> 快速轮询 -> 返回 URL
-std::string AISpeechProcessor::synthesize(const std::string& text, const std::string& format, const std::string& lang,
-                                          int speed, int pitch, int volume)
+std::string AISpeechProcessor::synthesize(
+    const std::string& text, const std::string& format, const std::string& lang, int speed, int pitch, int volume)
 {
     CURL* curl = nullptr;
     CURLcode res;
@@ -142,8 +138,7 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
 
     // 第一步：创建合成任务
     curl = curl_easy_init();
-    if (!curl)
-        return "";
+    if (!curl) return "";
 
     std::string create_url = "https://aip.baidubce.com/rpc/2.0/tts/v1/create?access_token=" + token_;
 
@@ -169,10 +164,8 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
 
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
-    if (headers)
-        curl_slist_free_all(headers);
-    if (res != CURLE_OK)
-        return "";
+    if (headers) curl_slist_free_all(headers);
+    if (res != CURLE_OK) return "";
 
     std::string task_id;
     try
@@ -193,8 +186,7 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
         return "";
     }
 
-    if (task_id.empty())
-        return "";
+    if (task_id.empty()) return "";
 
     // 第二步：快速轮询（200ms 间隔，最多 20 次 = 4秒超时）
     std::string speech_url;
@@ -210,8 +202,7 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms));
 
         curl = curl_easy_init();
-        if (!curl)
-            break;
+        if (!curl) break;
 
         std::string query_url = "https://aip.baidubce.com/rpc/2.0/tts/v1/query?access_token=" + token_;
         curl_easy_setopt(curl, CURLOPT_URL, query_url.c_str());
@@ -232,10 +223,8 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
 
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
-        if (headers)
-            curl_slist_free_all(headers);
-        if (res != CURLE_OK)
-            break;
+        if (headers) curl_slist_free_all(headers);
+        if (res != CURLE_OK) break;
 
         try
         {
@@ -254,8 +243,7 @@ std::string AISpeechProcessor::synthesize(const std::string& text, const std::st
                         break;
                     }
                     // Running 状态继续轮询，其他状态（Failed等）退出
-                    if (status != "Running")
-                        break;
+                    if (status != "Running") break;
                 }
             }
         }

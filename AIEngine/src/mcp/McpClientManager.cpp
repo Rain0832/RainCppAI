@@ -3,14 +3,13 @@
 #include <curl/curl.h>
 #include <errno.h>
 #include <fcntl.h>
-#include "Common/Logging/Logger.h"
-#include <sys/wait.h>
-#include <unistd.h>
-
 #include <fstream>
 #include <set>
 #include <sstream>
+#include <sys/wait.h>
+#include <unistd.h>
 
+#include "Common/Logging/Logger.h"
 #include "JsonUtil.h"
 
 // ═══════════════════════════════════════════════════════════════
@@ -85,11 +84,9 @@ void McpClientManager::reloadFromConfig(const std::string& configPath)
     std::vector<std::string> toRemove;
     for (auto& [name, idx] : serverToClient_)
     {
-        if (!newNames.count(name))
-            toRemove.push_back(name);
+        if (!newNames.count(name)) toRemove.push_back(name);
     }
-    for (auto& name : toRemove)
-        unregisterServer(name);
+    for (auto& name : toRemove) unregisterServer(name);
 
     // 新增或更新 server
     for (auto& [name, serverDef] : config["mcpServers"].items())
@@ -112,8 +109,7 @@ void McpClientManager::reloadFromConfig(const std::string& configPath)
 void McpClientManager::unregisterServer(const std::string& name)
 {
     auto it = serverToClient_.find(name);
-    if (it == serverToClient_.end())
-        return;
+    if (it == serverToClient_.end()) return;
 
     size_t idx = it->second;
     SPDLOG_INFO_TAG("MCP") << "[McpClientManager] Shutting down server '" << name << "' (client[" << idx << "])";
@@ -160,14 +156,12 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
         json argsArr = serverDef.value("args", json::array());
         std::vector<std::string> args;
-        for (auto& a : argsArr)
-            args.push_back(a.get<std::string>());
+        for (auto& a : argsArr) args.push_back(a.get<std::string>());
 
         // 构建 argv for execvp
         std::vector<char*> argv;
         argv.push_back(const_cast<char*>(command.c_str()));
-        for (auto& a : args)
-            argv.push_back(const_cast<char*>(a.data()));
+        for (auto& a : args) argv.push_back(const_cast<char*>(a.data()));
         argv.push_back(nullptr);
 
         // pipe + fork + dup2 全双工通信
@@ -287,7 +281,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
             if (!handshakeOk)
             {
                 SPDLOG_ERROR_TAG("MCP") << "[McpClientManager] MCP handshake failed for '" << name
-                          << "', terminating child PID=" << pid;
+                                        << "', terminating child PID=" << pid;
                 close(read_fd);
                 close(write_fd);
                 kill(pid, SIGTERM);
@@ -316,7 +310,10 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
             StdioClient(int rfd, int wfd, pid_t p) : read_fd(rfd), write_fd(wfd), child_pid(p) {}
 
-            bool start() override { return read_fd >= 0 && write_fd >= 0; }
+            bool start() override
+            {
+                return read_fd >= 0 && write_fd >= 0;
+            }
 
             json sendRequest(const json& req) override
             {
@@ -336,8 +333,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                         chunk[n] = '\0';
                         buf += chunk;
                         size_t nl = buf.find('\n');
-                        if (nl != std::string::npos)
-                            return json::parse(buf.substr(0, nl));
+                        if (nl != std::string::npos) return json::parse(buf.substr(0, nl));
                     }
                     else if (n == 0)
                     {
@@ -362,8 +358,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                 req["params"] = json::object();
 
                 json resp = sendRequest(req);
-                if (resp.contains("result") && resp["result"].contains("tools"))
-                    return resp["result"]["tools"];
+                if (resp.contains("result") && resp["result"].contains("tools")) return resp["result"]["tools"];
                 return json::array();
             }
 
@@ -389,11 +384,11 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                         }
                         catch (...)
                         {
-                            return json {{"text", text}};
+                            return json{{"text", text}};
                         }
                     }
                 }
-                return json {{"error", "Stdio: unexpected response"}};
+                return json{{"error", "Stdio: unexpected response"}};
             }
 
             void stop() override
@@ -416,7 +411,10 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                 }
             }
 
-            ~StdioClient() override { stop(); }
+            ~StdioClient() override
+            {
+                stop();
+            }
         };
 
         client = std::make_shared<StdioClient>(read_fd, write_fd, pid);
@@ -454,16 +452,14 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                 std::string line;
                 while (std::getline(ss, line))
                 {
-                    if (line.empty() || line[0] == '\r')
-                        continue;
+                    if (line.empty() || line[0] == '\r') continue;
                     if (line.rfind("data: ", 0) == 0)
                     {
                         std::string jsonStr = line.substr(6);
                         try
                         {
                             json j = json::parse(jsonStr);
-                            if (j.contains("endpoint"))
-                                return j["endpoint"].get<std::string>();
+                            if (j.contains("endpoint")) return j["endpoint"].get<std::string>();
                         }
                         catch (...)
                         {
@@ -476,8 +472,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
             bool start() override
             {
                 CURL* curl = curl_easy_init();
-                if (!curl)
-                    return false;
+                if (!curl) return false;
 
                 std::string response;
 
@@ -495,8 +490,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                     std::string h = k + ": " + v.get<std::string>();
                     hlist = curl_slist_append(hlist, h.c_str());
                 }
-                if (hlist)
-                    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hlist);
+                if (hlist) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hlist);
 
                 CURLcode res = curl_easy_perform(curl);
                 curl_slist_free_all(hlist);
@@ -504,7 +498,8 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
 
                 if (res != CURLE_OK)
                 {
-                    SPDLOG_WARN_TAG("MCP") << "[McpSseClient] SSE GET to " << url_ << " failed: " << curl_easy_strerror(res);
+                    SPDLOG_WARN_TAG("MCP")
+                        << "[McpSseClient] SSE GET to " << url_ << " failed: " << curl_easy_strerror(res);
                     return false;
                 }
 
@@ -523,8 +518,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
             json httpPost(const std::string& uri, const json& body)
             {
                 CURL* curl = curl_easy_init();
-                if (!curl)
-                    throw std::runtime_error("curl init failed");
+                if (!curl) throw std::runtime_error("curl init failed");
 
                 std::string response;
                 std::string bodyStr = body.dump();
@@ -548,13 +542,15 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                 curl_slist_free_all(hlist);
                 curl_easy_cleanup(curl);
 
-                if (res != CURLE_OK)
-                    throw std::runtime_error(std::string("POST failed: ") + curl_easy_strerror(res));
+                if (res != CURLE_OK) throw std::runtime_error(std::string("POST failed: ") + curl_easy_strerror(res));
 
                 return json::parse(response);
             }
 
-            json sendRequest(const json& req) override { return httpPost(endpoint_, req); }
+            json sendRequest(const json& req) override
+            {
+                return httpPost(endpoint_, req);
+            }
 
             json getTools() override
             {
@@ -565,8 +561,7 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                 req["params"] = json::object();
 
                 json resp = sendRequest(req);
-                if (resp.contains("result") && resp["result"].contains("tools"))
-                    return resp["result"]["tools"];
+                if (resp.contains("result") && resp["result"].contains("tools")) return resp["result"]["tools"];
                 return json::array();
             }
 
@@ -592,11 +587,11 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
                         }
                         catch (...)
                         {
-                            return json {{"text", text}};
+                            return json{{"text", text}};
                         }
                     }
                 }
-                return json {{"error", "SSE: unexpected response"}};
+                return json{{"error", "SSE: unexpected response"}};
             }
 
             void stop() override {}
@@ -608,7 +603,8 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
     }
     else
     {
-        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Unknown transport '" << transport << "' for server '" << name << "'";
+        SPDLOG_WARN_TAG("MCP") << "[McpClientManager] Unknown transport '" << transport << "' for server '" << name
+                               << "'";
         return;
     }
 
@@ -634,8 +630,7 @@ json McpClientManager::discoverAllTools()
             std::lock_guard<std::mutex> lk(mutex_);
             cfg = configPath_;
         }
-        if (!cfg.empty())
-            reloadFromConfig(cfg);
+        if (!cfg.empty()) reloadFromConfig(cfg);
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
@@ -650,11 +645,9 @@ json McpClientManager::discoverAllTools()
             for (auto& tool : tools)
             {
                 std::string name = tool.value("name", "");
-                if (!name.empty())
-                    toolToClient_[name] = i;
+                if (!name.empty()) toolToClient_[name] = i;
             }
-            for (auto& t : tools)
-                allTools.push_back(std::move(t));
+            for (auto& t : tools) allTools.push_back(std::move(t));
         }
         catch (const std::exception& e)
         {

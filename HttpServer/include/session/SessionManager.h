@@ -44,7 +44,10 @@ public:
     //
     // Args:
     //   session: 需要保存的会话对象。
-    void updateSession(std::shared_ptr<Session> session) { storage_->save(session); }
+    void updateSession(std::shared_ptr<Session> session)
+    {
+        storage_->save(session);
+    }
 
 private:
     // 生成新的会话 ID。

@@ -61,7 +61,8 @@ public:
      * @param name 服务器名称（用于日志标识）
      * @param option muduo网络库配置选项
      */
-    ChatServer(int port, const std::string &name,
+    ChatServer(int port,
+               const std::string& name,
                muduo::net::TcpServer::Option option = muduo::net::TcpServer::kNoReusePort);
 
     /**
@@ -89,25 +90,68 @@ public:
     void initChatMessage();
 
     // --- Public getters for handlers (SP 1.10: friend classes removed) ---
-    http::session::SessionManager* getSessionManager() const { return httpServer_.getSessionManager(); }
-    const std::string& getResourceRoot() const { return resource_root_; }
-    storage::MysqlUtil& getMysqlUtil() { return mysqlUtil_; }
-    common::ThreadPool& getAiThreadPool() { return aiThreadPool_; }
-    auto& getOnlineUsers() { return onlineUsers_; }
-    auto& getOnlineUsersMutex() { return rwMutexForOnlineUsers_; }
-    auto& getImageRecognizers() { return ImageRecognizerMap; }
-    auto& getImageRecognizerMutex() { return rwMutexForImageRecognizer; }
-    auto& getChatInformation() { return chatInformation; }
+    http::session::SessionManager* getSessionManager() const
+    {
+        return httpServer_.getSessionManager();
+    }
+    const std::string& getResourceRoot() const
+    {
+        return resource_root_;
+    }
+    storage::MysqlUtil& getMysqlUtil()
+    {
+        return mysqlUtil_;
+    }
+    common::ThreadPool& getAiThreadPool()
+    {
+        return aiThreadPool_;
+    }
+    auto& getOnlineUsers()
+    {
+        return onlineUsers_;
+    }
+    auto& getOnlineUsersMutex()
+    {
+        return rwMutexForOnlineUsers_;
+    }
+    auto& getImageRecognizers()
+    {
+        return ImageRecognizerMap;
+    }
+    auto& getImageRecognizerMutex()
+    {
+        return rwMutexForImageRecognizer;
+    }
+    auto& getChatInformation()
+    {
+        return chatInformation;
+    }
     /// 分片锁：userId % 16 映射到对应锁，降低高并发写锁竞争
     static constexpr int kChatInfoShardCount = 16;
-    auto& getChatInfoMutex(int userId) { return chatInfoMutexes_[static_cast<size_t>(userId) % kChatInfoShardCount]; }
-    auto& getSessionIdsMap() { return sessionsIdsMap; }
-    auto& getSessionIdsMutex() { return rwMutexForSessionsId; }
+    auto& getChatInfoMutex(int userId)
+    {
+        return chatInfoMutexes_[static_cast<size_t>(userId) % kChatInfoShardCount];
+    }
+    auto& getSessionIdsMap()
+    {
+        return sessionsIdsMap;
+    }
+    auto& getSessionIdsMutex()
+    {
+        return rwMutexForSessionsId;
+    }
     void setSessionManager(std::unique_ptr<http::session::SessionManager> manager)
-    { httpServer_.setSessionManager(std::move(manager)); };
-    void packageResp(const std::string& version, http::HttpResponse::HttpStatusCode statusCode,
-                     const std::string& statusMsg, bool close, const std::string& contentType, int contentLen,
-                     const std::string& body, http::HttpResponse* resp);
+    {
+        httpServer_.setSessionManager(std::move(manager));
+    };
+    void packageResp(const std::string& version,
+                     http::HttpResponse::HttpStatusCode statusCode,
+                     const std::string& statusMsg,
+                     bool close,
+                     const std::string& contentType,
+                     int contentLen,
+                     const std::string& body,
+                     http::HttpResponse* resp);
 
     // Handlers access ChatServer through public getters only (no friend classes).
     // SP 1.10 removed 15 friend declarations; SP 1.13 fix consolidated to single public: section.
@@ -119,7 +163,7 @@ private:
     void initializeRouter();
     void initializeMiddleware();
     void readDataFromMySQL();
-    void touchSession(int userId, const std::string &sessionId);
+    void touchSession(int userId, const std::string& sessionId);
     void evictIfNeeded();
 
     http::HttpServer httpServer_;

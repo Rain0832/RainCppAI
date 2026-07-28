@@ -1,9 +1,8 @@
 #include "mcp/AIToolRegistry.h"
 
-#include "Common/Logging/Logger.h"
-
 #include <fstream>
 
+#include "Common/Logging/Logger.h"
 #include "mcp/McpClientManager.h"
 
 // ─── Singleton ──────────────────────────────────────────────────
@@ -52,8 +51,7 @@ void AIToolRegistry::loadFromConfig(const std::string& configPath)
 // ─── invoke ─────────────────────────────────────────────────────
 json AIToolRegistry::invoke(const std::string& name, const json& args) const
 {
-    if (!mcpManager_)
-        throw std::runtime_error("McpClientManager not injected");
+    if (!mcpManager_) throw std::runtime_error("McpClientManager not injected");
 
     SPDLOG_INFO_TAG("MCP") << "[AIToolRegistry] Tool '" << name << "' → McpClientManager";
     return mcpManager_->callTool(name, args);
@@ -62,8 +60,7 @@ json AIToolRegistry::invoke(const std::string& name, const json& args) const
 // ─── getToolsSchema ─────────────────────────────────────────────
 json AIToolRegistry::getToolsSchema() const
 {
-    if (!mcpManager_)
-        return json::array();
+    if (!mcpManager_) return json::array();
 
     return mcpManager_->discoverAllTools();
 }

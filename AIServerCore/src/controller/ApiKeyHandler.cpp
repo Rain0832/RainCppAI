@@ -1,6 +1,6 @@
 #include "controller/ApiKeyHandler.h"
-#include "Common/Http/ApiResult.h"
 
+#include "Common/Http/ApiResult.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "server/ChatServer.h"
@@ -94,9 +94,10 @@ void ApiKeyHandler::handle(const http::HttpRequest& req, http::HttpResponse* res
         }
 
         storage::MysqlUtil mysqlUtil;
-        mysqlUtil.executeUpdate("INSERT INTO api_keys (user_id, provider, api_key) VALUES (?, ?, ?) "
-                                "ON DUPLICATE KEY UPDATE api_key = VALUES(api_key)",
-                                userId, provider, apiKey);
+        mysqlUtil.executeUpdate(
+            "INSERT INTO api_keys (user_id, provider, api_key) VALUES (?, ?, ?) "
+            "ON DUPLICATE KEY UPDATE api_key = VALUES(api_key)",
+            userId, provider, apiKey);
 
         json successResp;
         successResp["success"] = true;

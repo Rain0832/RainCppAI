@@ -1,13 +1,16 @@
 #include "Repository/SessionRepository.h"
+
 #include "storage/MysqlUtil.h"
 
 json SessionRepository::findByAccount(long long accountId)
 {
     json arr = json::array();
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery("SELECT id, title, created_at, updated_at "
-                               "FROM sessions WHERE account_id = ? AND is_deleted = 0 "
-                               "ORDER BY updated_at DESC", accountId);
+    auto res = mu.executeQuery(
+        "SELECT id, title, created_at, updated_at "
+        "FROM sessions WHERE account_id = ? AND is_deleted = 0 "
+        "ORDER BY updated_at DESC",
+        accountId);
     while (res && res->next())
     {
         json j;
@@ -22,8 +25,10 @@ json SessionRepository::findByAccount(long long accountId)
 json SessionRepository::findById(const std::string& sessionId)
 {
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery("SELECT id, account_id, title "
-                               "FROM sessions WHERE id = ?", sessionId);
+    auto res = mu.executeQuery(
+        "SELECT id, account_id, title "
+        "FROM sessions WHERE id = ?",
+        sessionId);
     if (res && res->next())
     {
         json j;
@@ -39,8 +44,7 @@ json SessionRepository::findById(const std::string& sessionId)
 bool SessionRepository::create(const std::string& sessionId, long long accountId)
 {
     storage::MysqlUtil mu;
-    mu.executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)",
-                     sessionId, accountId);
+    mu.executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)", sessionId, accountId);
     return true;
 }
 

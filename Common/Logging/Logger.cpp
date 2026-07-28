@@ -2,7 +2,8 @@
 
 #include <regex>
 
-namespace common {
+namespace common
+{
 
 void Logger::init(const std::string& log_level, const std::string& log_path)
 {
@@ -17,8 +18,7 @@ void Logger::init(const std::string& log_level, const std::string& log_path)
     file_sink->set_pattern("%v");
     file_sink->set_level(spdlog::level::trace);
 
-    auto logger = std::make_shared<spdlog::logger>("rain",
-        spdlog::sinks_init_list{console_sink, file_sink});
+    auto logger = std::make_shared<spdlog::logger>("rain", spdlog::sinks_init_list{console_sink, file_sink});
 
     spdlog::level::level_enum lv = spdlog::level::from_str(log_level);
     logger->set_level(lv);
@@ -50,8 +50,7 @@ LogStream::~LogStream()
         {
             tag = raw.substr(1, end - 1);
             msg = raw.substr(end + 1);
-            if (!msg.empty() && msg[0] == ' ')
-                msg = msg.substr(1);
+            if (!msg.empty() && msg[0] == ' ') msg = msg.substr(1);
         }
     }
 
@@ -64,19 +63,12 @@ LogStream::~LogStream()
     std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm);
 
     std::string req_id = tls_log_ctx.req_id;
-    std::string uid    = tls_log_ctx.user_id;
+    std::string uid = tls_log_ctx.user_id;
 
-    std::string json = fmt::format(
-        R"({{"time":"{}","level":"{}","module":"{}","req_id":"{}","uid":"{}","file":"{}:{}","msg":"{}"}})",
-        time_buf,
-        spdlog::level::to_short_c_str(lv_),
-        tag.empty() ? "-" : tag,
-        req_id.empty() ? "-" : req_id,
-        uid.empty()    ? "-" : uid,
-        file_ ? file_ : "?",
-        line_,
-        msg
-    );
+    std::string json =
+        fmt::format(R"({{"time":"{}","level":"{}","module":"{}","req_id":"{}","uid":"{}","file":"{}:{}","msg":"{}"}})",
+                    time_buf, spdlog::level::to_short_c_str(lv_), tag.empty() ? "-" : tag,
+                    req_id.empty() ? "-" : req_id, uid.empty() ? "-" : uid, file_ ? file_ : "?", line_, msg);
 
     auto logger = spdlog::get("rain");
     if (!logger) return;
@@ -87,22 +79,16 @@ LogStream::~LogStream()
     if (sinks.size() > 0)
     {
         std::string console_msg = tag.empty() ? msg : "[" + tag + "] " + msg;
-        sinks[0]->log(spdlog::details::log_msg{
-            spdlog::source_loc{file_, line_, ""},
-            logger->name(), lv_,
-            spdlog::string_view_t{console_msg.data(), console_msg.size()}
-        });
+        sinks[0]->log(spdlog::details::log_msg{spdlog::source_loc{file_, line_, ""}, logger->name(), lv_,
+                                               spdlog::string_view_t{console_msg.data(), console_msg.size()}});
         sinks[0]->flush();
     }
     if (sinks.size() > 1)
     {
-        sinks[1]->log(spdlog::details::log_msg{
-            spdlog::source_loc{file_, line_, ""},
-            logger->name(), lv_,
-            spdlog::string_view_t{json.data(), json.size()}
-        });
+        sinks[1]->log(spdlog::details::log_msg{spdlog::source_loc{file_, line_, ""}, logger->name(), lv_,
+                                               spdlog::string_view_t{json.data(), json.size()}});
         sinks[1]->flush();
     }
 }
 
-} // namespace common
+}  // namespace common

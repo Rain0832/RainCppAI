@@ -1,4 +1,5 @@
 #include "Service/ApiKeyService.h"
+
 #include "Repository/ApiKeyRepository.h"
 
 std::string ApiKeyService::getKey(long long accountId, const std::string& provider)
@@ -7,8 +8,7 @@ std::string ApiKeyService::getKey(long long accountId, const std::string& provid
     return repo.findByAccountAndProvider(accountId, provider);
 }
 
-bool ApiKeyService::saveKey(long long accountId, const std::string& provider,
-                             const std::string& apiKey)
+bool ApiKeyService::saveKey(long long accountId, const std::string& provider, const std::string& apiKey)
 {
     ApiKeyRepository repo;
     return repo.upsert(accountId, provider, apiKey);

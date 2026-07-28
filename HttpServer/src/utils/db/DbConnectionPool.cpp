@@ -1,17 +1,20 @@
 #include "../../../include/utils/db/DbConnectionPool.h"
-#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
 #include "../../../include/utils/db/DbException.h"
+#include "Logging/Logger.h"
 
 namespace http
 {
 namespace db
 {
 
-void DbConnectionPool::init(const std::string& host, const std::string& user, const std::string& password,
-                            const std::string& database, size_t poolSize)
+void DbConnectionPool::init(const std::string& host,
+                            const std::string& user,
+                            const std::string& password,
+                            const std::string& database,
+                            size_t poolSize)
 {
     // 连接池会被多个线程访问，所以操作其成员变量时需要加锁
     std::lock_guard<std::mutex> lock(mutex_);

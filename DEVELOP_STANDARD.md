@@ -354,10 +354,10 @@ bool is_running_;        ///< 服务器运行状态
 
 - **缩进**：4 空格（不使用 Tab）
 - **行宽**：最大 120 字符
-- **大括号**：K&R 风格（左括号不换行）
+- **大括号**：Allman 风格（左括号换行）
 - **指针 / 引用**：`Type* ptr`、`Type& ref`（`*` 和 `&` 紧贴类型）
 
-**.clang-format**：项目根目录包含 `.clang-format` 配置文件。每次编辑 `.cpp` / `.h` 文件后，必须运行 `clang-format -i <文件路径>` 确保格式一致。建议在 CMakeLists.txt 中增加 `make format` 目标：
+**.clang-format**：项目根目录包含 `.clang-format` 配置文件。每次编辑 `.cpp` / `.h` 文件后，必须运行 `clang-format -i <文件路径>` 确保格式一致。CMakeLists.txt 已配置 `make format` 目标，每次 commit 前必须执行：
 ```cmake
 file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.h)
 add_custom_target(format COMMAND clang-format -i ${ALL_SOURCE_FILES})

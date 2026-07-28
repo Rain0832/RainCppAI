@@ -11,7 +11,7 @@ namespace session
 
 // 初始化会话管理器，设置会话存储对象和随机数生成器
 SessionManager::SessionManager(std::unique_ptr<SessionStorage> storage)
-    : storage_(std::move(storage)), rng_(std::random_device {}())  // 初始化随机数生成器，用于生成随机的会话ID
+    : storage_(std::move(storage)), rng_(std::random_device{}())  // 初始化随机数生成器，用于生成随机的会话ID
 {
 }
 

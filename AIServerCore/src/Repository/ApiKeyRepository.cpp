@@ -1,20 +1,17 @@
 #include "Repository/ApiKeyRepository.h"
+
 #include "storage/MysqlUtil.h"
 
-std::string ApiKeyRepository::findByAccountAndProvider(long long accountId,
-                                                         const std::string& provider)
+std::string ApiKeyRepository::findByAccountAndProvider(long long accountId, const std::string& provider)
 {
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery(
-        "SELECT api_key FROM api_keys WHERE account_id = ? AND provider = ?",
-        accountId, provider);
-    if (res && res->next())
-        return res->getString("api_key");
+    auto res =
+        mu.executeQuery("SELECT api_key FROM api_keys WHERE account_id = ? AND provider = ?", accountId, provider);
+    if (res && res->next()) return res->getString("api_key");
     return "";
 }
 
-bool ApiKeyRepository::upsert(long long accountId, const std::string& provider,
-                               const std::string& apiKey)
+bool ApiKeyRepository::upsert(long long accountId, const std::string& provider, const std::string& apiKey)
 {
     storage::MysqlUtil mu;
     mu.executeUpdate(
@@ -28,8 +25,7 @@ json ApiKeyRepository::findAllByAccount(long long accountId)
 {
     json arr = json::array();
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery(
-        "SELECT provider, api_key FROM api_keys WHERE account_id = ?", accountId);
+    auto res = mu.executeQuery("SELECT provider, api_key FROM api_keys WHERE account_id = ?", accountId);
     while (res && res->next())
     {
         json j;

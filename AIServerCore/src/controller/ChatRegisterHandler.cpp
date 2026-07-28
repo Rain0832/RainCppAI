@@ -1,11 +1,12 @@
 #include "controller/ChatRegisterHandler.h"
-#include "Service/AuthService.h"
-#include "Common/Http/ApiResult.h"
+
 #include "Common/Auth/JwtService.h"
+#include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 #include "Repository/InviteCodeRepository.h"
 #include "Repository/VerificationCodeRepository.h"
+#include "Service/AuthService.h"
 #include "storage/MysqlUtil.h"
-#include "Common/Logging/Logger.h"
 
 void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -24,8 +25,8 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
     {
         json parsed = json::parse(req.getBody());
 
-        if (!parsed.contains("inviteCode") || !parsed.contains("email") ||
-            !parsed.contains("code") || !parsed.contains("username") || !parsed.contains("password"))
+        if (!parsed.contains("inviteCode") || !parsed.contains("email") || !parsed.contains("code") ||
+            !parsed.contains("username") || !parsed.contains("password"))
         {
             std::string body = common::ApiResult::fail(400, "Missing required fields").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");

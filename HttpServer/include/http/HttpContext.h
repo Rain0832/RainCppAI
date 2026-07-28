@@ -1,8 +1,7 @@
 #pragma once
 
-#include <muduo/net/TcpServer.h>
-
 #include <iostream>
+#include <muduo/net/TcpServer.h>
 
 #include "HttpRequest.h"
 
@@ -31,7 +30,10 @@ public:
 
     // 判断请求是否已完整解析。
     // 返回值：解析完成返回 true，否则返回 false。
-    bool gotAll() const { return state_ == kGotAll; }
+    bool gotAll() const
+    {
+        return state_ == kGotAll;
+    }
 
     // 重置解析状态并清空当前请求数据。
     void reset()
@@ -43,11 +45,17 @@ public:
 
     // 获取已解析的请求（只读）。
     // 返回值：当前 HttpRequest 的常量引用。
-    const HttpRequest& request() const { return request_; }
+    const HttpRequest& request() const
+    {
+        return request_;
+    }
 
     // 获取已解析的请求（可修改）。
     // 返回值：当前 HttpRequest 的引用。
-    HttpRequest& request() { return request_; }
+    HttpRequest& request()
+    {
+        return request_;
+    }
 
 private:
     // 解析请求行，填充方法、路径、查询参数与协议版本。

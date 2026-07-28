@@ -18,14 +18,23 @@ class Session : public std::enable_shared_from_this<Session>
 public:
     Session(const std::string& sessionId, SessionManager* sessionManager, int maxAge = 3600);  // 默认1小时过期
 
-    const std::string& getId() const { return sessionId_; }
+    const std::string& getId() const
+    {
+        return sessionId_;
+    }
 
     bool isExpired() const;
     void refresh();  // 刷新过期时间
 
-    void setManager(SessionManager* sessionManager) { sessionManager_ = sessionManager; }
+    void setManager(SessionManager* sessionManager)
+    {
+        sessionManager_ = sessionManager;
+    }
 
-    SessionManager* getManager() const { return sessionManager_; }
+    SessionManager* getManager() const
+    {
+        return sessionManager_;
+    }
 
     // 数据存取
     void setValue(const std::string& key, const std::string& value);

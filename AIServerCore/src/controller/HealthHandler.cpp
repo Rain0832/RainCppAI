@@ -1,9 +1,19 @@
 #include "controller/HealthHandler.h"
+
 #include "Common/Metrics/MetricsCollector.h"
 #include "storage/MysqlUtil.h"
-void HealthHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp) {
+void HealthHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
+{
     bool dbOk = false;
-    try { storage::MysqlUtil mu; auto r = mu.executeQuery("SELECT 1"); dbOk = (r && r->next()); } catch (...) {}
+    try
+    {
+        storage::MysqlUtil mu;
+        auto r = mu.executeQuery("SELECT 1");
+        dbOk = (r && r->next());
+    }
+    catch (...)
+    {
+    }
     json j;
     j["status"] = dbOk ? "up" : "degraded";
     j["db"] = dbOk ? "connected" : "disconnected";

@@ -20,7 +20,10 @@ public:
     virtual void after(HttpResponse& response) = 0;
 
     // 设置下一个中间件
-    void setNext(std::shared_ptr<Middleware> next) { nextMiddleware_ = next; }
+    void setNext(std::shared_ptr<Middleware> next)
+    {
+        nextMiddleware_ = next;
+    }
 
 protected:
     std::shared_ptr<Middleware> nextMiddleware_;

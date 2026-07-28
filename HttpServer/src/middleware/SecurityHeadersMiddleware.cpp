@@ -17,8 +17,7 @@ void SecurityHeadersMiddleware::after(HttpResponse& response)
                        "connect-src 'self'");
 
     // HSTS：强制 HTTPS（max-age=1年，含子域，允许预加载）
-    response.addHeader("Strict-Transport-Security",
-                       "max-age=31536000; includeSubDomains; preload");
+    response.addHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
     // 禁止被其他网站嵌套为 iframe（防 clickjacking）
     response.addHeader("X-Frame-Options", "DENY");

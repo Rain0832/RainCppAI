@@ -1,4 +1,5 @@
 #include "Repository/InviteCodeRepository.h"
+
 #include "storage/MysqlUtil.h"
 
 json InviteCodeRepository::findByCode(const std::string& code)
@@ -18,13 +19,11 @@ json InviteCodeRepository::findByCode(const std::string& code)
         j["max_uses"] = res->getInt("max_uses");
         j["used_count"] = res->getInt("used_count");
         std::string expiresVal = res->getString("expires_at");
-        if (!expiresVal.empty())
-            j["expires_at"] = expiresVal;
+        if (!expiresVal.empty()) j["expires_at"] = expiresVal;
         j["is_disabled"] = res->getBoolean("is_disabled");
         j["failed_attempts"] = res->getInt("failed_attempts");
         std::string lockVal = res->getString("locked_until");
-        if (!lockVal.empty())
-            j["locked_until"] = lockVal;
+        if (!lockVal.empty()) j["locked_until"] = lockVal;
         return j;
     }
     return {};

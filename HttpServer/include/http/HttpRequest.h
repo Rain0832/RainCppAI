@@ -1,8 +1,7 @@
 #pragma once
 
-#include <muduo/base/Timestamp.h>
-
 #include <map>
+#include <muduo/base/Timestamp.h>
 #include <string>
 #include <unordered_map>
 
@@ -32,7 +31,10 @@ public:
 
     // 获取请求的接收时间。
     // 返回值：请求数据接收时间。
-    muduo::Timestamp receiveTime() const { return receiveTime_; }
+    muduo::Timestamp receiveTime() const
+    {
+        return receiveTime_;
+    }
 
     // 设置请求方法。
     // 参数：
@@ -43,7 +45,10 @@ public:
 
     // 获取请求方法枚举值。
     // 返回值：当前请求方法。
-    Method method() const { return method_; }
+    Method method() const
+    {
+        return method_;
+    }
 
     // 设置请求路径。
     // 参数：
@@ -53,7 +58,10 @@ public:
 
     // 获取请求路径。
     // 返回值：请求路径字符串。
-    std::string path() const { return path_; }
+    std::string path() const
+    {
+        return path_;
+    }
 
     // 设置路径参数键值对。
     // 参数：
@@ -82,11 +90,17 @@ public:
     // 设置请求协议版本。
     // 参数：
     // - v：协议版本字符串。
-    void setVersion(std::string v) { version_ = v; }
+    void setVersion(std::string v)
+    {
+        version_ = v;
+    }
 
     // 获取请求协议版本。
     // 返回值：协议版本字符串。
-    std::string getVersion() const { return version_; }
+    std::string getVersion() const
+    {
+        return version_;
+    }
 
     // 添加请求头字段。
     // 参数：
@@ -103,14 +117,23 @@ public:
 
     // 获取所有请求头字段。
     // 返回值：请求头映射表的常量引用。
-    const std::map<std::string, std::string>& headers() const { return headers_; }
+    const std::map<std::string, std::string>& headers() const
+    {
+        return headers_;
+    }
 
-    void addHeader(const std::string& key, const std::string& value) { headers_[key] = value; }
+    void addHeader(const std::string& key, const std::string& value)
+    {
+        headers_[key] = value;
+    }
 
     // 设置请求体内容。
     // 参数：
     // - body：请求体字符串。
-    void setBody(const std::string& body) { content_ = body; }
+    void setBody(const std::string& body)
+    {
+        content_ = body;
+    }
 
     // 设置请求体内容。
     // 参数：
@@ -126,16 +149,25 @@ public:
 
     // 获取请求体内容。
     // 返回值：请求体字符串。
-    std::string getBody() const { return content_; }
+    std::string getBody() const
+    {
+        return content_;
+    }
 
     // 设置请求体长度。
     // 参数：
     // - length：请求体长度。
-    void setContentLength(uint64_t length) { contentLength_ = length; }
+    void setContentLength(uint64_t length)
+    {
+        contentLength_ = length;
+    }
 
     // 获取请求体长度。
     // 返回值：请求体长度。
-    uint64_t contentLength() const { return contentLength_; }
+    uint64_t contentLength() const
+    {
+        return contentLength_;
+    }
 
     // 交换当前对象与目标对象的内容。
     // 参数：
@@ -151,7 +183,7 @@ private:
     muduo::Timestamp receiveTime_;                                  // 接收时间
     std::map<std::string, std::string> headers_;                    // 请求头
     std::string content_;                                           // 请求体
-    uint64_t contentLength_ {0};                                    // 请求体长度
+    uint64_t contentLength_{0};                                     // 请求体长度
 };
 
 }  // namespace http

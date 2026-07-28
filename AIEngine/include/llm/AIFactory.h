@@ -45,7 +45,8 @@ private:
     std::unordered_map<std::string, Creator> creators;
 };
 
-template <typename T> struct StrategyRegister
+template <typename T>
+struct StrategyRegister
 {
     // 构造函数，注册指定类型的策略。
     //

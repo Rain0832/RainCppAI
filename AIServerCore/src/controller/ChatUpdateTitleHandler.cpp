@@ -1,4 +1,5 @@
 #include "controller/ChatUpdateTitleHandler.h"
+
 #include "Common/Logging/Logger.h"
 
 void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)

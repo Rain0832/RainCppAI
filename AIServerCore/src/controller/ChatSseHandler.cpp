@@ -1,33 +1,31 @@
 ﻿#include "controller/ChatSseHandler.h"
-#include "Common/Http/ApiResult.h"
-#include "Common/Auth/JwtService.h"
-#include "Common/Logging/Logger.h"
 
+#include "Common/Auth/JwtService.h"
+#include "Common/Http/ApiResult.h"
+#include "Common/Logging/Logger.h"
 #include "common/AISessionIdGenerator.h"
 #include "llm/AIHelper.h"
 
-static void sendSseChunk(const muduo::net::TcpConnectionPtr &conn, const std::string &data)
+static void sendSseChunk(const muduo::net::TcpConnectionPtr& conn, const std::string& data)
 {
     std::string frame = "data: " + data + "\n\n";
     conn->getLoop()->runInLoop(
         [conn, frame]()
         {
-            if (conn->connected())
-                conn->send(frame);
+            if (conn->connected()) conn->send(frame);
         });
 }
 
-static void sendSseDone(const muduo::net::TcpConnectionPtr &conn)
+static void sendSseDone(const muduo::net::TcpConnectionPtr& conn)
 {
     conn->getLoop()->runInLoop(
         [conn]()
         {
-            if (conn->connected())
-                conn->send("data: [DONE]\n\n");
+            if (conn->connected()) conn->send("data: [DONE]\n\n");
         });
 }
 
-void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     try
     {
@@ -35,30 +33,38 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         std::string username;
 
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") == "true") {
+        if (session->getValue("isLoggedIn") == "true")
+        {
             userId = std::stoll(session->getValue("userId"));
             username = session->getValue("username");
-        } else {
+        }
+        else
+        {
             std::string ck = req.getHeader("Cookie");
             std::string tok;
             size_t pos = ck.find("jwt=");
-            if (pos != std::string::npos) {
+            if (pos != std::string::npos)
+            {
                 pos += 4;
                 size_t end = ck.find(';', pos);
                 tok = (end == std::string::npos) ? ck.substr(pos) : ck.substr(pos, end - pos);
             }
-            if (!tok.empty()) {
+            if (!tok.empty())
+            {
                 common::JwtService js;
                 json pld = js.verify(tok);
-                if (!pld.empty()) {
+                if (!pld.empty())
+                {
                     userId = pld["sub"].get<long long>();
                     username = "user" + std::to_string(userId);
                 }
             }
-            if (userId == 0) {
+            if (userId == 0)
+            {
                 json e = common::ApiResult::fail(401, "Unauthorized").toJson();
                 std::string b = e.dump();
-                server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true, "application/json", (int)b.size(), b, resp);
+                server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
+                                     "application/json", (int)b.size(), b, resp);
                 return;
             }
         }
@@ -68,9 +74,11 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         if (!body.empty())
         {
             auto j = json::parse(body);
-            if (j.contains("question")) {
+            if (j.contains("question"))
+            {
                 userQuestion = j["question"];
-                if (userQuestion.length() > 5000) {
+                if (userQuestion.length() > 5000)
+                {
                     resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
                     resp->setCloseConnection(false);
                     resp->setContentType("application/json");
@@ -81,10 +89,8 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                     return;
                 }
             }
-            if (j.contains("sessionId"))
-                sessionId = j["sessionId"];
-            if (j.contains("ragId"))
-                ragId = j["ragId"];
+            if (j.contains("sessionId")) sessionId = j["sessionId"];
+            if (j.contains("ragId")) ragId = j["ragId"];
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "qwen-plus";
             provider = j.contains("provider") ? j["provider"].get<std::string>() : "aliyun";
         }
@@ -97,9 +103,9 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         try
         {
             storage::MysqlUtil mu;
-            auto res = mu.executeQuery("SELECT api_key FROM api_keys WHERE account_id = ? AND provider = ?", userId, dbProvider);
-            if (res && res->next())
-                apiKey = res->getString("api_key");
+            auto res = mu.executeQuery("SELECT api_key FROM api_keys WHERE account_id = ? AND provider = ?", userId,
+                                       dbProvider);
+            if (res && res->next()) apiKey = res->getString("api_key");
         }
         catch (...)
         {
@@ -121,17 +127,17 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
             if (uit != server_->getChatInformation().end())
             {
                 auto sit = uit->second.find(sessionId);
-                if (sit != uit->second.end())
-                    AIHelperPtr = sit->second;
+                if (sit != uit->second.end()) AIHelperPtr = sit->second;
             }
         }
         if (!AIHelperPtr)
         {
             std::unique_lock<std::shared_mutex> wlock(server_->getChatInfoMutex(userId));
-            auto &us = server_->getChatInformation()[userId];
+            auto& us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
             {
-                us.emplace(sessionId, std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
+                us.emplace(sessionId,
+                           std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
                 // 同步记录 sessionId 到列表中
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
@@ -150,21 +156,21 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
         conn->getLoop()->runInLoop(
             [conn, req]()
             {
-                if (!conn->connected())
-                    return;
-                std::string sseHeader = "HTTP/1.1 200 OK\r\n"
-                                        "Content-Type: text/event-stream\r\n"
-                                        "Cache-Control: no-cache\r\n"
-                                        "Connection: keep-alive\r\n"
-                                        "Access-Control-Allow-Origin: *\r\n"
-                                        "\r\n";
+                if (!conn->connected()) return;
+                std::string sseHeader =
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/event-stream\r\n"
+                    "Cache-Control: no-cache\r\n"
+                    "Connection: keep-alive\r\n"
+                    "Access-Control-Allow-Origin: *\r\n"
+                    "\r\n";
                 conn->send(sseHeader);
             });
 
         // 提交流式 AI 调用到线程池
         server_->getAiThreadPool().submit(
-            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId,
-             provider, isNewSession]()
+            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider,
+             isNewSession]()
             {
                 try
                 {
@@ -177,12 +183,10 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                     }
 
                     AIHelperPtr->chatStream(
-                        userId, username, sessionId, userQuestion, provider, apiKey, ragId,
-                        modelType,
-                        [&conn](const std::string &token) -> bool
+                        userId, username, sessionId, userQuestion, provider, apiKey, ragId, modelType,
+                        [&conn](const std::string& token) -> bool
                         {
-                            if (!conn->connected())
-                                return false;
+                            if (!conn->connected()) return false;
                             json data;
                             data["token"] = token;
                             sendSseChunk(conn, data.dump());
@@ -191,7 +195,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                         "", isNewSession);
                     sendSseDone(conn);
                 }
-                catch (const std::exception &e)
+                catch (const std::exception& e)
                 {
                     json err;
                     err["error"] = e.what();
@@ -200,7 +204,7 @@ void ChatSseHandler::handle(const http::HttpRequest &req, http::HttpResponse *re
                 }
             });
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         json f;
         f["status"] = "error";

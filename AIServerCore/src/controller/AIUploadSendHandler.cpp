@@ -1,4 +1,5 @@
 #include "controller/AIUploadSendHandler.h"
+
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 
@@ -36,7 +37,7 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
                 if (server_->getImageRecognizers().find(userId) == server_->getImageRecognizers().end())
                 {
                     server_->getImageRecognizers().emplace(
-                            userId, std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx"));
+                        userId, std::make_shared<ImageRecognizer>("/root/models/mobilenetv2/mobilenetv2-7.onnx"));
                 }
                 ImageRecognizerPtr = server_->getImageRecognizers()[userId];
             }
@@ -48,10 +49,8 @@ void AIUploadSendHandler::handle(const http::HttpRequest& req, http::HttpRespons
         if (!body.empty())
         {
             auto j = json::parse(body);
-            if (j.contains("filename"))
-                filename = j["filename"];
-            if (j.contains("image"))
-                imageBase64 = j["image"];
+            if (j.contains("filename")) filename = j["filename"];
+            if (j.contains("image")) imageBase64 = j["image"];
         }
         if (imageBase64.empty())
         {

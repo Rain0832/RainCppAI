@@ -27,22 +27,21 @@ public:
         for (size_t i = 0; i < numThreads; ++i)
         {
             workers_.emplace_back(
-                    [this]
+                [this]
+                {
+                    while (true)
                     {
-                        while (true)
+                        std::function<void()> task;
                         {
-                            std::function<void()> task;
-                            {
-                                std::unique_lock<std::mutex> lock(mutex_);
-                                cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
-                                if (stop_ && tasks_.empty())
-                                    return;
-                                task = std::move(tasks_.front());
-                                tasks_.pop();
-                            }
-                            task();
+                            std::unique_lock<std::mutex> lock(mutex_);
+                            cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                            if (stop_ && tasks_.empty()) return;
+                            task = std::move(tasks_.front());
+                            tasks_.pop();
                         }
-                    });
+                        task();
+                    }
+                });
         }
     }
 
@@ -55,8 +54,7 @@ public:
         cv_.notify_all();
         for (auto& t : workers_)
         {
-            if (t.joinable())
-                t.join();
+            if (t.joinable()) t.join();
         }
     }
 
@@ -66,13 +64,12 @@ public:
         using ReturnType = typename std::invoke_result<F, Args...>::type;
 
         auto task = std::make_shared<std::packaged_task<ReturnType()>>(
-                std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
         std::future<ReturnType> future = task->get_future();
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_)
-                throw std::runtime_error("submit on stopped ThreadPool");
+            if (stop_) throw std::runtime_error("submit on stopped ThreadPool");
             tasks_.emplace([task]() { (*task)(); });
         }
         cv_.notify_one();
@@ -85,7 +82,10 @@ public:
         return tasks_.size();
     }
 
-    size_t threadCount() const { return workers_.size(); }
+    size_t threadCount() const
+    {
+        return workers_.size();
+    }
 
 private:
     std::vector<std::thread> workers_;

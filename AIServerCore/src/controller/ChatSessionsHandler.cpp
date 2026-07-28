@@ -1,8 +1,9 @@
 #include "controller/ChatSessionsHandler.h"
+
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 
-void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpResponse *resp)
+void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
     try
     {
@@ -33,8 +34,9 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         try
         {
             storage::MysqlUtil mu;
-            std::string sql = "SELECT id, title FROM sessions WHERE account_id = ? "
-                              "AND is_deleted = 0 ORDER BY updated_at DESC";
+            std::string sql =
+                "SELECT id, title FROM sessions WHERE account_id = ? "
+                "AND is_deleted = 0 ORDER BY updated_at DESC";
             auto res = mu.executeQuery(sql, userId);
             while (res && res->next())
             {
@@ -49,7 +51,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         }
 
         // 对 title 为空的 session，用 messages 首条用户消息作为 fallback
-        for (auto &sid : memSessions)
+        for (auto& sid : memSessions)
         {
             auto it = titleMap.find(sid);
             if (it == titleMap.end() || it->second.empty())
@@ -69,10 +71,8 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
                         std::string fallback = firstMsg.substr(0, len);
                         // 找第一个换行或句末标点截断
                         auto pos = fallback.find('\n');
-                        if (pos != std::string::npos)
-                            fallback = fallback.substr(0, pos);
-                        if (!fallback.empty())
-                            titleMap[sid] = fallback;
+                        if (pos != std::string::npos) fallback = fallback.substr(0, pos);
+                        if (!fallback.empty()) titleMap[sid] = fallback;
                     }
                 }
                 catch (...)
@@ -85,7 +85,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         json successResp;
         successResp["success"] = true;
         json sessionArray = json::array();
-        for (auto &sid : memSessions)
+        for (auto& sid : memSessions)
         {
             json s;
             s["sessionId"] = sid;
@@ -104,7 +104,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest &req, http::HttpRespons
         resp->setBody(successBody);
         return;
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         json failureResp;
         failureResp["status"] = "error";

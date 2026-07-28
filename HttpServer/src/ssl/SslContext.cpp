@@ -1,8 +1,9 @@
 #include "../../include/ssl/SslContext.h"
-#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 #include <openssl/err.h>
+
+#include "Logging/Logger.h"
 
 namespace ssl
 {
@@ -95,18 +96,18 @@ bool SslContext::setupProtocol()
     long options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
     switch (config_.getProtocolVersion())
     {
-    case SSLVersion::TLS_1_0:
-        options |= SSL_OP_NO_TLSv1;
-        break;
-    case SSLVersion::TLS_1_1:
-        options |= SSL_OP_NO_TLSv1_1;
-        break;
-    case SSLVersion::TLS_1_2:
-        options |= SSL_OP_NO_TLSv1_2;
-        break;
-    case SSLVersion::TLS_1_3:
-        options |= SSL_OP_NO_TLSv1_3;
-        break;
+        case SSLVersion::TLS_1_0:
+            options |= SSL_OP_NO_TLSv1;
+            break;
+        case SSLVersion::TLS_1_1:
+            options |= SSL_OP_NO_TLSv1_1;
+            break;
+        case SSLVersion::TLS_1_2:
+            options |= SSL_OP_NO_TLSv1_2;
+            break;
+        case SSLVersion::TLS_1_3:
+            options |= SSL_OP_NO_TLSv1_3;
+            break;
     }
     SSL_CTX_set_options(ctx_, options);
 

@@ -1,12 +1,15 @@
 #include "Repository/AccountRepository.h"
+
 #include "storage/MysqlUtil.h"
 
 json AccountRepository::findByUsername(const std::string& username)
 {
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery("SELECT id, username, password_hash, email, role, is_disabled, "
-                               "failed_attempts, locked_until "
-                               "FROM accounts WHERE username = ?", username);
+    auto res = mu.executeQuery(
+        "SELECT id, username, password_hash, email, role, is_disabled, "
+        "failed_attempts, locked_until "
+        "FROM accounts WHERE username = ?",
+        username);
     if (res && res->next())
     {
         json j;
@@ -19,8 +22,7 @@ json AccountRepository::findByUsername(const std::string& username)
         j["is_disabled"] = res->getBoolean("is_disabled");
         j["failed_attempts"] = res->getInt("failed_attempts");
         std::string lockVal = res->getString("locked_until");
-        if (!lockVal.empty())
-            j["locked_until"] = lockVal;
+        if (!lockVal.empty()) j["locked_until"] = lockVal;
         return j;
     }
     return {};
@@ -29,15 +31,17 @@ json AccountRepository::findByUsername(const std::string& username)
 json AccountRepository::findById(long long id)
 {
     storage::MysqlUtil mu;
-    auto res = mu.executeQuery("SELECT id, username, email, role, is_disabled "
-                               "FROM accounts WHERE id = ?", id);
+    auto res = mu.executeQuery(
+        "SELECT id, username, email, role, is_disabled "
+        "FROM accounts WHERE id = ?",
+        id);
     if (res && res->next())
     {
         json j;
         j["id"] = res->getInt64("id");
         j["username"] = res->getString("username");
-            std::string emailVal2 = res->getString("email");
-            j["email"] = emailVal2.empty() ? "" : emailVal2;
+        std::string emailVal2 = res->getString("email");
+        j["email"] = emailVal2.empty() ? "" : emailVal2;
         j["role"] = res->getString("role");
         j["is_disabled"] = res->getBoolean("is_disabled");
         return j;
@@ -45,12 +49,11 @@ json AccountRepository::findById(long long id)
     return {};
 }
 
-json AccountRepository::create(const std::string& username, const std::string& passwordHash,
-                                const std::string& email)
+json AccountRepository::create(const std::string& username, const std::string& passwordHash, const std::string& email)
 {
     storage::MysqlUtil mu;
-    mu.executeUpdate("INSERT INTO accounts (username, password_hash, email) VALUES (?, ?, ?)",
-                     username, passwordHash, email);
+    mu.executeUpdate("INSERT INTO accounts (username, password_hash, email) VALUES (?, ?, ?)", username, passwordHash,
+                     email);
     return findByUsername(username);
 }
 

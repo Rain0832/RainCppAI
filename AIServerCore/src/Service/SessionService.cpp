@@ -1,6 +1,7 @@
 #include "Service/SessionService.h"
-#include "Repository/SessionRepository.h"
+
 #include "Repository/MessageRepository.h"
+#include "Repository/SessionRepository.h"
 
 json SessionService::listSessions(long long accountId)
 {

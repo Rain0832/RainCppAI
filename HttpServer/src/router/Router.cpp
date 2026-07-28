@@ -1,7 +1,8 @@
 #include "../../include/router/Router.h"
-#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
+
+#include "Logging/Logger.h"
 
 namespace http
 {
@@ -10,7 +11,7 @@ namespace router
 
 void Router::registerHandler(HttpRequest::Method method, const std::string& path, HandlerPtr handler)
 {
-    RouteKey key {method, path};
+    RouteKey key{method, path};
     if (handlers_.find(key) != handlers_.end())
     {
         SPDLOG_ERROR_TAG("HTTP") << "Router::registerHandler: handler already exists";
@@ -21,13 +22,13 @@ void Router::registerHandler(HttpRequest::Method method, const std::string& path
 
 void Router::registerCallback(HttpRequest::Method method, const std::string& path, const HandlerCallback& callback)
 {
-    RouteKey key {method, path};
+    RouteKey key{method, path};
     callbacks_[key] = std::move(callback);
 }
 
 bool Router::route(const HttpRequest& req, HttpResponse* resp)
 {
-    RouteKey key {req.method(), req.path()};
+    RouteKey key{req.method(), req.path()};
 
     // 查找处理器
     auto handlerIt = handlers_.find(key);

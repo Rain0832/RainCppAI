@@ -1,4 +1,5 @@
 #include "Repository/MessageRepository.h"
+
 #include "storage/MysqlUtil.h"
 
 json MessageRepository::findBySession(const std::string& sessionId)
@@ -22,16 +23,18 @@ json MessageRepository::findBySession(const std::string& sessionId)
     return arr;
 }
 
-bool MessageRepository::insert(const std::string& sessionId, const std::string& role,
-                                const std::string& content, const std::string& model,
-                                const std::string& toolCallId, const std::string& payload)
+bool MessageRepository::insert(const std::string& sessionId,
+                               const std::string& role,
+                               const std::string& content,
+                               const std::string& model,
+                               const std::string& toolCallId,
+                               const std::string& payload)
 {
     storage::MysqlUtil mu;
     if (toolCallId.empty())
     {
-        mu.executeUpdate(
-            "INSERT INTO messages (session_id, role, content, model) VALUES (?, ?, ?, ?)",
-            sessionId, role, content, model);
+        mu.executeUpdate("INSERT INTO messages (session_id, role, content, model) VALUES (?, ?, ?, ?)", sessionId, role,
+                         content, model);
     }
     else
     {
@@ -46,7 +49,6 @@ bool MessageRepository::insert(const std::string& sessionId, const std::string& 
 bool MessageRepository::insertIgnoreSession(const std::string& sessionId, long long accountId)
 {
     storage::MysqlUtil mu;
-    mu.executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)",
-                     sessionId, accountId);
+    mu.executeUpdate("INSERT IGNORE INTO sessions (id, account_id) VALUES (?, ?)", sessionId, accountId);
     return true;
 }

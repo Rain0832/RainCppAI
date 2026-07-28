@@ -1,4 +1,5 @@
 #include "controller/ChatEntryHandler.h"
+
 #include "Common/Logging/Logger.h"
 
 void ChatEntryHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)

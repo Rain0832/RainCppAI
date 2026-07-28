@@ -16,7 +16,9 @@ namespace middleware
 class SecurityHeadersMiddleware : public Middleware
 {
 public:
-    void before(HttpRequest&) override { /* no-op: 不拦截请求 */ }
+    void before(HttpRequest&) override
+    { /* no-op: 不拦截请求 */
+    }
 
     /**
      * @brief 在响应返回前追加安全 HTTP 头

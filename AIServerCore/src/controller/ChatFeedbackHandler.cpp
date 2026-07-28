@@ -1,7 +1,8 @@
 #include "controller/ChatFeedbackHandler.h"
+
 #include "Common/Http/ApiResult.h"
-#include "storage/MysqlUtil.h"
 #include "Common/Logging/Logger.h"
+#include "storage/MysqlUtil.h"
 
 void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -21,7 +22,8 @@ void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpRespons
     try
     {
         json parsed = json::parse(req.getBody());
-        if (!parsed.contains("content") || !parsed["content"].is_string() || parsed["content"].get<std::string>().empty())
+        if (!parsed.contains("content") || !parsed["content"].is_string() ||
+            parsed["content"].get<std::string>().empty())
         {
             std::string body = common::ApiResult::fail(400, "Missing or empty 'content' field").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
@@ -34,8 +36,7 @@ void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpRespons
 
         std::string content = parsed["content"];
         // Truncate very long feedback
-        if (content.size() > 5000)
-            content.resize(5000);
+        if (content.size() > 5000) content.resize(5000);
 
         // AccountId comes from AuthMiddleware (X-Auth-UserId header)
         std::string userIdStr = req.getHeader("X-Auth-UserId");
@@ -52,12 +53,9 @@ void ChatFeedbackHandler::handle(const http::HttpRequest& req, http::HttpRespons
         long long accountId = std::stoll(userIdStr);
 
         storage::MysqlUtil mu;
-        mu.executeUpdate(
-            "INSERT INTO feedback (account_id, content) VALUES (?, ?)",
-            accountId, content);
+        mu.executeUpdate("INSERT INTO feedback (account_id, content) VALUES (?, ?)", accountId, content);
 
-        SPDLOG_INFO_TAG("FEED") << "[FEEDBACK] Submitted by userId=" << accountId
-                 << " content_len=" << content.size();
+        SPDLOG_INFO_TAG("FEED") << "[FEEDBACK] Submitted by userId=" << accountId << " content_len=" << content.size();
 
         json success;
         success["success"] = true;

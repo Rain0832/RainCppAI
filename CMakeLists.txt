@@ -127,5 +127,9 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 add_subdirectory(Tests)
 
+file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.h)
+add_custom_target(format COMMAND clang-format -i ${ALL_SOURCE_FILES}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "ONNX Runtime library: ${ONNXRUNTIME_LIBRARY}")

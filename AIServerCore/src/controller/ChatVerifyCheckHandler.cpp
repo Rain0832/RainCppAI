@@ -1,7 +1,8 @@
 #include "controller/ChatVerifyCheckHandler.h"
+
 #include "Common/Http/ApiResult.h"
-#include "Repository/VerificationCodeRepository.h"
 #include "Common/Logging/Logger.h"
+#include "Repository/VerificationCodeRepository.h"
 
 void ChatVerifyCheckHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -21,8 +22,8 @@ void ChatVerifyCheckHandler::handle(const http::HttpRequest& req, http::HttpResp
     try
     {
         json parsed = json::parse(req.getBody());
-        if (!parsed.contains("email") || !parsed["email"].is_string() ||
-            !parsed.contains("code") || !parsed["code"].is_string())
+        if (!parsed.contains("email") || !parsed["email"].is_string() || !parsed.contains("code") ||
+            !parsed["code"].is_string())
         {
             std::string body = common::ApiResult::fail(400, "Missing or invalid 'email' or 'code' field").dump();
             resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");

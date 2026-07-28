@@ -1,11 +1,11 @@
 #include "../../../include/middleware/cors/CorsMiddleware.h"
-#include "Logging/Logger.h"
-
-#include <muduo/base/Logging.h>
 
 #include <algorithm>
 #include <iostream>
+#include <muduo/base/Logging.h>
 #include <sstream>
+
+#include "Logging/Logger.h"
 
 namespace http
 {
@@ -52,9 +52,9 @@ bool CorsMiddleware::isOriginAllowed(const std::string& origin) const
 {
     return config_.allowedOrigins.empty() ||
            std::find(config_.allowedOrigins.begin(), config_.allowedOrigins.end(), "*") !=
-                   config_.allowedOrigins.end() ||
+               config_.allowedOrigins.end() ||
            std::find(config_.allowedOrigins.begin(), config_.allowedOrigins.end(), origin) !=
-                   config_.allowedOrigins.end();
+               config_.allowedOrigins.end();
 }
 
 void CorsMiddleware::handlePreflightRequest(const HttpRequest& request, HttpResponse& response)
@@ -110,8 +110,7 @@ std::string CorsMiddleware::join(const std::vector<std::string>& strings, const 
     std::ostringstream result;
     for (size_t i = 0; i < strings.size(); ++i)
     {
-        if (i > 0)
-            result << delimiter;
+        if (i > 0) result << delimiter;
         result << strings[i];
     }
     return result.str();

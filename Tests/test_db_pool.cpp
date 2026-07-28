@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include "storage/DbConnectionPool.h"
 
 TEST(DbConnectionPoolTest, SingletonExists)

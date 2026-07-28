@@ -1,16 +1,18 @@
 #include "../../../include/utils/db/DbConnection.h"
-#include "Logging/Logger.h"
 
 #include <muduo/base/Logging.h>
 
 #include "../../../include/utils/db/DbException.h"
+#include "Logging/Logger.h"
 
 namespace http
 {
 namespace db
 {
 
-DbConnection::DbConnection(const std::string& host, const std::string& user, const std::string& password,
+DbConnection::DbConnection(const std::string& host,
+                           const std::string& user,
+                           const std::string& password,
                            const std::string& database)
     : host_(host), user_(user), password_(password), database_(database)
 {
@@ -74,8 +76,7 @@ bool DbConnection::isValid()
 {
     try
     {
-        if (!conn_)
-            return false;
+        if (!conn_) return false;
         std::unique_ptr<sql::Statement> stmt(conn_->createStatement());
         stmt->execute("SELECT 1");
         return true;

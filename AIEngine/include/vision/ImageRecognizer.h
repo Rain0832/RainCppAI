@@ -1,9 +1,8 @@
 #pragma once
-#include <onnxruntime_cxx_api.h>
-
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <onnxruntime_cxx_api.h>
 #include <opencv2/dnn.hpp>
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -33,7 +32,7 @@ private:
     std::string input_name;
     std::string output_name;
     std::vector<int64_t> input_shape;
-    int input_height {}, input_width {};
+    int input_height{}, input_width{};
 
     std::vector<std::string> labels;  // ǩ
 

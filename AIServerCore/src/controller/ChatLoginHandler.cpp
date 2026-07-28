@@ -3,11 +3,12 @@
  * @brief 用户登录处理器 — 使用 AuthService 进行 argon2id 密码验证
  */
 #include "controller/ChatLoginHandler.h"
-#include "Service/AuthService.h"
-#include "Common/Http/ApiResult.h"
-#include "Common/Logging/Redactor.h"
+
 #include "Common/Auth/JwtService.h"
+#include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
+#include "Common/Logging/Redactor.h"
+#include "Service/AuthService.h"
 
 void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -16,7 +17,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
     {
         SPDLOG_INFO_TAG("AUTH") << "Invalid login request: Content-Type=" << contentType
-                 << " body_size=" << req.getBody().size();
+                                << " body_size=" << req.getBody().size();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(true);
         resp->setContentType("application/json");
@@ -43,16 +44,14 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
             {
                 // 解析 MySQL DATETIME 格式 "YYYY-MM-DD HH:MM:SS"
                 std::tm tm = {};
-                sscanf(lockUntil.c_str(), "%d-%d-%d %d:%d:%d",
-                       &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-                       &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+                sscanf(lockUntil.c_str(), "%d-%d-%d %d:%d:%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour,
+                       &tm.tm_min, &tm.tm_sec);
                 tm.tm_year -= 1900;
                 tm.tm_mon -= 1;
                 auto lockTime = std::chrono::system_clock::from_time_t(std::mktime(&tm));
                 auto now = std::chrono::system_clock::now();
                 auto remain = std::chrono::duration_cast<std::chrono::minutes>(lockTime - now).count();
-                if (remain > 0 && remain <= 15)
-                    remainMin = static_cast<int>(remain);
+                if (remain > 0 && remain <= 15) remainMin = static_cast<int>(remain);
             }
             std::string msg = "账号已锁定，请" + std::to_string(remainMin) + "分钟后重试";
             json failureResp = common::ApiResult::fail(429, msg).toJson();

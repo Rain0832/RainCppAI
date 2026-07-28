@@ -1,4 +1,5 @@
 #include "Service/AuthService.h"
+
 #include "Crypto/PasswordHash.h"
 #include "Repository/AccountRepository.h"
 #include "storage/MysqlUtil.h"
@@ -7,8 +8,7 @@ json AuthService::login(const std::string& username, const std::string& password
 {
     AccountRepository repo;
     json account = repo.findByUsername(username);
-    if (account.empty())
-        return {};
+    if (account.empty()) return {};
 
     if (account.contains("locked_until") && !account["locked_until"].is_null())
     {
@@ -27,25 +27,24 @@ json AuthService::login(const std::string& username, const std::string& password
         mu.executeUpdate("UPDATE accounts SET failed_attempts = failed_attempts + 1 WHERE id = ?", accountId);
         auto res = mu.executeQuery("SELECT failed_attempts FROM accounts WHERE id = ?", accountId);
         int attempts = 0;
-        if (res && res->next())
-            attempts = res->getInt("failed_attempts");
+        if (res && res->next()) attempts = res->getInt("failed_attempts");
         if (attempts >= 5)
         {
-            mu.executeUpdate("UPDATE accounts SET locked_until = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id = ?", accountId);
+            mu.executeUpdate("UPDATE accounts SET locked_until = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id = ?",
+                             accountId);
         }
         return {};
     }
 
-    mu.executeUpdate("UPDATE accounts SET failed_attempts = 0, locked_until = NULL, last_login_at = NOW() WHERE id = ?", accountId);
+    mu.executeUpdate("UPDATE accounts SET failed_attempts = 0, locked_until = NULL, last_login_at = NOW() WHERE id = ?",
+                     accountId);
     return account;
 }
 
-json AuthService::registerAccount(const std::string& username, const std::string& password,
-                                   const std::string& email)
+json AuthService::registerAccount(const std::string& username, const std::string& password, const std::string& email)
 {
     AccountRepository repo;
-    if (!repo.findByUsername(username).empty())
-        return {};
+    if (!repo.findByUsername(username).empty()) return {};
     std::string hash = common::hashPassword(password);
     return repo.create(username, hash, email);
 }
@@ -56,14 +55,13 @@ bool AuthService::isUsernameTaken(const std::string& username)
     return !repo.findByUsername(username).empty();
 }
 
-json AuthService::registerWithInviteCode(const std::string& username, const std::string& password,
-                                          const std::string& email)
+json AuthService::registerWithInviteCode(const std::string& username,
+                                         const std::string& password,
+                                         const std::string& email)
 {
     AccountRepository repo;
-    if (!repo.findByUsername(username).empty())
-        return {};
-    if (!email.empty() && !repo.findByEmail(email).empty())
-        return {{"error", "email_taken"}};
+    if (!repo.findByUsername(username).empty()) return {};
+    if (!email.empty() && !repo.findByEmail(email).empty()) return {{"error", "email_taken"}};
     std::string hash = common::hashPassword(password);
     return repo.create(username, hash, email);
 }

@@ -1,9 +1,10 @@
 #include "../../include/http/HttpServer.h"
-#include "Logging/Logger.h"
 
 #include <any>
 #include <functional>
 #include <memory>
+
+#include "Logging/Logger.h"
 
 namespace http
 {
@@ -17,7 +18,9 @@ void defaultHttpCallback(const HttpRequest&, HttpResponse* resp)
 }
 
 HttpServer::HttpServer(int port, const std::string& name, bool useSSL, muduo::net::TcpServer::Option option)
-    : listenAddr_(port), server_(&mainLoop_, listenAddr_, name, option), useSSL_(useSSL),
+    : listenAddr_(port),
+      server_(&mainLoop_, listenAddr_, name, option),
+      useSSL_(useSSL),
       httpCallback_(std::bind(&HttpServer::handleRequest, this, std::placeholders::_1, std::placeholders::_2))
 {
     initialize();
@@ -37,8 +40,8 @@ void HttpServer::initialize()
     server_.setConnectionCallback(std::bind(&HttpServer::onConnection, this, std::placeholders::_1));
 
     // 设置回调函数：如果有新数据，调用 onMessage 函数
-    server_.setMessageCallback(std::bind(&HttpServer::onMessage, this, std::placeholders::_1, std::placeholders::_2,
-                                         std::placeholders::_3));
+    server_.setMessageCallback(
+        std::bind(&HttpServer::onMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 void HttpServer::setSslConfig(const ssl::SslConfig& config)
@@ -77,7 +80,8 @@ void HttpServer::onConnection(const muduo::net::TcpConnectionPtr& conn)
     }
 }
 
-void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net::Buffer* buf,
+void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn,
+                           muduo::net::Buffer* buf,
                            muduo::Timestamp receiveTime)
 {
     try
@@ -103,8 +107,7 @@ void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
 
                 // 4. 从SSL连接的解密缓冲区获取数据
                 muduo::net::Buffer* decryptedBuf = it->second->getDecryptedBuffer();
-                if (decryptedBuf->readableBytes() == 0)
-                    return;  // 没有解密后的数据
+                if (decryptedBuf->readableBytes() == 0) return;  // 没有解密后的数据
 
                 // 5. 使用解密后的数据进行HTTP 处理
                 buf = decryptedBuf;  // 将 buf 指向解密后的数据

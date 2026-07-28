@@ -1,8 +1,7 @@
 #pragma once
+#include <memory>
 #include <muduo/base/noncopyable.h>
 #include <openssl/ssl.h>
-
-#include <memory>
 
 #include "SslConfig.h"
 
@@ -16,7 +15,10 @@ public:
     ~SslContext();
 
     bool initialize();
-    SSL_CTX* getNativeHandle() { return ctx_; }
+    SSL_CTX* getNativeHandle()
+    {
+        return ctx_;
+    }
 
 private:
     bool loadCertificates();

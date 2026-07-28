@@ -38,7 +38,10 @@ public:
         //
         // Returns:
         //   如果方法和路径都相同则返回 true，否则返回 false。
-        bool operator==(const RouteKey& other) const { return method == other.method && path == other.path; }
+        bool operator==(const RouteKey& other) const
+        {
+            return method == other.method && path == other.path;
+        }
     };
 
     // 为 RouteKey 定义哈希函数
@@ -58,8 +61,8 @@ public:
         //   结合方法和路径后的哈希值。
         size_t operator()(const RouteKey& key) const
         {
-            size_t methodHash = std::hash<int> {}(static_cast<int>(key.method));
-            size_t pathHash = std::hash<std::string> {}(key.path);
+            size_t methodHash = std::hash<int>{}(static_cast<int>(key.method));
+            size_t pathHash = std::hash<std::string>{}(key.path);
             return methodHash * 31 + pathHash;
         }
     };
@@ -125,7 +128,7 @@ private:
     std::regex convertToRegex(const std::string& pathPattern)
     {  // 将路径模式转换为正则表达式，支持匹配任意路径参数
         std::string regexPattern =
-                "^" + std::regex_replace(pathPattern, std::regex(R"(/:([^/]+))"), R"(/([^/]+))") + "$";
+            "^" + std::regex_replace(pathPattern, std::regex(R"(/:([^/]+))"), R"(/([^/]+))") + "$";
         return std::regex(regexPattern);
     }
 

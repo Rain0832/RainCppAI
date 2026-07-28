@@ -17,7 +17,10 @@ public:
     bool loadFromFile(const std::string& path);
 
     /// 直接访问解析后的 JSON
-    const json& getJson() const { return json_; }
+    const json& getJson() const
+    {
+        return json_;
+    }
 
 private:
     json json_;

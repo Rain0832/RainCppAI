@@ -1,10 +1,11 @@
 #include "controller/ChatInviteVerifyHandler.h"
-#include "Repository/InviteCodeRepository.h"
-#include "Common/Logging/Logger.h"
 
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+
+#include "Common/Logging/Logger.h"
+#include "Repository/InviteCodeRepository.h"
 
 void ChatInviteVerifyHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -12,7 +13,7 @@ void ChatInviteVerifyHandler::handle(const http::HttpRequest& req, http::HttpRes
     if (contentType.empty() || contentType != "application/json" || req.getBody().empty())
     {
         SPDLOG_INFO_TAG("INVITE") << "[INVITE] Invalid invite verify request: Content-Type=" << contentType
-                 << " body_size=" << req.getBody().size();
+                                  << " body_size=" << req.getBody().size();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k400BadRequest, "Bad Request");
         resp->setCloseConnection(false);
         resp->setContentType("application/json");
