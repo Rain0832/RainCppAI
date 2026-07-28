@@ -487,3 +487,10 @@
 - [AIServerCore] 日志读取引擎: 逆序分块读取文件最后 200 行，按日志级别着色（INFO=绿/WARN=橙/ERROR=红/DEBUG=灰）
 - [web] logs.html: Dr.Rain 风格日志查看器模板，含级别图例 + 30s 自动刷新 + 倒计时
 - [web] dashboard.html: 侧边栏新增「日志查看」导航入口
+
+##### v2.5.5 — SP 5.5 Dr.Rain 品牌化 System Prompt 注入
+- [AIEngine] AIHelper::chatStream(): Dr.Rain 医疗人设 System Prompt 注入（消息头部插入/替换）
+- [web] 全站品牌化: title 改为 Dr.Rain — Healthcare AI，Rain AI → Dr.Rain，智能助手平台 → 智能医疗助手平台
+- [web] favicon: 内联 SVG 医疗风格图标（蓝底十字 + 粉色心形）
+- [web] AI.html / entry.html / menu.html / register.html / upload.html / NotFound.html: 品牌文案替换
+- [web] admin/dashboard.html / admin/logs.html: 页脚 RainCppAI → Dr.Rain，版本号 v2.5
