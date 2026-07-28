@@ -494,3 +494,7 @@
 - [web] favicon: 内联 SVG 医疗风格图标（蓝底十字 + 粉色心形）
 - [web] AI.html / entry.html / menu.html / register.html / upload.html / NotFound.html: 品牌文案替换
 - [web] admin/dashboard.html / admin/logs.html: 页脚 RainCppAI → Dr.Rain，版本号 v2.5
+
+##### v2.5.6 — SP 5.6 医疗免责声明
+- [web] AI.html: 聊天区与输入框之间新增医疗免责固定栏（⚠️ 免责声明文案）
+- [web] style.css: disclaimer-bar 样式（亮色 amber 警告色 / 暗色 dark amber），含 .dark 适配
