@@ -152,6 +152,24 @@ std::string AIHelper::chatStream(int userId,
             snapshot = messages_;
         }
 
+        // Dr.Rain System Prompt 注入（SP 5.5）
+        // 如果消息列表中没有 system 消息，则在头部插入医疗人设
+        // 如果已有 system 消息，则替换第一条
+        const std::string drRainSystemPrompt =
+            "你是 Dr.Rain，一位专业的 AI 医疗健康助手。你基于医学知识提供健康咨询、"
+            "症状分析、用药参考和生活方式建议。请注意：\n"
+            "1. 你的回答仅供参考，不能替代专业医生的诊断和治疗\n"
+            "2. 遇到紧急情况，请建议用户立即就医\n"
+            "3. 你不提供具体处方，只提供通用医学知识\n"
+            "4. 回答时保持专业、温暖、易懂的风格";
+        {
+            bool hasSystem = !snapshot.empty() && snapshot[0].role == "system";
+            if (hasSystem)
+                snapshot[0] = {"system", drRainSystemPrompt, "", ""};
+            else
+                snapshot.insert(snapshot.begin(), {"system", drRainSystemPrompt, "", ""});
+        }
+
         // 每次构建 payload，传 stream=true（使用前端传入的 modelId）
         json payload = strategy->buildRequest(snapshot, toolsSchema, effectiveModel);
         payload["stream"] = true;
