@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dr.Rain - Admin Logs</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#f0f2f5;display:flex;min-height:100vh}
+.sidebar{width:230px;background:linear-gradient(180deg,#1a1a2e 0%,#16213e 100%);color:#a2a3b7;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar .brand{display:flex;align-items:center;gap:10px;padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar .brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2196f3 0%,#7c4dff 100%);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;letter-spacing:-1px}
+.sidebar .brand .name{color:#fff;font-size:16px;font-weight:700;letter-spacing:.5px}
+.sidebar .brand .name span{color:#7c4dff}
+.sidebar nav{padding:8px 0;flex:1}
+.sidebar nav a{color:#8890a8;text-decoration:none;padding:11px 20px;display:flex;align-items:center;gap:10px;font-size:14px;transition:.2s;border-left:3px solid transparent}
+.sidebar nav a:hover{color:#c8d0e0;background:rgba(255,255,255,.04)}
+.sidebar nav a.active{color:#fff;background:rgba(33,150,243,.15);border-left-color:#2196f3}
+.sidebar .side-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#556}
+.sidebar .side-footer .ver{color:#2196f3}
+.main{flex:1;padding:28px 32px;overflow-y:auto}
+.main h2{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:24px;display:flex;align-items:center;gap:8px}
+.main h2 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2196f3}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.toolbar .info{font-size:13px;color:#888}
+.btn{padding:8px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
+.btn-refresh{background:#e3f2fd;color:#1565c0}
+.btn-refresh:hover{background:#bbdefb}
+.log-viewer{background:#1e1e2e;border-radius:12px;padding:20px 24px;font-family:'Consolas','Courier New',monospace;font-size:13px;line-height:1.7;overflow-x:auto;max-height:calc(100vh - 200px);overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.log-line{padding:1px 0}
+.log-viewer::-webkit-scrollbar{width:6px}
+.log-viewer::-webkit-scrollbar-track{background:#2a2a3e;border-radius:3px}
+.log-viewer::-webkit-scrollbar-thumb{background:#555;border-radius:3px}
+.legend{display:flex;gap:16px;font-size:12px;color:#888;margin-bottom:12px}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .swatch{display:inline-block;width:10px;height:10px;border-radius:50%}
+.footer-controls{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:12px;color:#888}
+.auto-refresh{cursor:pointer;color:#2196f3;text-decoration:underline}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><div class="logo">R</div><div class="name">Dr.<span>Rain</span></div></div>
+  <nav>
+    <a href="/admin/dashboard">实时看板</a>
+    <a href="/admin/dashboard" id="usersLink">用户管理</a>
+    <a href="/admin/logs" class="active">日志查看</a>
+  </nav>
+  <div class="side-footer">RainCppAI <span class="ver">v2.2.0</span> - Admin Panel</div>
+</aside>
+<main class="main">
+  <h2><span class="dot"></span>日志查看器</h2>
+  <div class="toolbar">
+    <div class="info">__LOG_INFO__</div>
+    <button class="btn btn-refresh" onclick="location.reload()">Refresh</button>
+  </div>
+  <div class="legend">
+    <span><span class="swatch" style="background:#4caf50"></span> INFO</span>
+    <span><span class="swatch" style="background:#ff9800"></span> WARN</span>
+    <span><span class="swatch" style="background:#f44336"></span> ERROR</span>
+    <span><span class="swatch" style="background:#78909c"></span> DEBUG</span>
+  </div>
+  <div class="log-viewer">__LOG_LINES__</div>
+  <div class="footer-controls">
+    <span>Auto-refresh every <span class="auto-refresh" id="countdown">30</span>s</span>
+  </div>
+</main>
+<script>
+document.getElementById('usersLink').addEventListener('click',function(e){
+  e.preventDefault();
+  sessionStorage.setItem('adminTab','users');
+  location.href='/admin/dashboard';
+});
+if(sessionStorage.getItem('adminTab')){
+  sessionStorage.removeItem('adminTab');
+  var tabs = document.querySelectorAll('.page');
+  var links = document.querySelectorAll('.sidebar nav a[data-page]');
+  tabs.forEach(function(t){ t.classList.remove('active'); });
+  links.forEach(function(l){ l.classList.remove('active'); });
+  var userPage = document.getElementById('page-users');
+  if(userPage) userPage.classList.add('active');
+}
+var sec = 30;
+setInterval(function(){
+  sec--;
+  document.getElementById('countdown').textContent = sec > 0 ? sec : 0;
+  if(sec <= 0) location.reload();
+}, 1000);
+</script>
+</body>
+</html>

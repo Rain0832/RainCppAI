@@ -8,6 +8,7 @@
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/AdminDashboardHandler.h"
+#include "controller/AdminLogsHandler.h"
 #include "controller/AdminSseHandler.h"
 #include "controller/AdminToggleUserHandler.h"
 #include "controller/AdminUsersHandler.h"
@@ -357,6 +358,7 @@ void ChatServer::initializeRouter()
 
     // Admin 后台路由
     httpServer_.Get("/admin/dashboard", std::make_shared<AdminDashboardHandler>(this));
+    httpServer_.Get("/admin/logs", std::make_shared<AdminLogsHandler>(this));
     httpServer_.Get("/admin/sse", std::make_shared<AdminSseHandler>(this));
     httpServer_.Get("/admin/api/users", std::make_shared<AdminUsersHandler>(this));
     httpServer_.Post("/admin/api/users/toggle", std::make_shared<AdminToggleUserHandler>(this));
