@@ -414,7 +414,7 @@
 
 
 ## Plan 3 — User System Upgrade
-> Plan 2 v2.4.0. Plan 3 has 6 SPs (v2.4.1 ~ v2.4.6), final v2.5.0.
+> Plan 3 has 6 SPs (v2.4.1 ~ v2.4.6), final v2.5.0
 ### v2.4
 
 ##### v2.4.1 - SP 3.1 InviteCodeRepository + invite code verify API
@@ -461,9 +461,49 @@
 
 
 
+## Plan 4 — 可观测性与防护
+> Plan 3 v2.4.6 最终 → Plan 4 v2.5.0 基线
+
+### v2.5
+> **可观测性** — spdlog JSON 日志 / 全链路追踪 / LLM 埋点 / 限流 / 脱敏 / Health & Metrics
+
+##### v2.5.1 — SP 4.1 spdlog 双通道日志 + LogContext
+- [Common] Logger: spdlog 双 sink（终端可读 + 文件 JSON），TAG 自动提取为 module 字段
+- [Common] LogContext: thread_local 上下文（request_id + user_id），setContext/clearContext
+- [Common] SPDLOG_INFO_TAG / SPDLOG_ERROR_TAG 宏，渐进替代 muduo LOG_*
+- [AIServerCore] 全项目 Handler 代码 LOG_* → SPDLOG_*_TAG 全量迁移
+
+##### v2.5.2 — SP 4.2 RequestId 中间件
+- [HttpServer] RequestIdMiddleware: 入站检查/生成 X-Request-Id UUID v4，出站注入响应头
+- [Common] 中间件 before()/after() 绑定/清除 LogContext，防止线程池污染
+
+##### v2.5.3 — SP 4.3 LLM call_logs 调用埋点
+- [AIServerCore] CallLogRepository: insert(session_id, account_id, model, provider, duration_ms, status, error_msg)
+- [AIEngine] AIHelper::chatStream(): std::chrono::steady_clock 计时 + try/catch 兜底落库
+
+##### v2.5.4 — SP 4.4 Token Bucket 限流
+- [Common] TokenBucket: std::atomic 无锁实现，单用户 10 req/min
+- [HttpServer] RateLimitMiddleware: /api/chat/* 路由拦截，触发返回 HTTP 429 + JSON 提示
+
+##### v2.5.5 — SP 4.5 输入限制与数据脱敏
+- [Common] Redactor: maskEmail / maskPhone 正则脱敏
+- [AIServerCore] ChatSseHandler: content > 5000 字符返回 400
+- [AIServerCore] ChatLoginHandler: 密码脱敏不入日志
+
+##### v2.5.6 — SP 4.6 Health & Metrics
+- [AIServerCore] HealthHandler: GET /health → MySQL SELECT 1 + uptime JSON
+- [AIServerCore] MetricsHandler: GET /metrics → Prometheus 文本格式
+- [Docs] HTTPS_DEPLOY.md: Nginx 反代 + SSL 证书指南
+
+##### v2.5.7 — SPDLOG 迁移扫尾与修复
+- [AIEngine] AIEngine 模块 SPDLOG 全量迁移
+- [AIServerCore] SSE 401 JWT fallback 修复 + muduo log redirect
+
+
+
 ## Plan 5 — Admin 后台 & Dr.Rain 品牌化
 ### v2.6
-> v2.6.0 = Plan 4 最终发布版基线，以下为 Plan 5 增量
+> v2.6.0 = Plan 4 最终发布版基线（v2.5.6 → v2.6.0 回归验证），以下为 Plan 5 增量
 
 ##### v2.6.1 — SP 5.1 AdminAuthMiddleware
 - [HttpServer] AdminAuthMiddleware: 拦截 /admin/* 请求，读取 X-Auth-Role 校验 admin 权限
