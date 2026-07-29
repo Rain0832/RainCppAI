@@ -138,6 +138,8 @@ void ChatServer::initDatabase()
             used_count INT UNSIGNED NOT NULL DEFAULT 0,
             expires_at DATETIME(3) DEFAULT NULL,
             is_disabled TINYINT(1) NOT NULL DEFAULT 0,
+            is_admin TINYINT(1) NOT NULL DEFAULT 0,
+            failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
             failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
             locked_until DATETIME NULL DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

@@ -58,6 +58,9 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
             return;
         }
 
+        // Determine role from invite code (is_admin flag)
+        std::string role = invite.value("is_admin", false) ? "admin" : "user";
+
         // Step 2: Validate email verification code was verified
         VerificationCodeRepository vcRepo;
         json vcRecord = vcRepo.findByEmailAndCode(email, code, "register");
@@ -85,7 +88,7 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
 
         // Step 3: Register account
         AuthService auth;
-        json account = auth.registerWithInviteCode(username, password, email);
+        json account = auth.registerWithInviteCode(username, password, email, role);
         if (account.empty())
         {
             SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Username taken: " << username;
@@ -114,13 +117,14 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
 
         // Step 4: Sign JWT + set cookie (immediate login)
         common::JwtService jwtService;
-        std::string token = jwtService.sign(userId, "user");
+        std::string token = jwtService.sign(userId, role);
         resp->addHeader("Set-Cookie", "jwt=" + token + "; HttpOnly; Path=/; Max-Age=3600; SameSite=Lax");
 
         json successResp;
         successResp["success"] = true;
         successResp["message"] = "Register successful";
         successResp["userId"] = userId;
+        successResp["role"] = role;
         std::string successBody = successResp.dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
         resp->setCloseConnection(false);

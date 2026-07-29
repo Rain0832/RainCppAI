@@ -59,54 +59,8 @@ $('#logout').onclick = e => {
     }).catch(() => showToast('退出失败'));
 };
 
-// Profile modal
+// Profile button — removed API Key settings (SP 5.8, server-managed)
 $('#profile-btn').onclick = e => {
     e.stopPropagation();
-    $('#profileModal').classList.add('show');
-    updateKeyStatus();
+    showToast('模型服务由系统统一管理');
 };
-
-$('#modalClose').onclick = () => $('#profileModal').classList.remove('show');
-
-$('#profileModal').onclick = e => {
-    if (e.target === $('#profileModal')) $('#profileModal').classList.remove('show');
-};
-
-// Modal tabs
-$$('.modal-tab').forEach(tab => tab.onclick = () => {
-    $$('.modal-tab').forEach(t => t.classList.remove('active'));
-    $$('.modal-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    $(`#panel-${tab.dataset.panel}`).classList.add('active');
-});
-
-// API Key management
-const KM = {
-    dashscope: 'rain-key-dashscope',
-    'rag-id': 'rain-key-rag-id',
-    doubao: 'rain-key-doubao',
-    'doubao-ep': 'rain-key-doubao-ep',
-    'baidu-id': 'rain-key-baidu-id',
-    'baidu-secret': 'rain-key-baidu-secret'
-};
-
-function saveKey(n) {
-    const v = $(`#key-${n}`).value.trim();
-    if (!v) { showToast('请输入有效的 Key'); return; }
-    localStorage.setItem(KM[n], v);
-    $(`#key-${n}`).value = '';
-    showToast('已保存');
-    updateKeyStatus();
-}
-
-function updateKeyStatus() {
-    Object.keys(KM).forEach(n => {
-        const el = $(`#st-${n}`),
-            set = !!localStorage.getItem(KM[n]);
-        el.textContent = set ? '已配置' : '未配置';
-        el.className = 'key-status ' + (set ? 'set' : 'unset');
-    });
-}
-
-// Expose saveKey to onclick
-window.saveKey = saveKey;

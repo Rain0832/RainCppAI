@@ -177,6 +177,8 @@
       const d = await r.json();
       if (r.ok && d.success) {
         state.username = username;
+        sessionStorage.setItem('userId', d.userId);
+        if (d.role) sessionStorage.setItem('role', d.role);
         goToStep(5);
         setTimeout(() => { window.location.href = "/chat"; }, 2000);
       } else {

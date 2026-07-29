@@ -5,7 +5,7 @@
 
 import {
     getModelId, getModelName, getApiKey, getRagId, getEndpointId,
-    showToast, summarizeTitle, playTTS, logout, saveApiKey, updateKeyStatus,
+    showToast, summarizeTitle, playTTS, logout,
     fetchHistory, fetchSessions, fetchModels, sendWithSSE, fetchApiKeysFromDb, deleteSession
 } from './api.js';
 
@@ -25,7 +25,6 @@ function $(s) { return document.querySelector(s); }
 window.__playTTS = playTTS;
 window.__deleteMsg = deleteMsg;
 window.__regenerate = regenerate;
-window.__saveKey = saveApiKey;
 
 // ---- 主题 ----
 
@@ -219,17 +218,6 @@ function bindEvents() {
 
     // 退出登录
     $('#ddLogout').onclick = () => logout();
-
-    // API Key 弹窗
-    $('#ddApiKey').onclick = () => {
-        $('#avatarMenu').classList.remove('show');
-        $('#apiKeyModal').classList.add('show');
-        updateKeyStatus();
-    };
-    $('#modalClose').onclick = () => $('#apiKeyModal').classList.remove('show');
-    $('#apiKeyModal').onclick = e => {
-        if (e.target === $('#apiKeyModal')) $('#apiKeyModal').classList.remove('show');
-    };
 
     // 新建对话
     $('#newChatBtn').onclick = () => {

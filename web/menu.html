@@ -22,7 +22,7 @@
             <h3>AI 聊天助手</h3>
             <p>多模型对话，多会话管理，MCP 工具调用</p><span class="arrow">→</span>
         </div>
-        <div class="card" id="profile-btn">
+        <div class="card" id="profile-btn" onclick="showToast('模型服务由系统统一管理')">
             <div class="card-icon profile">⚙️</div>
             <h3>个人中心</h3>
             <p>API Key 管理、使用说明与账户设置</p><span class="arrow">→</span>
@@ -36,77 +36,6 @@
             <div class="card-icon logout">🚪</div>
             <h3>退出登录</h3>
             <p>安全退出当前账户</p><span class="arrow">→</span>
-        </div>
-    </div>
-
-    <!-- Profile Modal -->
-    <div class="modal-overlay" id="profileModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>个人中心</h2><button class="modal-close" id="modalClose">✕</button>
-            </div>
-            <div class="modal-tabs">
-                <button class="modal-tab active" data-panel="keys">API Key</button>
-                <button class="modal-tab" data-panel="guide">使用说明</button>
-            </div>
-            <div class="modal-panel active" id="panel-keys">
-                <div class="key-section">
-                    <label>阿里百炼 API Key <span class="key-status" id="st-dashscope"></span></label>
-                    <div class="key-row"><input type="password" id="key-dashscope" placeholder="sk-xxxx...">
-                        <button class="key-save" onclick="saveKey('dashscope')">保存</button>
-                    </div>
-                    <div class="key-hint">用于阿里百炼 / 百炼RAG 模型</div>
-                </div>
-                <div class="key-section">
-                    <label>百炼 RAG 知识库 ID <span class="key-status" id="st-rag-id"></span></label>
-                    <div class="key-row"><input type="text" id="key-rag-id" placeholder="9262z3h3py...">
-                        <button class="key-save" onclick="saveKey('rag-id')">保存</button>
-                    </div>
-                    <div class="key-hint">在阿里云百炼控制台「知识库」页面获取 App ID</div>
-                </div>
-                <div class="key-section">
-                    <label>豆包 API Key <span class="key-status" id="st-doubao"></span></label>
-                    <div class="key-row"><input type="password" id="key-doubao" placeholder="sk-xxxx...">
-                        <button class="key-save" onclick="saveKey('doubao')">保存</button>
-                    </div>
-                    <div class="key-hint">用于豆包（火山引擎）模型鉴权</div>
-                </div>
-                <div class="key-section">
-                    <label>豆包 Endpoint ID <span class="key-status" id="st-doubao-ep"></span></label>
-                    <div class="key-row"><input type="text" id="key-doubao-ep" placeholder="ep-xxxxx...">
-                        <button class="key-save" onclick="saveKey('doubao-ep')">保存</button>
-                    </div>
-                    <div class="key-hint">在火山方舟控制台创建接入点后获取 ep-xxxxx</div>
-                </div>
-                <div class="key-section">
-                    <label>百度语音 Client ID <span class="key-status" id="st-baidu-id"></span></label>
-                    <div class="key-row"><input type="password" id="key-baidu-id" placeholder="Client ID">
-                        <button class="key-save" onclick="saveKey('baidu-id')">保存</button>
-                    </div>
-                </div>
-                <div class="key-section">
-                    <label>百度语音 Client Secret <span class="key-status" id="st-baidu-secret"></span></label>
-                    <div class="key-row"><input type="password" id="key-baidu-secret" placeholder="Client Secret">
-                        <button class="key-save" onclick="saveKey('baidu-secret')">保存</button>
-                    </div>
-                    <div class="key-hint">用于语音合成 (TTS) 功能</div>
-                </div>
-            </div>
-            <div class="modal-panel" id="panel-guide">
-                <div class="guide">
-                    <h3>快速开始</h3>
-                    <ol>
-                        <li><strong>配置 API Key</strong> — 在上方 <code>API Key</code> 标签页中填入对应模型的密钥，保存后即可使用该模型。</li>
-                        <li><strong>AI 聊天</strong> — 点击「AI 聊天助手」，创建新对话或选择历史会话，在底部输入框提问。支持 <code>Enter</code>
-                            发送，<code>Shift+Enter</code> 换行。</li>
-                        <li><strong>切换模型</strong> — 在聊天页顶栏的下拉框选择不同模型（需先配置对应 API Key）。</li>
-                        <li><strong>主题切换</strong> — 点击右上角 ☀️/🌙 按钮切换亮色/暗色模式，设置会自动保存。</li>
-                    </ol>
-                    <div class="tip">
-                        <strong>提示：</strong>API Key 仅保存在浏览器本地存储中，不会上传到服务器。切换浏览器或清除数据后需重新配置。
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 

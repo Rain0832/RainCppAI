@@ -49,11 +49,14 @@ json AccountRepository::findById(long long id)
     return {};
 }
 
-json AccountRepository::create(const std::string& username, const std::string& passwordHash, const std::string& email)
+json AccountRepository::create(const std::string& username,
+                               const std::string& passwordHash,
+                               const std::string& email,
+                               const std::string& role)
 {
     storage::MysqlUtil mu;
-    mu.executeUpdate("INSERT INTO accounts (username, password_hash, email) VALUES (?, ?, ?)", username, passwordHash,
-                     email);
+    mu.executeUpdate("INSERT INTO accounts (username, password_hash, email, role) VALUES (?, ?, ?, ?)", username,
+                     passwordHash, email, role);
     return findByUsername(username);
 }
 
