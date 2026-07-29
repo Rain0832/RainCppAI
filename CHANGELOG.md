@@ -545,3 +545,11 @@
 - [web] menu.html / menu.js: admin 角色用户可见「🛡️ 管理后台」入口卡片
 - [web] menu.css: 新增 .card-icon.admin 样式（翠绿色背景）
 - [web] admin/dashboard.html / admin/logs.html: 页脚版本号 v2.5 → v2.6
+
+##### v2.6.8 — 邀请码 is_admin + 前端 API Key 移除
+- [AIServerCore] invite_codes 表新增 is_admin TINYINT(1) 字段，邀请码可控制注册角色
+- [AIServerCore] InviteCodeRepository: findByCode 返回 is_admin
+- [AIServerCore] AccountRepository::create / AuthService::registerWithInviteCode: 新增 role 参数
+- [AIServerCore] ChatRegisterHandler: 根据邀请码 is_admin 注册对应角色，JWT 签名修复为动态 role
+- [web] register.js: 注册成功存储 role 至 sessionStorage
+- [web] AI.html / menu.html / ui.js / menu.js: 移除前端 API Key 设置面板，模型服务统一由服务端管理
