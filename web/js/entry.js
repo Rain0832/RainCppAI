@@ -56,6 +56,7 @@ $('#login-form').onsubmit = e => {
     }).then(d => {
         if (d?.userId) {
             sessionStorage.setItem('userId', d.userId);
+            if (d.role) sessionStorage.setItem('role', d.role);
             showToast('登录成功');
             setTimeout(() => window.location.href = '/chat', 500);
         }

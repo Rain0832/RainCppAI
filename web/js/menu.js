@@ -20,6 +20,21 @@ $('#themeToggle').onclick = () => {
 
 initTheme();
 
+// Admin entry: show only for admin role (SP 5.7)
+if (sessionStorage.getItem('role') === 'admin') {
+    const btn = document.getElementById('admin-btn');
+    if (btn) btn.style.display = '';
+}
+
+// Admin button handler
+const adminBtn = document.getElementById('admin-btn');
+if (adminBtn) {
+    adminBtn.onclick = function(e) {
+        e.stopPropagation();
+        window.location.href = '/admin/dashboard';
+    };
+}
+
 function showToast(msg) {
     const t = $('#toast');
     t.textContent = msg;

@@ -156,6 +156,10 @@ body::before {
     background: rgba(239, 68, 68, 0.08);
 }
 
+.card-icon.admin {
+    background: rgba(16, 185, 129, 0.1);
+}
+
 .card h3 {
     font-size: 16px;
     font-weight: 600;

@@ -88,6 +88,8 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
                 successResp["userId"] = userId;
 
                 std::string role = account.value("role", "user");
+                successResp["role"] = role;
+
                 common::JwtService jwtService;
                 std::string token = jwtService.sign(userId, role);
                 resp->addHeader("Set-Cookie", "jwt=" + token + "; HttpOnly; Path=/; Max-Age=3600; SameSite=Lax");
