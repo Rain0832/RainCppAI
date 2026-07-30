@@ -58,7 +58,8 @@ $('#login-form').onsubmit = e => {
             sessionStorage.setItem('userId', d.userId);
             if (d.role) sessionStorage.setItem('role', d.role);
             showToast('登录成功');
-            setTimeout(() => window.location.href = '/chat', 500);
+            const dest = (d.role === 'admin') ? '/admin/dashboard' : '/chat';
+            setTimeout(() => window.location.href = dest, 500);
         }
     }).catch(e => { if (!['dup', 'auth'].includes(e.message)) showToast('操作失败'); });
 };

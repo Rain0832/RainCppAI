@@ -89,6 +89,7 @@ void ChatLoginHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
 
                 std::string role = account.value("role", "user");
                 successResp["role"] = role;
+                successResp["redirect"] = (role == "admin") ? "/admin/dashboard" : "/menu";
 
                 common::JwtService jwtService;
                 std::string token = jwtService.sign(userId, role);
