@@ -38,9 +38,11 @@ std::string AuthMiddleware::extractJwtFromCookie(const HttpRequest& request)
 
 void AuthMiddleware::before(HttpRequest& request)
 {
-    // Only protect /api/* paths
+    // Protect /api/* and /admin/* paths — both need JWT authentication
     std::string path = request.path();
-    if (path.size() < 4 || path.substr(0, 4) != "/api") return;
+    bool isApi = path.size() >= 4 && path.substr(0, 4) == "/api";
+    bool isAdmin = path.size() >= 6 && path.substr(0, 6) == "/admin";
+    if (!isApi && !isAdmin) return;
     if (isPublicPath(path)) return;
 
     // Extract JWT from cookie
