@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Common/Logging/Logger.h"
+#include "HttpServer/include/utils/FileUtil.h"
 
 static std::string todayStr()
 {
@@ -131,12 +132,12 @@ void AdminLogsHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
 
     // Read template HTML
     std::string templatePath = server_->getResourceRoot() + "web/admin/logs.html";
-    std::ifstream file(templatePath);
-    if (!file.is_open())
+    FileUtil fileOperater(templatePath);
+    if (!fileOperater.isValid())
     {
         SPDLOG_ERROR_TAG("ADMIN") << "Cannot open logs template: " << templatePath;
-        resp->setStatusCode(http::HttpResponse::k404NotFound);
-        resp->setStatusMessage("Not Found");
+        resp->setStatusLine(req.getVersion(), http::HttpResponse::k404NotFound, "Not Found");
+        resp->setCloseConnection(true);
         resp->setContentType("text/plain");
         std::string body = "Logs template not found";
         resp->setContentLength(body.size());
@@ -144,9 +145,9 @@ void AdminLogsHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
         return;
     }
 
-    std::ostringstream ss;
-    ss << file.rdbuf();
-    std::string html = ss.str();
+    std::vector<char> buffer(fileOperater.size());
+    fileOperater.readFile(buffer);
+    std::string html = std::string(buffer.data(), buffer.size());
 
     // Replace placeholders
     size_t pos = html.find("__LOG_INFO__");
@@ -155,8 +156,8 @@ void AdminLogsHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     pos = html.find("__LOG_LINES__");
     if (pos != std::string::npos) html.replace(pos, 14, logHtml);
 
-    resp->setStatusCode(http::HttpResponse::k200Ok);
-    resp->setStatusMessage("OK");
+    resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
+    resp->setCloseConnection(false);
     resp->setContentType("text/html; charset=utf-8");
     resp->setContentLength(html.size());
     resp->setBody(html);
