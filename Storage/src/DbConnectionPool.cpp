@@ -90,22 +90,21 @@ std::shared_ptr<DbConnection> DbConnectionPool::getConnection()
             conn->reconnect();
         }
 
-        return std::shared_ptr<DbConnection>(conn.get(),
-                                             [this, conn](DbConnection*)
+        // 使用自定义删除器：归还连接到池而非 delete
+        // 注意：lambda 按值捕获 conn，确保 DbConnection 对象在归还前不被析构
+        auto connHolder = conn;  // 转移所有权到 lambda
+        return std::shared_ptr<DbConnection>(connHolder.get(),
+                                             [this, connHolder](DbConnection*)
                                              {
                                                  std::lock_guard<std::mutex> lock(mutex_);
-                                                 connections_.push(conn);
+                                                 connections_.push(connHolder);
                                                  cv_.notify_one();
                                              });
     }
     catch (const std::exception& e)
     {
         SPDLOG_ERROR_TAG("DB") << "Failed to get connection: " << e.what();
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            connections_.push(conn);
-            cv_.notify_one();
-        }
+        // 故障连接不放回池中，由 shared_ptr 析构自动释放
         throw;
     }
 }

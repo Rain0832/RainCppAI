@@ -99,30 +99,36 @@ bool DbConnection::isValid()
 
 void DbConnection::reconnect()
 {
+    // 加锁防止多线程同时调用 reconnect() 导致 conn_ 竞态
+    // (checkConnections 线程 + getConnection 使用方可能持有同一对象的 shared_ptr 副本)
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // 先关闭并释放旧连接
+    if (conn_)
+    {
+        try
+        {
+            conn_->close();
+        }
+        catch (...)
+        {
+            // 忽略关闭时的错误
+        }
+        conn_.reset();  // 立即释放，防止 close 后状态残留
+    }
+
     try
     {
-        // 先关闭旧连接（MySQL 8.0.34+ OPT_RECONNECT 已废弃，改用手动 close+connect）
-        if (conn_)
-        {
-            try
-            {
-                conn_->close();
-            }
-            catch (...)
-            {
-                // 忽略关闭时的错误，后续新建连接即可
-            }
-        }
-
         sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
         conn_.reset(driver->connect(host_, user_, password_));
         conn_->setSchema(database_);
-        // 重连后必须重新设置字符集，否则非 ASCII 内容会插入失败
         std::unique_ptr<sql::Statement> stmt(conn_->createStatement());
         stmt->execute("SET NAMES utf8mb4");
     }
     catch (const sql::SQLException& e)
     {
+        // 连接失败时 conn_ 已通过上面 reset() 置空，避免持有无效句柄
+        conn_.reset();
         SPDLOG_ERROR_TAG("DB") << "Reconnect failed: " << e.what();
         throw DbException(e.what());
     }
