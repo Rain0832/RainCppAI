@@ -14,6 +14,7 @@ import {
 let currentSessionId = null;
 let tempSession = false;
 let lastUserQuestion = '';
+let pendingImageBase64 = '';
 const sessions = {};
 
 // ---- 工具函数 ----
@@ -93,13 +94,14 @@ function hideWelcome() {
 
 // ---- 消息渲染 ----
 
-function appendMsg(role, content, modelName, idx) {
+function appendMsg(role, content, modelName, idx, imageBase64) {
     hideWelcome();
     const d = document.createElement('div');
     d.className = 'msg ' + role;
     if (typeof idx === 'number') d.dataset.idx = idx;
     const safe = DOMPurify.sanitize(marked.parse(content));
     let html = '';
+    if (role === 'user' && imageBase64) html += `<img src="${imageBase64}" class="chat-bubble-img" alt="uploaded image">`;
     if (role === 'assistant' && modelName) html += `<div class="model-tag">${modelName}</div>`;
     html += `<div class="msg-content"><span>${safe}</span></div>`;
     let actions = '<div class="msg-actions">';
@@ -209,15 +211,72 @@ function bindEvents() {
         $('#themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
     };
 
-    // Avatar 下拉菜单
+    // Avatar — 打开个人中心
     $('#avatarBtn').onclick = e => {
         e.stopPropagation();
-        $('#avatarMenu').classList.toggle('show');
+        openProfile();
     };
-    document.addEventListener('click', () => $('#avatarMenu').classList.remove('show'));
+
+    // 图像识别入口
+    $('#uploadBtn').onclick = () => { window.open('/upload', '_blank'); };
+
+    // 图片附件
+    $('#attachBtn').onclick = () => $('#imageInput').click();
+    $('#imageInput').onchange = () => {
+        const file = $('#imageInput').files[0];
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { showToast('图片不能超过 10MB'); return; }
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            pendingImageBase64 = ev.target.result;
+            $('#imgPreviewThumb').src = ev.target.result;
+            $('#imgPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    };
+    $('#imgClearBtn').onclick = () => {
+        pendingImageBase64 = '';
+        $('#imgPreview').style.display = 'none';
+        $('#imgPreviewThumb').src = '';
+        $('#imageInput').value = '';
+    };
+
+    // 个人中心关闭
+    $('#profileClose').onclick = () => $('#profileModal').style.display = 'none';
+    $('#profileModal').onclick = e => { if (e.target === $('#profileModal')) $('#profileModal').style.display = 'none'; };
 
     // 退出登录
-    $('#ddLogout').onclick = () => logout();
+    $('#profileLogoutBtn').onclick = () => logout();
+
+    // 意见反馈
+    $('#profileFeedbackBtn').onclick = () => {
+        $('#profileModal').style.display = 'none';
+        $('#feedbackModal').style.display = 'flex';
+        $('#feedbackContent').value = '';
+    };
+    $('#feedbackClose').onclick = () => $('#feedbackModal').style.display = 'none';
+    $('#feedbackModal').onclick = e => { if (e.target === $('#feedbackModal')) $('#feedbackModal').style.display = 'none'; };
+
+    $('#feedbackSubmit').onclick = async () => {
+        const content = $('#feedbackContent').value.trim();
+        if (!content) { showToast('请输入反馈内容'); return; }
+        const btn = $('#feedbackSubmit');
+        btn.disabled = true; btn.textContent = '提交中...';
+        try {
+            const resp = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            $('#feedbackModal').style.display = 'none';
+            showToast('感谢你的反馈！');
+        } catch (err) {
+            showToast('提交失败，请稍后重试');
+        } finally {
+            btn.disabled = false; btn.textContent = '提交反馈';
+        }
+    };
 
     // 新建对话
     $('#newChatBtn').onclick = () => {
@@ -261,8 +320,13 @@ function bindEvents() {
         const ragId = getRagId();
         const endpointId = getEndpointId();
         lastUserQuestion = q;
+        const imgB64 = pendingImageBase64;
+        pendingImageBase64 = '';
+        $('#imgPreview').style.display = 'none';
+        $('#imgPreviewThumb').src = '';
+        $('#imageInput').value = '';
 
-        appendMsg('user', q);
+        appendMsg('user', q, '', null, imgB64);
         ta.value = '';
         ta.style.height = 'auto';
         $('#sendBtn').disabled = true;
@@ -270,7 +334,7 @@ function bindEvents() {
 
         try {
             if (tempSession) {
-                const result = await sendWithSSE(q, mt, pv, mn, '', ragId, endpointId, sessions, appendMsg);
+                const result = await sendWithSSE(q, mt, pv, mn, '', ragId, endpointId, sessions, appendMsg, imgB64);
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
                     tempSession = false;
@@ -293,7 +357,7 @@ function bindEvents() {
                     return;
                 }
                 sessions[currentSessionId].messages.push({ role: 'user', content: q });
-                await sendWithSSE(q, mt, pv, mn, currentSessionId, ragId, endpointId, sessions, appendMsg);
+                await sendWithSSE(q, mt, pv, mn, currentSessionId, ragId, endpointId, sessions, appendMsg, imgB64);
             }
         } catch (err) {
             const tk = $('#thinkingMsg');
@@ -302,6 +366,19 @@ function bindEvents() {
         }
         $('#sendBtn').disabled = false;
     };
+}
+
+// ---- 个人中心 ----
+
+function openProfile() {
+    const username = sessionStorage.getItem('username') || '—';
+    const email = sessionStorage.getItem('email') || '—';
+    const role = sessionStorage.getItem('role') || 'user';
+    const roleLabel = { admin: '管理员', user: '普通用户', org: '组织' }[role] || role;
+    document.getElementById('profileUsername').textContent = username;
+    document.getElementById('profileEmail').textContent = email;
+    document.getElementById('profileRole').textContent = roleLabel;
+    document.getElementById('profileModal').style.display = 'flex';
 }
 
 // ---- 模型下拉框 ----

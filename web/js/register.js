@@ -179,6 +179,8 @@
         state.username = username;
         sessionStorage.setItem('userId', d.userId);
         if (d.role) sessionStorage.setItem('role', d.role);
+        if (d.username) sessionStorage.setItem('username', d.username);
+        if (d.email) sessionStorage.setItem('email', d.email);
         goToStep(5);
         setTimeout(() => { window.location.href = "/chat"; }, 2000);
       } else {

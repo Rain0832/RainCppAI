@@ -1,0 +1,49 @@
+# =============================================================================
+# Dr.Rain Systemd Service
+# =============================================================================
+# Install:
+#   sudo cp deploy/raincppai.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now raincppai
+#
+# Manage:
+#   sudo systemctl status raincppai
+#   sudo systemctl restart raincppai
+#   sudo journalctl -u raincppai -f
+# =============================================================================
+
+[Unit]
+Description=Dr.Rain Healthcare AI Platform
+Documentation=https://github.com/Rain0832/RainCppAI
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/raincppai/build
+ExecStart=/opt/raincppai/build/http_server -p 8080
+Restart=on-failure
+RestartSec=5
+
+# Environment
+Environment=LD_LIBRARY_PATH=/usr/local/lib:/usr/local/onnxruntime/lib
+Environment=DB_PASSWORD=
+# Set DB_PASSWORD in /etc/systemd/system/raincppai.service.d/override.conf
+# or use: sudo systemctl set-environment DB_PASSWORD=your_password
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/raincppai/logs /opt/raincppai/build/logs /var/log
+ReadOnlyPaths=/opt/raincppai
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

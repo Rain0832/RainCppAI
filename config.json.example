@@ -43,5 +43,9 @@
   },
   "jwt": {
     "secret": "change-this-to-a-random-secret"
+  },
+  "log": {
+    "level": "info",
+    "path": "logs/app.log"
   }
 }

@@ -207,7 +207,7 @@ export async function fetchSessions(sessions, renderSessions) {
 
 // ---- SSE 流式发送 ----
 
-export async function sendWithSSE(question, modelType, provider, modelName, sessionId, ragId, endpointId, sessions, appendMsg) {
+export async function sendWithSSE(question, modelType, provider, modelName, sessionId, ragId, endpointId, sessions, appendMsg, imageBase64) {
     const tk = document.querySelector('#thinkingMsg');
     if (tk) tk.remove();
 
@@ -223,10 +223,12 @@ export async function sendWithSSE(question, modelType, provider, modelName, sess
     let resolvedSid = sessionId;
 
     try {
+        const body = { question, modelType, provider, sessionId, ragId, endpointId };
+        if (imageBase64) body.image_base64 = imageBase64;
         const response = await fetch('/chat/send-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, modelType, provider, sessionId, ragId, endpointId })
+            body: JSON.stringify(body)
         });
 
         const reader = response.body.getReader();
