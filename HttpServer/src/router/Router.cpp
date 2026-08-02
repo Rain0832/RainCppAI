@@ -1,7 +1,5 @@
 #include "../../include/router/Router.h"
 
-#include <muduo/base/Logging.h>
-
 #include "Logging/Logger.h"
 
 namespace http

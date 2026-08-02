@@ -1,6 +1,5 @@
 #include "../../include/ssl/SslContext.h"
 
-#include <muduo/base/Logging.h>
 #include <openssl/err.h>
 
 #include "Logging/Logger.h"
