@@ -553,3 +553,122 @@
 - [AIServerCore] ChatRegisterHandler: 根据邀请码 is_admin 注册对应角色，JWT 签名修复为动态 role
 - [web] register.js: 注册成功存储 role 至 sessionStorage
 - [web] AI.html / menu.html / ui.js / menu.js: 移除前端 API Key 设置面板，模型服务统一由服务端管理
+
+
+
+## Plan 6 — 工程治理与 Debug
+### v2.7
+> v2.7.0 = Plan 5 最终发布版基线，以下为 Plan 6 增量
+
+##### v2.7.1 — SP 6.1 冗余代码清理
+- [Docs] AIEngine/TECHDOC.md: 移除已废弃的 SimpleAmqpClient 依赖行（v2.2.0 已移除 RabbitMQ）
+
+##### v2.7.2 — SP 6.2 修复 Admin 日志看板
+- [AIServerCore] AdminLogsHandler: 修正日志文件路径 `../logs/app-` → `logs/app_`（匹配 spdlog daily_file_sink 命名规则）
+- [AIServerCore] ChatServer::initialize(): 新增 `std::filesystem::create_directories()` 确保 logs/ 目录存在
+- [Infra] config.json / config.json.example: 新增 `log` 配置节（level + path）
+- [Infra] config.json: 补充缺失的 `jwt` 配置节
+
+##### v2.7.3 — SP 6.3 部署资产与示例配置
+- [Infra] deploy/nginx.conf: Nginx 反向代理配置（SSE proxy_buffering off + gzip + 安全头 + SSL 模板）
+- [Infra] deploy/raincppai.service: Systemd 服务脚本（自动重启 + 环境变量 + 安全加固）
+- [Infra] config.json.example: 补充 `log` 配置节，结构对齐 config.json
+
+##### v2.7.4 — SP 6.4 CI 工作流
+- [Infra] .github/workflows/ci.yml: GitHub Actions CMake 编译检查（push/PR 触发，依赖安装 + muduo + ONNX Runtime + 编译 + 格式检查）
+
+##### v2.7.5 — Hotfix: double free 崩溃 + 安全加固
+- [Storage] DbConnection::reconnect(): 加 `std::lock_guard<mutex>` 防止 checkConnections 线程与 getConnection 并发修改 `conn_` 导致 double free
+- [Storage] DbConnection::reconnect(): close 后立即 `conn_.reset()` 避免持有无效句柄
+- [Storage] DbConnectionPool::getConnection(): 故障连接不再放回池中，由 shared_ptr 析构释放
+- [Security] config.json: 清空 mail.password（原含真实 QQ SMTP 授权码，已泄露至 git 历史，需轮换）
+
+##### v2.7.6 — spdlog 控制台增强 + muduo 日志残留清理
+- [Common] Logger::init(): 控制台 sink pattern 新增 `.%e`（毫秒）和 `[%s:%#]`（文件名:行号），便于排查
+- [HttpServer] CorsMiddleware / Router / SslConnection / SslContext: 移除死 `#include <muduo/base/Logging.h>`（Plan 4 已全量迁移至 SPDLOG，残留 include 无实际调用）
+
+### v2.8
+> v2.8.0 = Plan 6 最终发布版，工程治理与 Debug 完结
+
+##### v2.8.0 — Plan 6 回归验证与发版
+- SP 6.1: 移除 AIEngine/TECHDOC 中废弃 SimpleAmqpClient 依赖行
+- SP 6.2: 修复 Admin 日志看板（路径 + 目录创建 + 日志文件名 `.log` 后缀 + dashboard JS 路由修复）
+- SP 6.3: 部署资产（deploy/nginx.conf SSE 配置 + deploy/raincppai.service Systemd 脚本）
+- SP 6.4: CI 工作流（GitHub Actions CMake build check）
+- Hotfix: double free 竞态修复（DbConnection::reconnect 加锁 + 故障连接不放回池）
+- Hotfix: spdlog 控制台增强（毫秒 + 文件:行号尾注格式）+ muduo/Logging.h 死 include 清理
+- Hotfix: config.json 安全加固（清空邮件授权码）
+
+
+
+## Plan 7 — 开源包装与体验闭环
+### v2.8
+> Plan 6 v2.8.0 基线，以下为 Plan 7 增量
+
+##### v2.8.1 — SP 7.1 系统反馈闭环
+- [AIServerCore] AdminFeedbackHandler: GET /admin/api/feedback JOIN accounts 返回最近 50 条反馈 JSON
+- [web] menu.html / JS: 新增「💬 意见反馈」卡片 + 模态框表单 → POST /api/feedback
+- [web] dashboard.html: Admin 看板新增「📝 用户反馈」Tab（用户名 / 内容 / 时间）
+- [AIServerCore] ChatServer: 注册 GET /admin/api/feedback 路由
+
+##### v2.8.2 — SP 7.2 README 旗舰重构
+- [Docs] README.md 全面重写：标题 → Dr.Rain 智能医疗 AI 助手，新增 CMake Badge
+- [Docs] README.md: 功能表格化、架构图更新、部署分 Ubuntu 24.04 节
+- [Docs] README.md: API 表精简 + 补齐 Admin 路由、项目结构含 deploy/Tests/Docs
+- [Docs] README_EN.md: 同步中文版结构，移除 RabbitMQ/SimpleAmqpClient 过时引用
+
+
+
+## Plan 8 — 发版前代码与体验扫除
+### v2.9 → v3.0
+> v2.9.0 = Plan 7 最终，以下为 Plan 8 增量
+
+##### v2.9.1 — SP 8.1 修复建表 SQL + SP 8.2 图像识别入口
+- [AIServerCore] ChatServer::initDatabase(): createInviteCodes 删除重复的 `failed_attempts` 字段（修复新库建表崩溃）
+- [web] AI.html: topbar 新增 🖼️ 图像识别按钮 → window.open('/upload', '_blank')
+- [web] css/style.css: 新增 .upload-btn 样式
+- [web] js/ui.js: 绑定 uploadBtn 点击事件
+
+##### v2.9.2 — 日志查看器现代化
+- [AIServerCore] AdminLogsHandler: 支持 ?date=YYYY-MM-DD 查询参数，新增 JSON API 模式 (?format=json)
+- [web] admin/logs.html → dark theme 暗色主题（GitHub Dark 风格），日期选择器 + 级别 Tab 过滤（全部/错误/警告/信息/调试 带计数徽章）
+
+##### v2.9.3 — Chat 头像 → 个人中心
+- [AIServerCore] ChatLoginHandler / ChatRegisterHandler: 登录/注册响应新增 `username` + `email` 字段
+- [web] AI.html: 旧 dropdown 菜单替换为个人中心模态框（用户名 / 邮箱 / 角色）+ 反馈入口
+- [web] js/ui.js: 头像点击 → openProfile()，新增 feedback 提交逻辑
+- [web] css/style.css: 新增 .profile-info / .profile-actions / .btn-primary 样式
+- [web] js/entry.js / register.js: 登录/注册成功后存储 username + email 到 sessionStorage
+
+##### v2.9.4 — 统一 Admin UI
+- [AIServerCore] AdminLogsHandler: 拆分 readLastLines() (返回 vector) / readLastLinesHtml() (SSR) 双版本
+- [web] admin/dashboard.html: 日志并入统一 Tab 架构（sidebar 4 tab + 日期选择器 + 级别过滤 + 暗色 log-viewer）
+- [web] admin/dashboard.html: sidebar 版本号 v2.6 → v3.0.0
+
+##### v2.9.5 — 品牌宣导 + 版本号统一
+- [web] entry.html: 登录页新增 Dr.Rain 品牌宣导区（⚕️ 医疗顾问 + 功能标签：症状分析/用药参考/报告解读/隐私保护）
+- [web] css/entry.css: 新增 .hero / .hero-features 样式（亮色/暗色双主题适配）
+- [Docs] README.md / README_EN.md Badge: v2.8.0 → v3.0.0
+- [web] admin/dashboard.html / logs.html: sidebar 版本号统一 v3.0.0
+
+##### v2.9.6 — SP 8.4 移除废弃 menu 路由
+- [AIServerCore] ChatServer: 移除 GET /menu → AIMenuHandler 路由注册及 include
+- [web] 删除 menu.html / js/menu.js / css/menu.css（已被 /chat 沉浸式体验取代）
+
+##### v3.0.0 — Plan 8 最终发布版
+- Plan 6: 工程治理（冗余清理 / 日志修复 / 部署资产 / CI）
+- Plan 7: 反馈闭环 + README 旗舰重构
+- Plan 8: 建表修复 / 图像识别入口 / 个人中心 / Admin UI 统一 / 品牌宣导 / 废弃路由清理
+- 就绪 v3.0.0 内测发布
+
+
+
+## Plan 9 — 开源社区基础设施
+### v3.0
+
+##### v3.0.1 — SP 9.1 Issue/PR 模板 + SP 9.2 CI
+- [Infra] .github/ISSUE_TEMPLATE/bug_report.md: Bug 报告模板（复现步骤 / 环境信息 / 日志）
+- [Infra] .github/ISSUE_TEMPLATE/feature_request.md: 功能请求模板（需求背景 / 期望方案）
+- [Infra] .github/pull_request_template.md: PR 检查单（编译 / 格式化 / 规范 / TECHDOC）
+- [Infra] .github/workflows/ci.yml: GitHub Actions 编译检查（ubuntu-24.04, push/PR 触发）
+

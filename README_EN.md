@@ -1,131 +1,165 @@
-# RainCppAI
+# Dr.Rain — Healthcare AI Assistant
 
 English | **[中文](README.md)**
 
-> A production-grade C++ AI application platform built on a self-developed HTTP framework, supporting multi-model LLM chat, RAG knowledge base, MCP tool calling, SSE streaming, image recognition, and speech synthesis.
+> A production-grade C++ healthcare AI platform. Multi-model LLM · SSE streaming · MCP tools · Admin dashboard · RBAC.
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![License](https://img.shields.io/badge/License-Apache2.0-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.3-orange.svg)](CHANGELOG.md)
+[![CMake](https://img.shields.io/badge/CMake-%E2%89%A5%203.16-blue.svg)](https://cmake.org/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-v3.0.0-orange.svg)](CHANGELOG.md)
 
 ---
 
 ## ✨ Features
 
-- **Multi-Model LLM** — Strategy + Factory pattern, hot-swap between Aliyun Qwen, Doubao, RAG, and MCP models
-- **SSE Streaming** — curl `WRITEFUNCTION` callback pushes tokens in real-time; frontend renders instantly
-- **Standard MCP Server** — JSON-RPC 2.0 implementing `tools/list` + `tools/call`; compatible with Claude Desktop / Cursor
-- **RAG Knowledge Base** — Aliyun Bailian knowledge base integration with citation-based answers
-- **Image Recognition** — ONNX Runtime + MobileNetV2 on-device inference via OpenCV
-- **Speech Synthesis / ASR** — Baidu TTS with token caching and fast polling
-- **Async Architecture** — AI API calls offloaded to a dedicated thread pool (8 threads), IO threads never blocked
-- **Thread-Safe Session Store** — `shared_mutex` read-write lock + LRU eviction (MAX 500 sessions) + `atomic` CAS serialization
-- **Async DB Writes** — RabbitMQ decouples chat persistence from the request path
-- **Self-Developed HTTP Framework** — Reactor model (muduo), state-machine HTTP parser, middleware chain, regex router, session manager, SSL/TLS
+| Module | Capability |
+|---|---|
+| **Multi-Model LLM** | Aliyun Qwen / Doubao via Strategy + Factory pattern, native Function Calling |
+| **SSE Streaming** | curl `WRITEFUNCTION` token-by-token push, real-time frontend rendering |
+| **MCP Tools** | JSON-RPC 2.0 `tools/list` + `tools/call`, stdio/sse remote servers |
+| **Admin Dashboard** | RBAC + real-time SSR/SSE stats + user management + logs + feedback |
+| **Security** | JWT HS256 + argon2id + login lockout + CSP/HSTS + Token Bucket rate limiting |
+| **Structured Logging** | spdlog dual-sink (colored console + JSON file), request_id tracing |
+| **Healthcare Persona** | Dr.Rain System Prompt injection + medical disclaimer |
+| **Image Recognition** | ONNX Runtime + MobileNetV2 on-device inference |
+| **Speech Synthesis** | Baidu TTS with token caching and fast polling |
 
 ---
 
 ## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   Client (Browser / curl)                    │
-└────────────────────────────┬────────────────────────────────┘
-                             │ HTTP / HTTPS
-┌────────────────────────────▼────────────────────────────────┐
-│  ① Network     muduo TcpServer — Reactor, epoll, 4 threads  │
-├─────────────────────────────────────────────────────────────┤
-│  ② Protocol    HttpContext state machine                     │
-├─────────────────────────────────────────────────────────────┤
-│  ③ Middleware  MiddlewareChain (CORS, ...)                   │
-├─────────────────────────────────────────────────────────────┤
-│  ④ Router      unordered_map O(1) + regex O(n)              │
-├─────────────────────────────────────────────────────────────┤
-│  ⑤ Business    ChatServer (15 Handlers)                     │
-│    ├── AIHelper ──► ThreadPool(8) ──► LLM API (curl)        │
-│    │   ├── AIStrategy (Qwen / Doubao / RAG / MCP)           │
-│    │   ├── McpServer (JSON-RPC 2.0 standard MCP)            │
-│    │   └── MQManager ──► RabbitMQ ──► MySQL                 │
-│    ├── ImageRecognizer (ONNX Runtime + OpenCV)               │
-│    └── AISpeechProcessor (Baidu TTS/ASR)                     │
-└─────────────────────────────────────────────────────────────┘
-        │ async write          │ sync read
-   ┌────▼─────┐          ┌─────▼────┐
-   │ RabbitMQ │          │  MySQL   │
-   └──────────┘          └──────────┘
+Browser / Admin / MCP Client
+        │  HTTP / SSE / JSON-RPC
+┌───────▼──────────┐
+│  HttpServer       │  muduo Reactor, epoll, 4 IO threads
+│  ├─ Middleware    │  CORS, Auth (JWT), Admin RBAC, Security, RateLimit, RequestId
+│  ├─ Router        │  Exact O(1) + Regex O(n)
+│  └─ Session       │  In-memory + LRU (MAX 500)
+├──────────────────┤
+│  AIServerCore     │  Business orchestration (Controller → Service → Repository)
+├──────────────────┤
+│  AIEngine         │  AI library (libaiengine.a, zero HTTP dependency)
+│  ├─ llm/          │  AIHelper · AIStrategy · AIFactory
+│  ├─ mcp/          │  AIToolRegistry · McpClientManager (stdio/sse)
+│  └─ audio/vision/ │  AISpeechProcessor · ImageRecognizer
+├──────────────────┤
+│  Storage          │  Persistence (libstorage.a, Prepared Statement)
+├──────────────────┤
+│  Common/          │  ConfigManager, Logger(spdlog), JwtService, TokenBucket, PasswordHash ...
+└──────────────────┘
+        │
+   ┌────▼────┐
+   │  MySQL  │
+   └─────────┘
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Local Deployment
 
 ### Prerequisites
 
-| Dependency | Version | Notes |
-|-----------|---------|-------|
-| GCC | ≥ 12 | C++17 required |
-| CMake | ≥ 3.16 | |
-| muduo | latest | Build from source |
-| OpenSSL | ≥ 1.1 | |
-| libcurl | ≥ 7.x | |
-| OpenCV | ≥ 4.x | |
-| ONNX Runtime | 1.17.1 | Pre-built binary |
-| MySQL C++ Connector | 8.0 | JDBC header path `/usr/local/include/jdbc` |
-| SimpleAmqpClient | latest | rabbitmq-c dependency |
-| nlohmann/json | 3.11+ | Header-only |
+| Dependency | Purpose |
+|-----------|---------|
+| GCC ≥ 12, CMake ≥ 3.16 | C++17 |
+| muduo, OpenSSL, libcurl | Networking + HTTPS |
+| spdlog ≥ 1.12 | Logging |
+| MySQL C++ Connector 8.0 | Database |
+| libsodium ≥ 1.0.18 | argon2id hashing |
+| OpenCV ≥ 4.x, ONNX Runtime 1.17.1 | Image recognition |
 
-### Linux (TencentOS / Ubuntu / CentOS)
+### Build
 
 ```bash
-# 1. Clone
 git clone git@github.com:Rain0832/RainCppAI.git && cd RainCppAI
 
-# 2. Install system dependencies
-sudo yum install -y cmake make openssl-devel libcurl-devel mysql-devel opencv-devel boost-devel git
+# 1. System dependencies (Ubuntu 24.04)
+sudo apt-get install -y cmake g++ make libcurl4-openssl-dev libssl-dev \
+    libspdlog-dev libopencv-dev libmysqlcppconn-dev libmysqlclient-dev \
+    libsodium-dev nlohmann-json3-dev clang-format
 
-# Install muduo
-git clone https://github.com/chenshuo/muduo.git /tmp/muduo
+# 2. Build muduo
+git clone --depth=1 https://github.com/chenshuo/muduo.git /tmp/muduo
 cd /tmp/muduo && mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DMUDUO_BUILD_EXAMPLES=OFF
 make -j$(nproc) && sudo make install
 
-# Install ONNX Runtime
-curl -L https://github.com/microsoft/onnxruntime/releases/download/v1.17.1/onnxruntime-linux-x64-1.17.1.tgz | tar xz -C /tmp
+# 3. ONNX Runtime
+curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v1.17.1/onnxruntime-linux-x64-1.17.1.tgz | tar xz -C /tmp
 sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/include/* /usr/local/include/
 sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/lib/* /usr/local/lib/
-
-# Install MySQL C++ Connector
-curl -L https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-8.0.33-linux-glibc2.28-x86-64bit.tar.gz | tar xz -C /tmp
-sudo cp -r /tmp/mysql-connector-c++-8.0.33-*/include/* /usr/local/include/
-sudo cp -r /tmp/mysql-connector-c++-8.0.33-*/lib64/* /usr/local/lib64/
-
-# Install nlohmann/json
-sudo mkdir -p /usr/local/include/nlohmann
-sudo curl -sL https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp -o /usr/local/include/nlohmann/json.hpp
-
 sudo ldconfig
 
-# 3. Set up MySQL
-mysqladmin -u root --port=3307 create ChatHttpServer
-# Execute schema SQL (see Database Schema section in Chinese README)
+# 4. Configure
+cp config.json.example config.json
+# Edit config.json with your DB password, JWT secret, etc.
 
-# 4. Start RabbitMQ
-sudo rabbitmq-server -detached
+# 5. Create database (tables auto-created on first startup)
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS ChatHttpServer"
 
-# 5. Configure API Keys (via browser UI after startup, or env vars)
-export DASHSCOPE_API_KEY=sk-xxxx
-export DOUBAO_API_KEY=xxxx
-
-# 6. Build
-mkdir -p build && cd build
-cmake .. && make -j$(nproc)
-
-# 7. Run
-export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
+# 6. Build & Run
+mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)
 ./http_server -p 8088
 ```
 
 Open `http://localhost:8088` in your browser.
+
+> **SSE reverse proxy**: Nginx requires `proxy_buffering off;`, see [`deploy/nginx.conf`](deploy/nginx.conf).
+> **Systemd service**: See [`deploy/raincppai.service`](deploy/raincppai.service).
+
+---
+
+## 📚 API Overview
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/login` | ✗ | Login, returns JWT cookie |
+| `POST` | `/register` | ✗ | Register (invite code + email verify) |
+| `POST` | `/chat/send-stream` | ✓ | SSE chat (sole entry point) |
+| `GET` | `/chat/sessions` | ✓ | Session list |
+| `POST` | `/chat/history` | ✓ | Chat history |
+| `POST` | `/api/feedback` | ✓ | Submit feedback |
+| `POST` | `/mcp` | ✗ | MCP JSON-RPC 2.0 |
+| `GET` | `/admin/dashboard` | admin | Admin dashboard |
+| `GET` | `/admin/logs` | admin | Log viewer |
+| `GET` | `/admin/api/users` | admin | User list |
+| `GET` | `/admin/api/feedback` | admin | Feedback list |
+
+---
+
+## 📁 Project Structure
+
+```
+RainCppAI/
+├── HttpServer/           # Self-developed HTTP framework (libhttpserver.a)
+├── Storage/              # Persistence layer (libstorage.a)
+├── AIServerCore/         # Business orchestration (controllers/services/repositories)
+├── AIEngine/             # AI library (libaiengine.a, zero HTTP deps)
+├── Common/               # Shared components (Config, Logging, Auth, Crypto, Mail...)
+├── web/                  # Frontend (SSR templates + vanilla HTML/JS/CSS)
+├── deploy/               # Deployment configs (nginx, systemd)
+├── Docs/                 # Design documents (Plans)
+├── Tests/                # GoogleTest unit tests
+└── mcp_servers/          # Python MCP microservices
+```
+
+---
+
+## 🤝 Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for module dependency rules, commit conventions, and development workflow.
+Coding style: [`DEVELOP_STANDARD.md`](DEVELOP_STANDARD.md).
+
+---
+
+## 📖 References
+
+- [muduo — Linux Multithreaded Server Programming](https://github.com/chenshuo/muduo)
+- [spdlog — Fast C++ logging](https://github.com/gabime/spdlog)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Alibaba Bailian API](https://help.aliyun.com/product/610100.html)
 
 ---
 

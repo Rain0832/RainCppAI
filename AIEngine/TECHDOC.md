@@ -94,7 +94,6 @@ LLM → tool_calls
 | OpenSSL | HTTPS |
 | ONNX Runtime | Image recognition inference |
 | OpenCV | Image preprocessing |
-| SimpleAmqpClient | RabbitMQ client |
 | nlohmann/json | JSON (via JsonUtil.h) |
 | POSIX | pipe, fork, dup2, execvp, waitpid (stdio transport) |
 
