@@ -10,8 +10,8 @@ void Logger::init(const std::string& log_level, const std::string& log_path)
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     auto file_sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(log_path, 0, 0, false, 7);
 
-    // Console: colored human-readable
-    console_sink->set_pattern("%Y-%m-%d %H:%M:%S %^%l%$ %v");
+    // Console: colored human-readable, file:line as trailing annotation
+    console_sink->set_pattern("%Y-%m-%d %H:%M:%S.%e %^%l%$ %v [%s:%#]");
     console_sink->set_level(spdlog::level::trace);
 
     // File: raw (JSON already formatted by LogStream)

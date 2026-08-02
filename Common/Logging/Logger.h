@@ -20,8 +20,8 @@ class Logger
 public:
     /// Must be called once at server startup.
     /// @param log_level  "trace","debug","info","warn","error"
-    /// @param log_path   Base path for log file (e.g. "logs/app")
-    static void init(const std::string& log_level = "info", const std::string& log_path = "logs/app");
+    /// @param log_path   Base path for log file (e.g. "logs/app.log")
+    static void init(const std::string& log_level = "info", const std::string& log_path = "logs/app.log");
 
     /// Get the spdlog logger instance (named "rain").
     static std::shared_ptr<spdlog::logger> instance();
