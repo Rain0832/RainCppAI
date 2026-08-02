@@ -221,6 +221,99 @@ body {
     color: #fff;
 }
 
+.upload-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+}
+
+.upload-btn:hover {
+    border-color: #e91e63;
+    background: rgba(233,30,99,.08);
+}
+
+/* ── Attach button ── */
+.attach-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+    flex-shrink: 0;
+}
+
+.attach-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+/* ── Image preview ── */
+.img-preview {
+    position: relative;
+    display: inline-block;
+    max-width: 120px;
+}
+
+.img-preview img {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    display: block;
+}
+
+.img-clear-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--sidebar);
+    color: var(--text2);
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.img-clear-btn:hover {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+}
+
+/* ── Chat bubble image ── */
+.chat-bubble-img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    display: block;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,.1);
+}
+
+.chat-bubble-img:hover {
+    opacity: .9;
+}
+
 /* ── Dropdown Menu ── */
 .dropdown-menu {
     display: none;
@@ -720,4 +813,94 @@ body {
 .toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+}
+
+/* ── Profile Modal ── */
+.profile-info {
+    margin-bottom: 20px;
+}
+
+.profile-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+}
+
+.profile-label {
+    color: var(--text2);
+    font-weight: 500;
+}
+
+.profile-value {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.profile-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.profile-actions .btn {
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+    transition: all .2s;
+}
+
+.profile-actions .btn:hover {
+    border-color: var(--accent);
+}
+
+.profile-actions .btn-danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.profile-actions .btn-danger:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+#feedbackContent {
+    width: 100%;
+    min-height: 140px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+}
+
+#feedbackContent:focus {
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
 }

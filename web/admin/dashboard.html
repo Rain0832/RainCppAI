@@ -77,6 +77,27 @@ tbody tr:hover { background: #f8f9ff; }
 .toast.success { background: #4caf50; }
 .toast.error { background: #f44336; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ── Log Viewer ── */
+.log-tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+.ltab { padding: 6px 14px; font-size: 12px; color: #888; cursor: pointer; border-radius: 6px 6px 0 0; transition: .15s; user-select: none; display: flex; align-items: center; gap: 5px; }
+.ltab:hover { color: #555; background: #f8f9fb; }
+.ltab.active { color: #2196f3; font-weight: 600; background: #e3f2fd; }
+.ltab b { font-weight: 600; color: inherit; opacity: .6; }
+.ltab.active b { opacity: 1; }
+.ltab.ltab-error.active { color: #f44336; background: #ffebee; }
+.ltab.ltab-warn.active { color: #ff9800; background: #fff3e0; }
+.ltab.ltab-debug.active { color: #78909c; background: #eceff1; }
+.log-viewer { background: #1e1e2e; border-radius: 8px; padding: 16px 20px; font-family: 'SF Mono','Consolas','Cascadia Code',monospace; font-size: 12.5px; line-height: 1.65; max-height: calc(100vh - 280px); overflow-y: auto; color: #c9d1d9; }
+.log-line { padding: 1px 0; white-space: pre-wrap; word-break: break-all; }
+.log-line.hidden { display: none; }
+.log-line.log-error { color: #f85149 !important; background: rgba(248,81,73,.06); }
+.log-line.log-warn { color: #d29922 !important; background: rgba(210,153,34,.04); }
+.log-line.log-debug { color: #8b949e !important; }
+.log-line.log-info { color: #7ee787 !important; }
+.log-viewer::-webkit-scrollbar { width: 6px; }
+.log-viewer::-webkit-scrollbar-track { background: #2a2a3e; border-radius: 3px; }
+.log-viewer::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -88,10 +109,11 @@ tbody tr:hover { background: #f8f9ff; }
   <nav>
     <a href="#" class="active" data-page="dashboard"><span class="icon">📊</span>实时看板</a>
     <a href="#" data-page="users"><span class="icon">👥</span>用户管理</a>
-    <a href="/admin/logs"><span class="icon">📋</span>日志查看</a>
+    <a href="#" data-page="feedback"><span class="icon">📝</span>用户反馈</a>
+    <a href="#" data-page="logs"><span class="icon">📋</span>日志查看</a>
   </nav>
   <div class="side-footer">
-    Dr.Rain <span class="ver">v2.6</span> — Admin Panel
+    Dr.Rain <span class="ver">v3.0.0</span> — Admin Panel
   </div>
 </aside>
 
@@ -128,11 +150,46 @@ tbody tr:hover { background: #f8f9ff; }
       </table>
     </div>
   </div>
+
+  <!-- ═══ 用户反馈 ═══ -->
+  <div class="page" id="page-feedback">
+    <h2><span class="dot"></span>用户反馈</h2>
+    <div class="section">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>用户</th><th>反馈内容</th><th>提交时间</th></tr>
+        </thead>
+        <tbody id="feedbackTbody">
+          <tr><td colspan="4" class="loading">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ 日志查看 ═══ -->
+  <div class="page" id="page-logs">
+    <h2><span class="dot"></span>日志查看器</h2>
+    <div class="section">
+      <div class="toolbar">
+        <input type="date" id="logDatePicker" onchange="loadLogs(this.value)">
+        <button class="btn btn-ok" onclick="loadLogs()">🔄 刷新</button>
+        <span class="count" id="logFileInfo"></span>
+      </div>
+      <div class="log-tabs">
+        <span class="ltab active" data-lvl="all" onclick="filterLogLines('all',this)">全部 <b id="lc-all">0</b></span>
+        <span class="ltab ltab-error" data-lvl="error" onclick="filterLogLines('error',this)">🔴 错误 <b id="lc-error">0</b></span>
+        <span class="ltab ltab-warn" data-lvl="warn" onclick="filterLogLines('warn',this)">🟠 警告 <b id="lc-warn">0</b></span>
+        <span class="ltab ltab-info" data-lvl="info" onclick="filterLogLines('info',this)">🟢 信息 <b id="lc-info">0</b></span>
+        <span class="ltab ltab-debug" data-lvl="debug" onclick="filterLogLines('debug',this)">⚪ 调试 <b id="lc-debug">0</b></span>
+      </div>
+      <div class="log-viewer" id="logViewer"><span class="loading">点击刷新加载日志...</span></div>
+    </div>
+  </div>
 </main>
 
 <script>
 // ═══ Tab 切换 ═══
-document.querySelectorAll('.sidebar nav a').forEach(a => {
+document.querySelectorAll('.sidebar nav a[data-page]').forEach(a => {
   a.addEventListener('click', function(e) {
     e.preventDefault();
     document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
@@ -141,6 +198,8 @@ document.querySelectorAll('.sidebar nav a').forEach(a => {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
     if (page === 'users') loadUsers();
+    if (page === 'feedback') loadFeedback();
+    if (page === 'logs') loadLogs();
   });
 });
 
@@ -262,6 +321,78 @@ function showToast(msg, type) {
 
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fmtDate(s) { if (!s) return '—'; return s.replace('T', ' ').substring(0, 19); }
+
+// ═══ 用户反馈 ═══
+async function loadFeedback() {
+  try {
+    const resp = await fetch('/admin/api/feedback');
+    const data = await resp.json();
+    if (data.success && data.data && data.data.feedback) {
+      const items = data.data.feedback;
+      const tbody = document.getElementById('feedbackTbody');
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">暂无反馈</td></tr>';
+        return;
+      }
+      tbody.innerHTML = items.map(function(f) {
+        return '<tr>' +
+          '<td>' + f.id + '</td>' +
+          '<td><strong>' + esc(f.username || '匿名') + '</strong></td>' +
+          '<td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.content) + '</td>' +
+          '<td>' + fmtDate(f.created_at) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch (err) {
+    document.getElementById('feedbackTbody').innerHTML = '<tr><td colspan="4" class="loading">加载失败</td></tr>';
+  }
+}
+
+// ═══ 日志查看 ═══
+let logLines = [];
+
+async function loadLogs(date) {
+  const dt = date || document.getElementById('logDatePicker').value || new Date().toISOString().slice(0,10);
+  document.getElementById('logDatePicker').value = dt;
+  document.getElementById('logViewer').innerHTML = '<span class="loading">加载中...</span>';
+  try {
+    const resp = await fetch('/admin/logs?format=json&date=' + dt);
+    const data = await resp.json();
+    if (data.success && data.data && data.data.lines) {
+      logLines = data.data.lines;
+      document.getElementById('logFileInfo').textContent = data.data.path || '';
+      renderLogLines('all');
+    } else {
+      document.getElementById('logViewer').innerHTML = '<span class="loading">暂无日志</span>';
+      document.getElementById('logFileInfo').textContent = '';
+    }
+  } catch (err) {
+    document.getElementById('logViewer').innerHTML = '<span class="loading">加载失败: ' + err.message + '</span>';
+  }
+}
+
+function renderLogLines(level) {
+  const el = document.getElementById('logViewer');
+  let html = '';
+  var c = {all:0, error:0, warn:0, info:0, debug:0};
+  for (const l of logLines) {
+    c.all++; c[l.level]++;
+    const show = level === 'all' || l.level === level;
+    const cls = 'log-line log-' + l.level + (show ? '' : ' hidden');
+    html += '<div class="' + cls + '">' + esc(l.text) + '</div>';
+  }
+  el.innerHTML = html || '<span class="loading">暂无内容</span>';
+  ['all','error','warn','info','debug'].forEach(function(k) { document.getElementById('lc-'+k).textContent = c[k]; });
+}
+
+function filterLogLines(level, tab) {
+  document.querySelectorAll('.ltab').forEach(function(t) { t.classList.remove('active'); });
+  tab.classList.add('active');
+  renderLogLines(level);
+}
+
+// Init date picker to today
+document.getElementById('logDatePicker').value = new Date().toISOString().slice(0,10);
 </script>
 </body>
 </html>

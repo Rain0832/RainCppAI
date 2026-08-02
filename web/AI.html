@@ -14,9 +14,29 @@
 <body>
     <div class="toast" id="toast"></div>
 
-    <!-- Avatar Dropdown Menu -->
-    <div class="dropdown-menu" id="avatarMenu">
-        <div class="dropdown-item danger" id="ddLogout">🚪 退出登录</div>
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="profileModal" style="display:none">
+        <div class="modal">
+            <div class="modal-header"><h2>👤 个人中心</h2><button class="modal-close" id="profileClose">✕</button></div>
+            <div class="profile-info">
+                <div class="profile-row"><span class="profile-label">用户名</span><span class="profile-value" id="profileUsername">—</span></div>
+                <div class="profile-row"><span class="profile-label">邮箱</span><span class="profile-value" id="profileEmail">—</span></div>
+                <div class="profile-row"><span class="profile-label">角色</span><span class="profile-value" id="profileRole">—</span></div>
+            </div>
+            <div class="profile-actions">
+                <button class="btn" id="profileFeedbackBtn">💬 意见反馈</button>
+                <button class="btn btn-danger" id="profileLogoutBtn">🚪 退出登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div class="modal-overlay" id="feedbackModal" style="display:none">
+        <div class="modal">
+            <div class="modal-header"><h2>💬 意见反馈</h2><button class="modal-close" id="feedbackClose">✕</button></div>
+            <textarea id="feedbackContent" maxlength="2000" placeholder="请描述你的建议或遇到的问题..."></textarea>
+            <div style="text-align:right;margin-top:12px"><button class="btn btn-primary" id="feedbackSubmit">提交反馈</button></div>
+        </div>
     </div>
 
     <div class="sidebar">
@@ -30,6 +50,7 @@
         <div class="topbar">
             <h2 class="brand">Dr.Rain</h2>
             <div class="topbar-right">
+                <button class="upload-btn" id="uploadBtn" title="图像识别">🖼️</button>
                 <button class="theme-btn" id="themeToggle">☀️</button>
                 <button class="avatar-btn" id="avatarBtn">👤</button>
             </div>
@@ -45,7 +66,14 @@
                 <select id="modelType">
                 </select>
             </div>
+            <!-- Image preview -->
+            <div class="img-preview" id="imgPreview" style="display:none">
+                <img id="imgPreviewThumb" src="" alt="预览">
+                <button type="button" class="img-clear-btn" id="imgClearBtn">✕</button>
+            </div>
             <div class="input-bottom-row">
+                <input type="file" id="imageInput" accept="image/*" style="display:none">
+                <button type="button" class="attach-btn" id="attachBtn" title="上传图片">📎</button>
                 <textarea id="question" placeholder="输入消息..." rows="1"></textarea>
                 <button type="submit" class="send-btn" id="sendBtn">发送</button>
             </div>

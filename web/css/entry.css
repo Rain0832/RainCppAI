@@ -122,6 +122,55 @@ body::after {
     margin-top: 8px;
 }
 
+/* ── Hero (branding copy) ── */
+.hero {
+    text-align: center;
+    margin-bottom: 28px;
+    padding: 0 4px;
+}
+
+.hero .hero-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.hero h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.hero p {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 14px;
+}
+
+.hero-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.hero-features span {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(99, 102, 241, 0.06);
+    color: var(--accent);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    transition: all .2s;
+}
+
+[data-theme="dark"] .hero-features span {
+    background: rgba(129, 140, 248, 0.08);
+    border-color: rgba(129, 140, 248, 0.15);
+}
+
 .card {
     background: var(--card);
     border: 1px solid var(--border);
