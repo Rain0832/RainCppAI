@@ -125,6 +125,8 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
         successResp["message"] = "Register successful";
         successResp["userId"] = userId;
         successResp["role"] = role;
+        successResp["username"] = username;
+        successResp["email"] = email;
         std::string successBody = successResp.dump();
         resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
         resp->setCloseConnection(false);

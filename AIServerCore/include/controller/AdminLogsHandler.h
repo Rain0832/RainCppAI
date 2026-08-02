@@ -14,8 +14,9 @@ private:
     void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 
     std::string htmlEscape(const std::string& s);
-    std::string levelColor(const std::string& line);
-    std::string readLastLines(const std::string& path, int maxLines);
+    std::string levelClass(const std::string& line);
+    std::string readLastLinesHtml(const std::string& path, int maxLines);
+    std::vector<std::string> readLastLines(const std::string& path, int maxLines);
 
     ChatServer* server_;
 };

@@ -2,12 +2,14 @@
 
 #include "server/ChatServer.h"
 
+#include <filesystem>
+
 #include "Common/Config/ConfigManager.h"
 #include "Common/Logging/Logger.h"
-#include "controller/AIMenuHandler.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/AdminDashboardHandler.h"
+#include "controller/AdminFeedbackHandler.h"
 #include "controller/AdminLogsHandler.h"
 #include "controller/AdminSseHandler.h"
 #include "controller/AdminToggleUserHandler.h"
@@ -56,7 +58,15 @@ void ChatServer::initialize()
     // 初始化MySQL数据库连接池
     auto& cfg = common::ConfigManager::instance();
     cfg.load("../config.json");
-    common::Logger::init(cfg.get("log.level", "info"), cfg.get("log.path", "logs/app"));
+    common::Logger::init(cfg.get("log.level", "info"), cfg.get("log.path", "logs/app.log"));
+
+    // Ensure logs/ directory exists (spdlog daily_file_sink does not auto-create)
+    std::filesystem::path logDir = std::filesystem::path(cfg.get("log.path", "logs/app.log")).parent_path();
+    if (!logDir.empty() && !std::filesystem::exists(logDir))
+    {
+        std::filesystem::create_directories(logDir);
+    }
+
     std::string dbConn = cfg.get("db.host", "127.0.0.1") + ":" + std::to_string(cfg.getInt("db.port", 3307));
     storage::MysqlUtil::init(dbConn, cfg.get("db.user", "chat"), cfg.get("db.password", ""),
                              cfg.get("db.name", "ChatHttpServer"), cfg.getInt("db.pool_size", 5));
@@ -139,9 +149,6 @@ void ChatServer::initDatabase()
             expires_at DATETIME(3) DEFAULT NULL,
             is_disabled TINYINT(1) NOT NULL DEFAULT 0,
             is_admin TINYINT(1) NOT NULL DEFAULT 0,
-            failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
-            failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
-            locked_until DATETIME NULL DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
             UNIQUE KEY uk_code (code),
             INDEX idx_created_by (created_by),
@@ -337,7 +344,6 @@ void ChatServer::initializeRouter()
     httpServer_.Post("/chat/delete-session", std::make_shared<ChatDeleteSessionHandler>(this));
 
     // AI功能路由
-    httpServer_.Get("/menu", std::make_shared<AIMenuHandler>(this));
     httpServer_.Get("/upload", std::make_shared<AIUploadHandler>(this));
     httpServer_.Post("/upload/send", std::make_shared<AIUploadSendHandler>(this));
 
@@ -364,6 +370,7 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/admin/sse", std::make_shared<AdminSseHandler>(this));
     httpServer_.Get("/admin/api/users", std::make_shared<AdminUsersHandler>(this));
     httpServer_.Post("/admin/api/users/toggle", std::make_shared<AdminToggleUserHandler>(this));
+    httpServer_.Get("/admin/api/feedback", std::make_shared<AdminFeedbackHandler>(this));
 }
 
 void ChatServer::initializeSession()
