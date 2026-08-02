@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <muduo/base/Logging.h>
 #include <sstream>
 
 #include "Logging/Logger.h"
