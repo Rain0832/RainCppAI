@@ -5,7 +5,7 @@
 
 import {
     getModelId, getModelName, getApiKey, getRagId, getEndpointId,
-    showToast, summarizeTitle, playTTS, logout,
+    showToast, summarizeTitle, logout,
     fetchHistory, fetchSessions, fetchModels, sendWithSSE, fetchApiKeysFromDb, deleteSession
 } from './api.js';
 
@@ -23,7 +23,7 @@ function $(s) { return document.querySelector(s); }
 
 // ---- 暴露到 window 供 onclick 属性使用 ----
 
-window.__playTTS = playTTS;
+window.__playTTS = () => showToast('该功能暂未开放！敬请期待！');
 window.__deleteMsg = deleteMsg;
 window.__regenerate = regenerate;
 
