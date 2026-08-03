@@ -54,8 +54,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
                     auto& vec = server_->getSessionIdsMap()[userId];
-                    if (std::find(vec.begin(), vec.end(), sessionId) == vec.end())
-                        vec.push_back(sessionId);
+                    if (std::find(vec.begin(), vec.end(), sessionId) == vec.end()) vec.push_back(sessionId);
                 }
             }
             AIHelperPtr = userSessions[sessionId];
@@ -66,7 +65,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
 
         if (!sessionId.empty())
             SPDLOG_INFO_TAG("DB") << "ChatHistory: userId=" << userId << " sessionId=" << sessionId
-                                   << " memMsgs=" << messages.size();
+                                  << " memMsgs=" << messages.size();
 
         // Fix A3: 内存为空时 fallback 到 MySQL
         if (messages.empty())

@@ -29,12 +29,10 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         {
             std::shared_lock<std::shared_mutex> lock(server_->getSessionIdsMutex());
             auto it = server_->getSessionIdsMap().find(userId);
-            if (it != server_->getSessionIdsMap().end())
-                memSessions = it->second;
+            if (it != server_->getSessionIdsMap().end()) memSessions = it->second;
         }
 
-        SPDLOG_INFO_TAG("DB") << "ChatSessions: userId=" << userId
-                              << " memSize=" << memSessions.size();
+        SPDLOG_INFO_TAG("DB") << "ChatSessions: userId=" << userId << " memSize=" << memSessions.size();
 
         // 查 DB 获取 title + 完整 session id 列表
         std::unordered_map<std::string, std::string> titleMap;
@@ -70,8 +68,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         {
             allSids = memSessions;
             for (auto& dbSid : dbSessions)
-                if (std::find(allSids.begin(), allSids.end(), dbSid) == allSids.end())
-                    allSids.push_back(dbSid);
+                if (std::find(allSids.begin(), allSids.end(), dbSid) == allSids.end()) allSids.push_back(dbSid);
         }
 
         // title 为空时用首条用户消息 fallback
