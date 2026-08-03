@@ -3,18 +3,22 @@
 #include "server/ChatServer.h"
 
 #include <filesystem>
+#include <random>
 
 #include "Common/Config/ConfigManager.h"
+#include "Common/Crypto/PasswordHash.h"
 #include "Common/Logging/Logger.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/AdminDashboardHandler.h"
 #include "controller/AdminFeedbackHandler.h"
+#include "controller/AdminInviteCodesHandler.h"
 #include "controller/AdminLogsHandler.h"
 #include "controller/AdminSseHandler.h"
 #include "controller/AdminToggleUserHandler.h"
 #include "controller/AdminUsersHandler.h"
 #include "controller/ApiKeyHandler.h"
+#include "controller/ChangePasswordHandler.h"
 #include "controller/ChatDeleteSessionHandler.h"
 #include "controller/ChatEntryHandler.h"
 #include "controller/ChatFeedbackHandler.h"
@@ -72,6 +76,8 @@ void ChatServer::initialize()
                              cfg.get("db.name", "ChatHttpServer"), cfg.getInt("db.pool_size", 5));
 
     initDatabase();
+    checkOnnxModel();
+    seedRootAccount();
     initializeSession();
     initializeMiddleware();
     initializeRouter();
@@ -89,11 +95,13 @@ void ChatServer::initDatabase()
             is_disabled TINYINT(1) NOT NULL DEFAULT 0,
             failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
             locked_until DATETIME NULL DEFAULT NULL,
+            invite_code_id BIGINT UNSIGNED DEFAULT NULL,
             created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
             updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
             last_login_at DATETIME(3) DEFAULT NULL,
             UNIQUE KEY uk_username (username),
-            UNIQUE KEY uk_email (email)
+            UNIQUE KEY uk_email (email),
+            INDEX idx_invite_code (invite_code_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     )SQL";
 
@@ -229,6 +237,64 @@ void ChatServer::initDatabase()
     }
 }
 
+void ChatServer::checkOnnxModel()
+{
+    const char* kModelPath = "/root/models/mobilenetv2/mobilenetv2-7.onnx";
+    if (!std::filesystem::exists(kModelPath))
+    {
+        SPDLOG_WARN("============================================================");
+        SPDLOG_WARN("  ⚠️  ONNX 模型文件未找到！");
+        SPDLOG_WARN("  路径: {}", kModelPath);
+        SPDLOG_WARN("  请手动执行: bash scripts/download_models.sh");
+        SPDLOG_WARN("  否则视觉识别功能将无法使用（纯文本对话不受影响）");
+        SPDLOG_WARN("============================================================");
+    }
+    else
+    {
+        SPDLOG_INFO_TAG("AI") << "ONNX model found: " << kModelPath;
+    }
+}
+
+void ChatServer::seedRootAccount()
+{
+    try
+    {
+        storage::MysqlUtil mu;
+        auto res = mu.executeQuery("SELECT COUNT(*) AS cnt FROM accounts");
+        if (res && res->next() && res->getInt64("cnt") > 0)
+        {
+            SPDLOG_INFO_TAG("HTTP") << "Accounts table already populated, skip seeding";
+            return;
+        }
+
+        // 动态生成 12 位随机强密码
+        static const char kChars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        static constexpr size_t kCharCount = sizeof(kChars) - 1;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<size_t> dis(0, kCharCount - 1);
+
+        std::string plainPassword;
+        plainPassword.reserve(12);
+        for (int i = 0; i < 12; ++i) plainPassword += kChars[dis(gen)];
+
+        std::string hashed = common::hashPassword(plainPassword);
+        mu.executeUpdate("INSERT INTO accounts (username, password_hash, email, role) VALUES (?, ?, ?, ?)", "root",
+                         hashed, "root@localhost", "admin");
+
+        SPDLOG_CRITICAL("╔══════════════════════════════════════════════════════════╗");
+        SPDLOG_CRITICAL("║  [系统初始化] 已创建超级管理员！                           ║");
+        SPDLOG_CRITICAL("║  账号: root                                              ║");
+        SPDLOG_CRITICAL("║  初始登录密码: {:<41}                                     ║", plainPassword);
+        SPDLOG_CRITICAL("║  ⚠️  请立即登录并修改密码！                               ║");
+        SPDLOG_CRITICAL("╚══════════════════════════════════════════════════════════╝");
+    }
+    catch (const std::exception& e)
+    {
+        SPDLOG_ERROR_TAG("HTTP") << "Root account seeding failed: " << e.what();
+    }
+}
+
 void ChatServer::initChatMessage()
 {
     SPDLOG_INFO_TAG("HTTP") << "Loading chat history from database ...";
@@ -361,6 +427,9 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));
     httpServer_.Post("/api/user/apikey", std::make_shared<ApiKeyHandler>(this));
 
+    // 修改密码路由
+    httpServer_.Post("/api/user/password", std::make_shared<ChangePasswordHandler>(this));
+
     // MCP Server 路由（标准 JSON-RPC 2.0）
     httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));
 
@@ -371,6 +440,9 @@ void ChatServer::initializeRouter()
     httpServer_.Get("/admin/api/users", std::make_shared<AdminUsersHandler>(this));
     httpServer_.Post("/admin/api/users/toggle", std::make_shared<AdminToggleUserHandler>(this));
     httpServer_.Get("/admin/api/feedback", std::make_shared<AdminFeedbackHandler>(this));
+    httpServer_.Get("/admin/api/invite-codes", std::make_shared<AdminInviteCodesListHandler>(this));
+    httpServer_.Post("/admin/api/invite-codes/create", std::make_shared<AdminInviteCodeCreateHandler>(this));
+    httpServer_.Post("/admin/api/invite-codes/toggle", std::make_shared<AdminInviteCodeToggleHandler>(this));
 }
 
 void ChatServer::initializeSession()

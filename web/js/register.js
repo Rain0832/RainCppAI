@@ -194,5 +194,9 @@
   // Step 5: Finish
   $("btnFinish").onclick = () => { window.location.href = "/chat"; };
 
+  // "已有账号？前往登录" link
+  const goToLogin = $("goToLogin");
+  if (goToLogin) goToLogin.onclick = () => { window.location.href = "/"; };
+
   console.log("register.js loaded");
 })();

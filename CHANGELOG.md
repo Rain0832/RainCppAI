@@ -620,7 +620,7 @@
 
 
 ## Plan 8 — 发版前代码与体验扫除
-### v2.9 → v3.0
+### v2.9
 > v2.9.0 = Plan 7 最终，以下为 Plan 8 增量
 
 ##### v2.9.1 — SP 8.1 修复建表 SQL + SP 8.2 图像识别入口
@@ -664,11 +664,27 @@
 
 
 ## Plan 9 — 开源社区基础设施
-### v3.0
+### v2.10
 
-##### v3.0.1 — SP 9.1 Issue/PR 模板 + SP 9.2 CI
+##### v2.10.0 — SP 9.1 Issue/PR 模板 + SP 9.2 CI
 - [Infra] .github/ISSUE_TEMPLATE/bug_report.md: Bug 报告模板（复现步骤 / 环境信息 / 日志）
 - [Infra] .github/ISSUE_TEMPLATE/feature_request.md: 功能请求模板（需求背景 / 期望方案）
 - [Infra] .github/pull_request_template.md: PR 检查单（编译 / 格式化 / 规范 / TECHDOC）
 - [Infra] .github/workflows/ci.yml: GitHub Actions 编译检查（ubuntu-24.04, push/PR 触发）
+
+
+
+## Plan 10 — 聊天流融合端侧视觉能力 (Vision-Agent Workflow)
+### v2.11
+> v2.11.0 = Plan 9 最终，以下为 Plan 10 + UI 补丁
+
+##### v2.11.0 — SP 10.1~10.4 Vision-Agent + UI 深度打磨
+- **【Vision】SP 10.1** 前端聊天框支持图片上传（📎 附件按钮 + Base64 编码 + 缩略预览）
+- **【Vision】SP 10.2** 后端 ONNX 推理与 Prompt 注入（ChatSseHandler 异步推理 → AIHelper::injectVisionContext）
+- **【Vision】SP 10.3** 图片文件持久化（Base64→JPG 落盘 UUID 文件名 + Message.payload JSON 仅存缩略路径/识别结果）
+- **【Vision】SP 10.4** UI 气泡图片渲染（payload.image.thumbnail 缩略图 + 🖼️ 识别结果标签）
+- **【Vision】ONNX 优雅降级**：模型缺失时跳过视觉管线（text-only fallback），不阻断正常聊天
+- **【Infra】scripts/download_models.sh**：MobileNetV2 ONNX 模型 + ImageNet 标签下载脚本
+- **【UI】登录/注册页打磨**：标题与 Logo 间距收紧、注册页「已有账号？前往登录」链接、底部 Beta 免责声明
+- **【UI】聊天页净化**：移除旧图像识别入口（🖼️）、Markdown 气泡增加左侧内边距
 

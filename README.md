@@ -5,7 +5,7 @@
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![CMake](https://img.shields.io/badge/CMake-%E2%89%A5%203.16-blue.svg)](https://cmake.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v3.0.0-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-v2.11.0-orange.svg)](CHANGELOG.md)
 
 ---
 
