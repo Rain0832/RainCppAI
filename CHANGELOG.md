@@ -655,11 +655,10 @@
 - [AIServerCore] ChatServer: 移除 GET /menu → AIMenuHandler 路由注册及 include
 - [web] 删除 menu.html / js/menu.js / css/menu.css（已被 /chat 沉浸式体验取代）
 
-##### v3.0.0 — Plan 8 最终发布版
+##### v2.9.7 — Plan 8 最终发布版 (内测里程碑)
 - Plan 6: 工程治理（冗余清理 / 日志修复 / 部署资产 / CI）
 - Plan 7: 反馈闭环 + README 旗舰重构
 - Plan 8: 建表修复 / 图像识别入口 / 个人中心 / Admin UI 统一 / 品牌宣导 / 废弃路由清理
-- 就绪 v3.0.0 内测发布
 
 
 
@@ -676,7 +675,7 @@
 
 ## Plan 10 — 聊天流融合端侧视觉能力 (Vision-Agent Workflow)
 ### v2.11
-> v2.11.0 = Plan 9 最终，以下为 Plan 10 + UI 补丁
+> v2.11.0 = Plan 10 功能发布
 
 ##### v2.11.0 — SP 10.1~10.4 Vision-Agent + UI 深度打磨
 - **【Vision】SP 10.1** 前端聊天框支持图片上传（📎 附件按钮 + Base64 编码 + 缩略预览）
@@ -687,4 +686,28 @@
 - **【Infra】scripts/download_models.sh**：MobileNetV2 ONNX 模型 + ImageNet 标签下载脚本
 - **【UI】登录/注册页打磨**：标题与 Logo 间距收紧、注册页「已有账号？前往登录」链接、底部 Beta 免责声明
 - **【UI】聊天页净化**：移除旧图像识别入口（🖼️）、Markdown 气泡增加左侧内边距
+- **【UI】高级感主题背景图**：聊天页/登录页双主题动态背景
+
+
+
+## v3.0.0 — 正式发版 (2026-08-03)
+
+> 🎉 **Dr.Rain v3.0.0 正式发布**
+
+### 发布范围
+覆盖 Plan 1 ~ Plan 10 + SP 12/13 全部功能、安全加固、UI 打磨与 Bug 修复。
+
+### 核心能力
+- **AI 对话**：多模型 LLM（百炼/豆包）、SSE 流式输出、MCP Function Calling、Agent Loop
+- **视觉识别**：聊天框图片上传 → ONNX MobileNetV2 推理 → Prompt 注入 → LLM 自然回答
+- **用户系统**：邀请码注册、邮箱验证（QQ SMTP）、JWT 鉴权、RBAC 角色（admin/user/org）
+- **安全加固**：argon2id 密码哈希、登录失败锁定、CORS/CSP/HSTS 安全头、错误脱敏
+- **管理后台**：实时看板/用户管理/邀请码管理/反馈管理/日志查看器、Root 自动播种
+- **工程基建**：Repository/Service 分层、ConfigManager 配置化、GoogleTest、CI/CD
+
+### 技术栈
+C++17 · muduo · MySQL · ONNX Runtime · OpenCV · libcurl · OpenSSL · libsodium · spdlog · nlohmann/json
+
+### 变更统计 (v2.9.7 → v3.0.0)
+Plan 9 (社区模板) + Plan 10 (Vision-Agent) + SP 12 (Root播种/Admin邀请码) + SP 13 (SQL修复/修改密码) + UI 补丁（背景图/对齐/Data URL修复/Vision上下文修复）
 

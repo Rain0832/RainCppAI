@@ -60,19 +60,21 @@ MysqlUtil::executeUpdate(sql, args...)
 
 - `storage::` — 存储层命名空间
 
-## Database Schema (v2.2.13+)
+## Database Schema (v3.0.0)
 
 8 tables with FOREIGN KEY constraints, 1NF/2NF/3NF compliant:
 
 | Table | Key Columns | FK |
 |-------|-------------|-----|
-| ccounts | id, username UNIQUE, password_hash, email, role ENUM(user/admin/org), is_disabled | — |
+| accounts | id, username UNIQUE, password_hash, email, role ENUM(user/admin/org), is_disabled, failed_attempts, locked_until, invite_code_id | — |
 | sessions | id VARCHAR(64) PK, account_id, title, is_deleted | account_id → accounts.id |
 | messages | id, session_id, role ENUM(user/assistant/system/tool), content, model, tool_call_id, payload JSON | session_id → sessions.id CASCADE |
-| pi_keys | id, account_id, provider, api_key | account_id → accounts.id |
-| invite_codes | id, code UNIQUE, created_by, max_uses, used_count, expires_at | created_by → accounts.id |
-| erification_codes | id, email, code, purpose ENUM(register/reset_password), is_used, expires_at | — |
-| eedback | id, account_id, content TEXT | account_id → accounts.id |
+| api_keys | id, account_id, provider, api_key | account_id → accounts.id |
+| invite_codes | id, code UNIQUE, created_by, max_uses, used_count, expires_at, is_disabled, is_admin | created_by → accounts.id |
+| verification_codes | id, email, code, purpose ENUM(register/reset_password), is_used, expires_at | — |
+| feedback | id, account_id, content TEXT | account_id → accounts.id |
 | call_logs | id, session_id, account_id, model, provider, duration_ms, status ENUM(success/error/timeout) | — |
+
+> v3.0.0 新增字段: accounts.invite_code_id / failed_attempts / locked_until, invite_codes.is_admin
 
 See AIServerCore/src/server/ChatServer.cpp::initDatabase() for DDL.

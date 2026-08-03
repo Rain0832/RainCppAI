@@ -10,12 +10,12 @@
 浏览器请求
   └─► HttpServer Router
         ├─► GET / → ChatEntryHandler → 读取 web/entry.html → 返回
-        ├─► GET /menu → AIMenuHandler → 读取 web/menu.html → 返回
-        ├─► GET /chat → ChatHandler → 读取 web/AI.html → 返回（注入 userId script）
-        ├─► GET /css/:file → StaticFileHandler → 读取 web/css/:file → 返回（Content-Type: text/css）
-        ├─► GET /js/:file → StaticFileHandler → 读取 web/js/:file → 返回（Content-Type: application/javascript）
+        ├─► GET /register → ChatEntryHandler → 读取 web/register.html → 返回
+        ├─► GET /chat → ChatHandler → 读取 web/AI.html → 返回
+        ├─► GET /css/:file → StaticFileHandler → 读取 web/css/:file → 返回
+        ├─► GET /js/:file → StaticFileHandler → 读取 web/js/:file → 返回
         ├─► GET /assets/:path → StaticFileHandler → 读取 web/assets/:path → 返回
-        └─► GET /upload → AIUploadHandler → 读取 web/upload.html → 返回
+        └─► GET /admin/dashboard → AdminDashboardHandler → 读取 web/admin/dashboard.html → 返回
 
 前端模块加载链（AI.html）
   └─► <link rel="stylesheet" href="/css/style.css">   ← 独立样式表（CSS 变量 + 暗色主题）
@@ -34,34 +34,48 @@ SSE 流式（前端 JS）
 
 | 文件 | 说明 |
 |------|------|
-| `entry.html` | 登录 / 注册页 |
-| `menu.html` | 功能菜单（聊天 / 上传 / 个人中心） |
-| `AI.html` | AI 聊天主界面（v2.1.0 已拆分为 CSS/JS 独立文件，仅保留 DOM 骨架） |
-| `upload.html` | 图像识别上传页 |
+| `entry.html` | 登录 / 注册页（双主题背景图） |
+| `register.html` | 多步注册页（邀请码 → 邮箱验证 → 注册） |
+| `AI.html` | AI 聊天主界面（视觉上传 + SSE 流式） |
+| `upload.html` | 独立图像识别页 |
 | `NotFound.html` | 404 错误页 |
-| `config.json` | 前端配置（模型列表、UI 设置） |
-| `css/style.css` | 聊天页样式表（CSS 变量 + 明暗主题 + 响应式适配） |
-| `js/api.js` | 网络 I/O 模块（SSE 流式、TTS、会话管理、历史记录） |
-| `js/ui.js` | UI 渲染模块（消息气泡、打字机效果、主题切换、事件绑定） |
+| `admin/dashboard.html` | Admin 管理后台（看板/用户/邀请码/反馈/日志/修改密码） |
+| `admin/logs.html` | 日志查看器 |
+| `css/style.css` | 聊天页样式（CSS 变量 + 明暗主题 + 背景图） |
+| `css/entry.css` | 登录/注册页样式（hero 品牌宣导 + 背景图） |
+| `js/api.js` | 网络 I/O 模块（SSE/API/会话/历史） |
+| `js/ui.js` | UI 渲染模块（消息气泡/主题/个人中心/修改密码/Vision 上传） |
+| `js/entry.js` | 登录/注册交互逻辑 |
+| `js/register.js` | 多步注册流程 JS |
+| `assets/images/` | 图标 + 主题背景图 |
 
 ### 目录布局
 
 ```
 web/
-├── *.html            ← 服务端模板（C++ 读取 + 注入）
-├── config.json       ← 前端配置
-├── css/
-│   └── style.css     ← AI 聊天页样式
+├── *.html            ← 服务端模板
 ├── js/
-│   ├── api.js        ← 网络请求层（ES Module 导出）
-│   └── ui.js         ← UI 交互层（ES Module 导入 api.js）
+│   ├── api.js        ← 网络请求层
+│   ├── ui.js         ← UI 交互层
+│   ├── entry.js      ← 登录页 JS
+│   └── register.js   ← 注册页 JS
+├── css/
+│   ├── style.css     ← 聊天页样式
+│   └── entry.css     ← 登录/注册页样式
 ├── assets/
-│   ├── images/       ← 图片、图标
-│   └── fonts/        ← 字体
+│   └── images/       ← 图标、背景图
+├── admin/
+│   ├── dashboard.html ← Admin 后台
+│   └── logs.html      ← 日志查看器
 └── TECHDOC.md
 ```
 
-## 对外依赖与耦合边界
+## v3.0.0 变更摘要
+- Vision-Agent: 📎 附件上传 + Base64 编码 + 缩略预览
+- 主题背景图: entry.html + AI.html 双主题动态背景
+- Admin 邀请码面板: 生成/查看/启禁
+- 修改密码: 个人中心 + Admin 双端 UI
+- 废弃路由清理: /menu 路由已移除（v2.9.6），menu.html 仍存盘待清理
 
 ### 依赖
 

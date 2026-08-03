@@ -2,7 +2,7 @@
 
 ## 模块职责
 
-AIServerCore 是项目的**业务编排层**，位于 HttpServer（网络层）和 AIEngine（AI 工具层）之间。负责注册 HTTP 路由、组装 Handler、管理 ChatServer 生命周期。当前共注册 15 个 Handler（含新增的会话软删除）。
+AIServerCore 是项目的**业务编排层**，位于 HttpServer（网络层）和 AIEngine（AI 工具层）之间。负责注册 HTTP 路由、组装 Handler、管理 ChatServer 生命周期。当前注册 30+ 条路由、25+ 个 Handler。
 
 ## 核心文件流转逻辑
 
@@ -14,10 +14,11 @@ main.cpp
         └─► 等待 shutdown 信号
 
 请求到达
-  └─► Router::dispatch()
-        └─► Handler::handle()
-              ├─► ChatSseHandler           ← SSE 流式（唯一对话入口，不传 sessionId 时后端自动创建）
-              ├─► StaticFileHandler        ← 静态资源（CSS / JS / 图片 / 字体，MIME 映射 + 路径安全校验）
+  └─► Middleware 链: RequestId → Auth → AdminAuth → RateLimit → SecurityHeaders → Cors
+        └─► Router::dispatch()
+              └─► Handler::handle()
+                    ├─► ChatSseHandler           ← SSE 流式（唯一对话入口 + Vision-Agent ONNX 推理）
+                    ├─► StaticFileHandler        ← 静态资源（CSS / JS / 图片 / 字体）
               ├─► ChatHistoryHandler       ← 历史消息
               ├─► ChatSessionsHandler      ← 会话列表
               ├─► ChatSpeechHandler        ← TTS
@@ -38,33 +39,47 @@ main.cpp
 |------|------|
 | `src/main.cpp` | 入口：解析命令行参数 → ChatServer::start() |
 | `include/server/ChatServer.h` | 服务启动器：路由注册、muduo 配置 |
-| `include/controller/ChatSseHandler.h` | SSE 流式输出（唯一对话入口，自动创建会话 + 雪花算法 ID） |
-| `include/controller/StaticFileHandler.h` | 通用静态文件服务（MIME 映射 + 路径安全校验） |
-| `include/controller/ChatHistoryHandler.h` | 会话历史（内存 + MySQL fallback） |
+| `include/controller/ChatSseHandler.h` | SSE 流式（唯一对话入口，Vision-Agent ONNX 推理 + 图片落盘） |
+| `include/controller/ChatHistoryHandler.h` | 会话历史（内存 + MySQL fallback，含 payload.image） |
 | `include/controller/ChatSessionsHandler.h` | 用户会话列表 |
+| `include/controller/ChatDeleteSessionHandler.h` | 会话软删除 |
+| `include/controller/ChatUpdateTitleHandler.h` | 会话标题更新 |
 | `include/controller/ChatSpeechHandler.h` | TTS 语音合成代理 |
+| `include/controller/ChatLoginHandler.h` | 用户登录 + JWT 签发 |
+| `include/controller/ChatRegisterHandler.h` | 邀请码验证 + 邮箱验证 + 注册 |
+| `include/controller/ChatLogoutHandler.h` | 用户登出 |
+| `include/controller/ChatEntryHandler.h` | 登录/注册页入口 |
+| `include/controller/ChatInviteVerifyHandler.h` | 邀请码可用性校验 |
+| `include/controller/ChatVerifySendHandler.h` | 邮箱验证码发送 |
+| `include/controller/ChatVerifyCheckHandler.h` | 邮箱验证码核验 |
+| `include/controller/ChatFeedbackHandler.h` | 用户意见反馈 |
+| `include/controller/AIUploadSendHandler.h` | 独立图像识别页（旧） |
+| `include/controller/ApiKeyHandler.h` | API Key 增删查 |
+| `include/controller/ModelListHandler.h` | 模型注册表（models.json） |
 | `include/controller/McpHandler.h` | MCP JSON-RPC 入口 |
-| `include/controller/ChatLoginHandler.h` | 用户登录 |
-| `include/controller/ChatRegisterHandler.h` | 用户注册 |
-| `include/controller/ChatDeleteSessionHandler.h` | 会话软删除（设 is_deleted=1） |
-| `include/controller/AIUploadSendHandler.h` | 图像识别代理 |
+| `include/controller/HealthHandler.h` | 健康检查（GET /health） |
+| `include/controller/MetricsHandler.h` | Prometheus 指标（GET /metrics） |
+| `include/controller/AdminDashboardHandler.h` | Admin 看板 SSR |
+| `include/controller/AdminSseHandler.h` | Admin 实时数据 SSE |
+| `include/controller/AdminUsersHandler.h` | 用户列表 JSON |
+| `include/controller/AdminToggleUserHandler.h` | 用户启用/禁用 |
+| `include/controller/AdminFeedbackHandler.h` | 反馈列表 JSON |
+| `include/controller/AdminLogsHandler.h` | 日志查看器 |
+| `include/controller/AdminInviteCodesHandler.h` | 邀请码管理（列表/创建/启禁） |
+| `include/controller/ChangePasswordHandler.h` | 修改密码（POST /api/user/password） |
+| `include/server/SessionStore.h` | 会话池 + LRU 驱逐封装 |
+| `include/Repository/` | 数据访问层（Account/Session/Message/ApiKey/Admin/InviteCode/VerificationCode） |
+| `include/Service/` | 业务逻辑层（Auth/Session/ApiKey/Chat） |
+| `include/server/ChatServer.h` | 服务启动器：路由注册、DB 初始化、Root 播种、ONNX 检查 |
 
-## Plan 1 变更摘要 (v2.2.13)
-- 新增 Repository/ 层：Account / Session / Message / ApiKey
-- 新增 Service/ 层：Auth / Session / ApiKey / Chat
-- 新增 Server/SessionStore：封装 chatInformation + LRU
-- ChatServer 移除 15 个 `friend class`，改为公开 getter
-- StaticFileHandler 下沉至 HttpServer
-- 数据库全量重设计：8 表 + FK + 范式合规
-  ├─► chatInformation (map<session_id, AIHelper>) — 会话池
-  ├─► onlineUsers_ (map<session_cookie, user_id>)  — 登录态
-  └─► 路由表 → 14 Handler
-        ├─ 精确路由：ChatHandler, ChatSseHandler, ChatHistoryHandler, ChatSessionsHandler,
-        │             ChatSpeechHandler, ChatUpdateTitleHandler, ChatLoginHandler, ChatRegisterHandler,
-        │             ChatLogoutHandler, ChatEntryHandler, AIMenuHandler, AIUploadHandler,
-        │             AIUploadSendHandler, McpHandler
-        └─ 正则路由：StaticFileHandler（/css/:file, /js/:file, /assets/:path）
-```
+## v3.0.0 变更摘要
+- Vision-Agent: ChatSseHandler 支持 image_base64 → ONNX 推理 → Prompt 注入
+- Root 播种: 首次启动自动创建 root/admin + 随机密码
+- Admin 邀请码: 列表/创建/启禁，accounts.invite_code_id 全链路追溯
+- 修改密码: ChangePasswordHandler（POST /api/user/password）
+- 中间件链: RequestId → Auth → AdminAuth → RateLimit → SecurityHeaders
+- ChatServer::checkOnnxModel() 启动自检
+- 全量 Handler 清单已从 15 更新至 30+
 
 ## 对外依赖与耦合边界
 

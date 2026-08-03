@@ -29,6 +29,12 @@ TcpServer (muduo)
 | `include/router/RouterHandler.h` | 路由处理器基类 |
 | `include/middleware/MiddlewareChain.h` | 中间件管道 |
 | `include/middleware/cors/CorsMiddleware.h` | CORS 跨域中间件 |
+| `include/middleware/AuthMiddleware.h` | JWT 鉴权中间件（拦截 /api/*） |
+| `include/middleware/AdminAuthMiddleware.h` | Admin 权限校验（拦截 /admin/*） |
+| `include/middleware/RateLimitMiddleware.h` | Token Bucket 限流 |
+| `include/middleware/RequestIdMiddleware.h` | X-Request-Id 追踪 |
+| `include/middleware/SecurityHeadersMiddleware.h` | CSP/HSTS/X-Frame-Options 安全头 |
+| `include/http/StaticFileHandler.h` | 通用静态文件服务（v2.2.21 迁入） |
 | `include/session/Session.h` | 会话对象 |
 | `include/session/SessionManager.h` | LRU 会话管理器 |
 | `include/session/SessionStorage.h` | 存储接口 |
@@ -51,10 +57,10 @@ HttpServer
 
 ## 对外依赖与耦合边界
 
-## Plan 1 变更摘要 (v2.2.13)
-- StaticFileHandler 从 AIServerCore 迁入（`http/`，命名空间 `http::`）
-- ThreadPool 提取到 Common/Threading/（原文件改为兼容别名）
-- `utils/db/` 旧 DB 文件已删除（v2.2.0 已迁至 Storage）
+## v3.0.0 变更摘要
+- 中间件链成熟：RequestId → Auth → AdminAuth → RateLimit → SecurityHeaders
+- StaticFileHandler 已迁入（v2.2.21），ThreadPool 已提取至 Common
+- `utils/db/` 旧 DB 文件已删除（v2.2.0 迁至 Storage）
 |------|------|
 | muduo | 网络库（Reactor + TcpServer） |
 | OpenSSL | SSL/TLS 支持 |

@@ -35,7 +35,7 @@ McpClientManager startup (main.cpp):
 
 | File | Responsibility |
 |------|----------------|
-| `include/llm/AIHelper.h` | AI call facade, manages strategy + messages |
+| `include/llm/AIHelper.h` | AI call facade, manages strategy + messages + Vision context |
 | `include/llm/AIStrategy.h` | Strategy pattern base + ToolCallInfo struct |
 | `include/llm/AIFactory.h` | Factory method + static registration macro |
 | `include/mcp/McpServer.h` | MCP JSON-RPC 2.0 server (local endpoint) |
@@ -106,7 +106,10 @@ LLM → tool_calls
 
 - Python 3 + `mcp` + `requests` (for `mcp_servers/weather_server.py`)
 
-## Plan 1 变更摘要 (v2.2.13)
+## Plan 1 变更摘要 (v2.2.13) → v3.0.0 当前态
+- **Vision-Agent** (v3.0.0): `injectVisionContext()` + ONNX 推理链路, Data URL 自动剥离, 优雅降级
+- **Vision 文件落盘**: `setUserMessagePayload()` 传递图片 JSON 元信息
+- **Argon2id**: libsodium 密码哈希 (v2.3.1)
+- **spdlog** 全量迁移 (v2.5.x)
 - ThreadPool 提取到 Common/Threading/，**零 HttpServer 依赖已兑现**
 - MQManager.h/.cpp 迁移至 Infralib/Mq/（备份）
-- 编译为独立静态库 libaiengine.a

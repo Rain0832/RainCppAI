@@ -7,7 +7,7 @@ English | **[中文](README.md)**
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![CMake](https://img.shields.io/badge/CMake-%E2%89%A5%203.16-blue.svg)](https://cmake.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v2.11.0-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-v3.0.0-orange.svg)](CHANGELOG.md)
 
 ---
 
@@ -162,63 +162,3 @@ Coding style: [`DEVELOP_STANDARD.md`](DEVELOP_STANDARD.md).
 - [Alibaba Bailian API](https://help.aliyun.com/product/610100.html)
 
 ---
-
-## 📚 API Reference
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/` or `/entry` | ✗ | Login / Register page |
-| POST | `/login` | ✗ | Login |
-| POST | `/register` | ✗ | Register |
-| POST | `/user/logout` | ✓ | Logout |
-| GET | `/chat` | ✓ | Chat page |
-| POST | `/chat/send` | ✓ | Send message (async) |
-| POST | `/chat/send-stream` | ✓ | SSE streaming send |
-| POST | `/chat/send-new-session` | ✓ | Create session and send |
-| GET | `/chat/sessions` | ✓ | List sessions |
-| POST | `/chat/history` | ✓ | Session history |
-| POST | `/chat/tts` | ✓ | Text-to-speech |
-| POST | `/upload/send` | ✓ | Image recognition |
-| POST | `/mcp` | ✗ | MCP Server (JSON-RPC 2.0) |
-
----
-
-## 📋 Changelog
-
-### v1.6.0 — SSE Streaming + Standard MCP Server
-### v1.5.0 — Database Schema Redesign (sessions / messages / user_api_keys)
-### v1.4.0 — Concurrency Bug Fixes (6 items)
-### v1.3.0 — Async AI Thread Pool (IO threads never blocked)
-### v1.2.0 — shared_mutex + LRU eviction
-### v1.1.0 — Dynamic API Key + Frontend Rebuild
-### v1.0.0 — Initial deployment
-
-> See [中文 README](README.md) for detailed changelog.
-
----
-
-## 📁 Project Structure
-
-```
-RainCppAI/
-├── HttpServer/          # Self-developed HTTP framework
-│   ├── include/         # http / router / middleware / session / ssl / utils
-│   └── src/
-├── AIApps/ChatServer/   # AI chat application
-│   ├── include/         # ChatServer.h / AIUtil / handlers
-│   ├── resource/        # HTML frontend
-│   └── src/
-├── Internview/          # Interview knowledge base (Chinese)
-├── CMakeLists.txt
-├── TODO.md
-└── README.md            # 中文版
-```
-
----
-
-## 📖 References
-
-- [muduo — Linux Multi-threaded Server Programming](https://github.com/chenshuo/muduo)
-- [ONNX Runtime C++ API](https://onnxruntime.ai/docs/api/c/)
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Aliyun Bailian API](https://help.aliyun.com/product/610100.html)
