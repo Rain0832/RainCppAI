@@ -38,10 +38,11 @@ void AIHelper::addMessage(int userId,
 void AIHelper::restoreMessage(const std::string& content,
                               long long ms,
                               const std::string& role,
-                              const std::string& modelName)
+                              const std::string& modelName,
+                              const std::string& payload)
 {
     std::lock_guard<std::mutex> lock(msgMutex_);
-    messages_.push_back({role, content, modelName, "", ms});
+    messages_.push_back({role, content, modelName, "", ms, payload});
 }
 
 // ─── 获取历史副本（线程安全）────────────────────────────────────────
@@ -115,7 +116,9 @@ std::string AIHelper::chatStream(int userId,
         std::lock_guard<std::mutex> lock(msgMutex_);
         messages_.push_back({"user", userQuestion, "", "", ms});
     }
-    pushMessageToMysql(userId, userName, "user", userQuestion, ms, sessionId, strategy->getModel());
+    pushMessageToMysql(userId, userName, "user", userQuestion, ms, sessionId, strategy->getModel(),
+                       pendingUserPayload_);
+    pendingUserPayload_.clear();  // 单次消费
 
     // 获取工具 schema（MCP 原始格式），并转换为 OpenAI Function Calling 格式
     auto& registry = AIToolRegistry::instance();
@@ -153,8 +156,7 @@ std::string AIHelper::chatStream(int userId,
         }
 
         // Dr.Rain System Prompt 注入（SP 5.5）
-        // 如果消息列表中没有 system 消息，则在头部插入医疗人设
-        // 如果已有 system 消息，则替换第一条
+        // 策略：先判断第一条消息是否为 vision 视觉上下文，若是则保留在其后插入人设
         const std::string drRainSystemPrompt =
             "你是 Dr.Rain，一位专业的 AI 医疗健康助手。你基于医学知识提供健康咨询、"
             "症状分析、用药参考和生活方式建议。请注意：\n"
@@ -163,11 +165,21 @@ std::string AIHelper::chatStream(int userId,
             "3. 你不提供具体处方，只提供通用医学知识\n"
             "4. 回答时保持专业、温暖、易懂的风格";
         {
-            bool hasSystem = !snapshot.empty() && snapshot[0].role == "system";
-            if (hasSystem)
-                snapshot[0] = {"system", drRainSystemPrompt, "", ""};
-            else
+            bool hasVisionCtx =
+                !snapshot.empty() && snapshot[0].role == "system" && snapshot[0].content.rfind("[系统提示：", 0) == 0;
+            if (hasVisionCtx)
+            {
+                // 第一条是 vision 上下文 → 在它前面插入 Dr.Rain 人设
                 snapshot.insert(snapshot.begin(), {"system", drRainSystemPrompt, "", ""});
+            }
+            else
+            {
+                bool hasSystem = !snapshot.empty() && snapshot[0].role == "system";
+                if (hasSystem)
+                    snapshot[0] = {"system", drRainSystemPrompt, "", ""};
+                else
+                    snapshot.insert(snapshot.begin(), {"system", drRainSystemPrompt, "", ""});
+            }
         }
 
         // 每次构建 payload，传 stream=true（使用前端传入的 modelId）
@@ -623,4 +635,38 @@ void AIHelper::pushMessageToMysql(int userId,
     {
         SPDLOG_ERROR_TAG("AI") << "pushMessageToMysql failed: " << e.what();
     }
+}
+
+// 注入视觉上下文（系统提示）
+void AIHelper::injectVisionContext(const std::string& visionPrompt)
+{
+    std::lock_guard<std::mutex> lock(msgMutex_);
+    std::string content = std::string("[系统提示：") + visionPrompt + "]";
+    // 如果已有 system 消息（Dr.Rain 人设），则插入到其后；否则放在开头
+    if (!messages_.empty() && messages_[0].role == "system")
+    {
+        // 移除已有的视觉提示（避免重复）
+        if (messages_.size() > 1 && messages_[1].role == "system")
+        {
+            messages_.erase(messages_.begin() + 1);
+        }
+        messages_.insert(messages_.begin() + 1, {"system", content, "", "", 0});
+    }
+    else
+    {
+        // 移除可能存在的同类视觉提示
+        for (auto it = messages_.begin(); it != messages_.end();)
+        {
+            if (it->role == "system" && it->content.rfind("[系统提示：", 0) == 0)
+                it = messages_.erase(it);
+            else
+                ++it;
+        }
+        messages_.insert(messages_.begin(), {"system", content, "", "", 0});
+    }
+}
+
+void AIHelper::setUserMessagePayload(const std::string& payload)
+{
+    pendingUserPayload_ = payload;
 }

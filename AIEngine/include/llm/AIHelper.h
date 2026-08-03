@@ -48,7 +48,8 @@ public:
     void restoreMessage(const std::string& content,
                         long long ms,
                         const std::string& role,
-                        const std::string& modelName = "");
+                        const std::string& modelName = "",
+                        const std::string& payload = "");
 
     /**
      * @brief 流式聊天（SSE）：每收到 token 块立即回调
@@ -71,6 +72,20 @@ public:
                            bool isNewSession = false);
 
     json request(const json& payload);
+
+    /**
+     * @brief 注入视觉识别上下文（系统提示），用于在构建消息 payload 时提供额外上下文
+     *
+     * 该方法线程安全，会在 messages_ 中插入一个 system 类型的消息，位于 Dr.Rain 人设 system prompt 之后。
+     */
+    void injectVisionContext(const std::string& visionPrompt);
+
+    /**
+     * @brief 设置用户消息的 payload（如图片缩略图路径 + 识别结果），供下次 chatStream 调用时入库
+     *
+     * 仅在下一次 chatStream -> pushMessageToMysql(user...) 时消费，消费后自动清空。
+     */
+    void setUserMessagePayload(const std::string& payload);
 
     std::vector<Message> GetMessages() const;
 
@@ -125,6 +140,7 @@ private:
     std::atomic<bool> processing_;
     storage::MysqlUtil* mysqlUtil_ = nullptr;
     common::ThreadPool* threadPool_ = nullptr;
+    std::string pendingUserPayload_;  ///< 待入库的 user 消息 payload（一次性消费）
 
     /// 异步 LLM 标题生成（新会话首条对话完成后调用，复用当前策略与模型名）
     void startTitleSummarization(const std::string& sessionId,

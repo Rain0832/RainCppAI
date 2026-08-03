@@ -1,10 +1,34 @@
 ﻿#include "controller/ChatSseHandler.h"
 
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <random>
+#include <sstream>
+
 #include "Common/Auth/JwtService.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 #include "common/AISessionIdGenerator.h"
+#include "common/base64.h"
 #include "llm/AIHelper.h"
+
+/// 生成 UUID v4 风格的随机文件名
+static std::string generateUUID()
+{
+    static std::random_device rd;
+    static std::mt19937_64 gen(rd());
+    static std::uniform_int_distribution<uint64_t> dis;
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    uint64_t a = dis(gen);
+    uint64_t b = dis(gen);
+    oss << std::setw(8) << ((a >> 32) & 0xFFFFFFFF) << '-' << std::setw(4) << ((a >> 16) & 0xFFFF) << '-'
+        << std::setw(4) << ((a & 0xFFFF) | 0x4000) << '-'        // version 4
+        << std::setw(4) << ((b >> 48) & 0x3FFF | 0x8000) << '-'  // variant 1
+        << std::setw(12) << (b & 0xFFFFFFFFFFFF);
+    return oss.str();
+}
 
 static void sendSseChunk(const muduo::net::TcpConnectionPtr& conn, const std::string& data)
 {
@@ -69,7 +93,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             }
         }
 
-        std::string userQuestion, modelType, sessionId, ragId, provider;
+        std::string userQuestion, modelType, sessionId, ragId, provider, imageBase64;
         auto body = req.getBody();
         if (!body.empty())
         {
@@ -93,6 +117,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             if (j.contains("ragId")) ragId = j["ragId"];
             modelType = j.contains("modelType") ? j["modelType"].get<std::string>() : "qwen-plus";
             provider = j.contains("provider") ? j["provider"].get<std::string>() : "aliyun";
+            if (j.contains("image_base64")) imageBase64 = j["image_base64"].get<std::string>();
         }
 
         SPDLOG_INFO_TAG("AI") << "Received chat request: provider=" << provider << ", model=" << modelType;
@@ -169,11 +194,116 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
 
         // 提交流式 AI 调用到线程池
         server_->getAiThreadPool().submit(
-            [conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider,
-             isNewSession]()
+            [this, conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider,
+             isNewSession, imageBase64]()
             {
                 try
                 {
+                    // 若包含图片：异步执行 ONNX 推理并将结果注入到 AIHelper 上下文中
+                    if (!imageBase64.empty())
+                    {
+                        try
+                        {
+                            static const char* kModelPath = "/root/models/mobilenetv2/mobilenetv2-7.onnx";
+                            if (!std::filesystem::exists(kModelPath))
+                            {
+                                SPDLOG_ERROR_TAG("AI") << "ONNX model not found: " << kModelPath
+                                                       << " — skipping vision pipeline (text-only fallback)";
+                                // 优雅降级：模型缺失时不阻断，按纯文本请求继续
+                                goto skip_vision;
+                            }
+
+                            std::shared_ptr<ImageRecognizer> ImageRecognizerPtr;
+                            {
+                                std::shared_lock<std::shared_mutex> rlock(this->server_->getImageRecognizerMutex());
+                                auto it = this->server_->getImageRecognizers().find(userId);
+                                if (it != this->server_->getImageRecognizers().end())
+                                {
+                                    ImageRecognizerPtr = it->second;
+                                }
+                            }
+
+                            if (!ImageRecognizerPtr)
+                            {
+                                std::unique_lock<std::shared_mutex> wlock(this->server_->getImageRecognizerMutex());
+                                if (this->server_->getImageRecognizers().find(userId) ==
+                                    this->server_->getImageRecognizers().end())
+                                {
+                                    this->server_->getImageRecognizers().emplace(
+                                        userId, std::make_shared<ImageRecognizer>(kModelPath));
+                                }
+                                ImageRecognizerPtr = this->server_->getImageRecognizers()[userId];
+                            }
+
+                            // 剥离 Data URL 前缀 (前端 readAsDataURL 产生的 header)
+                            std::string rawBase64 = imageBase64;
+                            static const char kDataUrlPrefix[] = "data:";
+                            if (rawBase64.compare(0, 5, kDataUrlPrefix) == 0)
+                            {
+                                size_t commaPos = rawBase64.find(',');
+                                if (commaPos != std::string::npos && commaPos + 1 < rawBase64.size())
+                                    rawBase64 = rawBase64.substr(commaPos + 1);
+                            }
+
+                            std::string decoded = base64_decode(rawBase64);
+                            SPDLOG_DEBUG_TAG("AI") << "Base64 decoded, size=" << decoded.size()
+                                                   << " bytes, original=" << rawBase64.size() << " chars";
+                            static constexpr size_t kMaxImageBytes = 10 * 1024 * 1024;
+                            if (decoded.size() <= kMaxImageBytes && decoded.size() >= 12)
+                            {
+                                SPDLOG_DEBUG_TAG("AI") << "Image decode OK, passing to ONNX inference...";
+                                std::vector<unsigned char> imgData(decoded.begin(), decoded.end());
+                                std::string className = ImageRecognizerPtr->PredictFromBuffer(imgData);
+                                SPDLOG_INFO_TAG("AI") << "ONNX inference result: " << className;
+                                std::string visionPrompt = std::string("识别结果为 \"") + className + "\"";
+                                AIHelperPtr->injectVisionContext(visionPrompt);
+
+                                // SP 10.3: Base64 不入库，落地为文件
+                                std::string uploadDir = "web/assets/images/uploads";
+                                std::error_code ec;
+                                std::filesystem::create_directories(uploadDir, ec);
+                                if (!ec)
+                                {
+                                    std::string uuid = generateUUID();
+                                    std::string filename = uuid + ".jpg";
+                                    std::string filePath = uploadDir + "/" + filename;
+                                    std::ofstream ofs(filePath, std::ios::binary);
+                                    if (ofs.is_open())
+                                    {
+                                        ofs.write(decoded.c_str(), decoded.size());
+                                        ofs.close();
+                                        std::string thumbPath = "/assets/images/uploads/" + filename;
+                                        json imagePayload;
+                                        imagePayload["text"] = userQuestion;
+                                        imagePayload["image"]["thumbnail"] = thumbPath;
+                                        imagePayload["image"]["recognition"] = className;
+                                        AIHelperPtr->setUserMessagePayload(imagePayload.dump());
+                                        SPDLOG_INFO_TAG("AI") << "Image saved: " << thumbPath;
+                                    }
+                                    else
+                                    {
+                                        SPDLOG_ERROR_TAG("AI") << "Failed to write image file: " << filePath;
+                                    }
+                                }
+                                else
+                                {
+                                    SPDLOG_ERROR_TAG("AI") << "Failed to create upload dir: " << ec.message();
+                                }
+                            }
+                            else
+                            {
+                                AIHelperPtr->injectVisionContext("无法识别图片（无效或超限）");
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            SPDLOG_ERROR_TAG("AI") << "Vision inference failed: " << e.what();
+                            // 优雅降级：推理失败不阻断，跳过视觉注入继续纯文本对话
+                            goto skip_vision;
+                        }
+                    }
+
+                skip_vision:
                     // 新会话：先发送 sessionId 事件让前端知道
                     if (isNewSession)
                     {
