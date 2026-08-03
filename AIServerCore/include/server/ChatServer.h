@@ -159,6 +159,8 @@ public:
 private:
     void initialize();
     void initDatabase();
+    void checkOnnxModel();
+    void seedRootAccount();
     void initializeSession();
     void initializeRouter();
     void initializeMiddleware();

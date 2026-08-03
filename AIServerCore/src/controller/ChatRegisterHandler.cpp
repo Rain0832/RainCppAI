@@ -86,9 +86,10 @@ void ChatRegisterHandler::handle(const http::HttpRequest& req, http::HttpRespons
             }
         }
 
-        // Step 3: Register account
+        // Step 3: Register account (with invite code tracking)
+        long long inviteCodeId = invite.value("id", 0);
         AuthService auth;
-        json account = auth.registerWithInviteCode(username, password, email, role);
+        json account = auth.registerWithInviteCode(username, password, email, role, inviteCodeId);
         if (account.empty())
         {
             SPDLOG_INFO_TAG("AUTH") << "[REGISTER] Username taken: " << username;

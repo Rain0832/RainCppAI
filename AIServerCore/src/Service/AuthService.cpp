@@ -58,11 +58,12 @@ bool AuthService::isUsernameTaken(const std::string& username)
 json AuthService::registerWithInviteCode(const std::string& username,
                                          const std::string& password,
                                          const std::string& email,
-                                         const std::string& role)
+                                         const std::string& role,
+                                         long long inviteCodeId)
 {
     AccountRepository repo;
     if (!repo.findByUsername(username).empty()) return {};
     if (!email.empty() && !repo.findByEmail(email).empty()) return {{"error", "email_taken"}};
     std::string hash = common::hashPassword(password);
-    return repo.create(username, hash, email, role);
+    return repo.create(username, hash, email, role, inviteCodeId);
 }

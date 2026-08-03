@@ -49,14 +49,35 @@ json AccountRepository::findById(long long id)
     return {};
 }
 
+json AccountRepository::findPasswordHashById(long long id)
+{
+    storage::MysqlUtil mu;
+    auto res = mu.executeQuery("SELECT id, password_hash, username FROM accounts WHERE id = ?", id);
+    if (res && res->next())
+    {
+        json j;
+        j["id"] = res->getInt64("id");
+        j["password_hash"] = res->getString("password_hash");
+        j["username"] = res->getString("username");
+        return j;
+    }
+    return {};
+}
+
 json AccountRepository::create(const std::string& username,
                                const std::string& passwordHash,
                                const std::string& email,
-                               const std::string& role)
+                               const std::string& role,
+                               long long inviteCodeId)
 {
     storage::MysqlUtil mu;
-    mu.executeUpdate("INSERT INTO accounts (username, password_hash, email, role) VALUES (?, ?, ?, ?)", username,
-                     passwordHash, email, role);
+    if (inviteCodeId > 0)
+        mu.executeUpdate(
+            "INSERT INTO accounts (username, password_hash, email, role, invite_code_id) VALUES (?, ?, ?, ?, ?)",
+            username, passwordHash, email, role, inviteCodeId);
+    else
+        mu.executeUpdate("INSERT INTO accounts (username, password_hash, email, role) VALUES (?, ?, ?, ?)", username,
+                         passwordHash, email, role);
     return findByUsername(username);
 }
 

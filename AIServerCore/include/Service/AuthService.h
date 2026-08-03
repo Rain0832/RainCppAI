@@ -10,6 +10,7 @@ public:
     json registerWithInviteCode(const std::string& username,
                                 const std::string& password,
                                 const std::string& email,
-                                const std::string& role = "user");
+                                const std::string& role,
+                                long long inviteCodeId = 0);
     bool isUsernameTaken(const std::string& username);
 };
