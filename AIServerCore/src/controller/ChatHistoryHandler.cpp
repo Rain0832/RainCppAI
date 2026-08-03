@@ -1,5 +1,6 @@
 #include "controller/ChatHistoryHandler.h"
 
+#include "Common/Auth/JwtService.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 
@@ -7,17 +8,41 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
 {
     try
     {
+        long long userId = 0;
+
         auto session = server_->getSessionManager()->getSession(req, resp);
-        if (session->getValue("isLoggedIn") != "true")
+        if (session->getValue("isLoggedIn") == "true")
         {
-            json errorResp = common::ApiResult::fail(400, "Unauthorized").toJson();
+            userId = std::stoll(session->getValue("userId"));
+        }
+        else
+        {
+            // JWT Cookie fallback (align with ChatSseHandler)
+            std::string ck = req.getHeader("Cookie");
+            std::string tok;
+            size_t pos = ck.find("jwt=");
+            if (pos != std::string::npos)
+            {
+                pos += 4;
+                size_t end = ck.find(';', pos);
+                tok = (end == std::string::npos) ? ck.substr(pos) : ck.substr(pos, end - pos);
+            }
+            if (!tok.empty())
+            {
+                common::JwtService js;
+                json pld = js.verify(tok);
+                if (!pld.empty()) userId = pld["sub"].get<long long>();
+            }
+        }
+
+        if (userId == 0)
+        {
+            json errorResp = common::ApiResult::fail(401, "Unauthorized").toJson();
             std::string errorBody = errorResp.dump(4);
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
                                  "application/json", errorBody.size(), errorBody, resp);
             return;
         }
-
-        int userId = std::stoi(session->getValue("userId"));
 
         std::string sessionId;
         auto body = req.getBody();
