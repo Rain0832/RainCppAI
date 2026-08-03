@@ -1,5 +1,7 @@
 #include "controller/ChatSessionsHandler.h"
 
+#include <algorithm>
+
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 
@@ -22,15 +24,21 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         int userId = std::stoi(session->getValue("userId"));
 
         // Phase 2: 从 sessions 表读取含 title 的会话列表
-        // 同时兼容内存中的会话（新建但 MQ 尚未持久化的）
+        // 内存优先；内存为空时 fallback 到 DB
         std::vector<std::string> memSessions;
         {
             std::shared_lock<std::shared_mutex> lock(server_->getSessionIdsMutex());
-            memSessions = server_->getSessionIdsMap()[userId];
+            auto it = server_->getSessionIdsMap().find(userId);
+            if (it != server_->getSessionIdsMap().end())
+                memSessions = it->second;
         }
 
-        // 查 DB 获取 title
+        SPDLOG_INFO_TAG("DB") << "ChatSessions: userId=" << userId
+                              << " memSize=" << memSessions.size();
+
+        // 查 DB 获取 title + 完整 session id 列表
         std::unordered_map<std::string, std::string> titleMap;
+        std::vector<std::string> dbSessions;
         try
         {
             storage::MysqlUtil mu;
@@ -43,6 +51,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
                 std::string sid = res->getString("id");
                 std::string title = res->isNull("title") ? "" : res->getString("title");
                 titleMap[sid] = title;
+                dbSessions.push_back(sid);
             }
         }
         catch (...)
@@ -50,8 +59,23 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
             // DB 查询失败时降级为纯内存列表，不影响主流程
         }
 
-        // 对 title 为空的 session，用 messages 首条用户消息作为 fallback
-        for (auto& sid : memSessions)
+        // 合并来源：内存为空 → DB；否则内存 + DB 独有
+        std::vector<std::string> allSids;
+        if (memSessions.empty())
+        {
+            allSids = dbSessions;
+            SPDLOG_INFO_TAG("DB") << "ChatSessions: memory empty, DB fallback " << dbSessions.size() << " sessions";
+        }
+        else
+        {
+            allSids = memSessions;
+            for (auto& dbSid : dbSessions)
+                if (std::find(allSids.begin(), allSids.end(), dbSid) == allSids.end())
+                    allSids.push_back(dbSid);
+        }
+
+        // title 为空时用首条用户消息 fallback
+        for (auto& sid : allSids)
         {
             auto it = titleMap.find(sid);
             if (it == titleMap.end() || it->second.empty())
@@ -85,7 +109,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         json successResp;
         successResp["success"] = true;
         json sessionArray = json::array();
-        for (auto& sid : memSessions)
+        for (auto& sid : allSids)
         {
             json s;
             s["sessionId"] = sid;

@@ -50,12 +50,23 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             {
                 userSessions.emplace(sessionId,
                                      std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
+                // 同步加入 sessionsIdsMap，使该 session 在侧边栏可见
+                {
+                    std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
+                    auto& vec = server_->getSessionIdsMap()[userId];
+                    if (std::find(vec.begin(), vec.end(), sessionId) == vec.end())
+                        vec.push_back(sessionId);
+                }
             }
             AIHelperPtr = userSessions[sessionId];
         }  // 写锁释放
 
         // 在 chatInformation 锁完全释放后，通过 AIHelper 自身的 msgMutex_ 安全读取
         std::vector<Message> messages = AIHelperPtr->GetMessages();
+
+        if (!sessionId.empty())
+            SPDLOG_INFO_TAG("DB") << "ChatHistory: userId=" << userId << " sessionId=" << sessionId
+                                   << " memMsgs=" << messages.size();
 
         // Fix A3: 内存为空时 fallback 到 MySQL
         if (messages.empty())
