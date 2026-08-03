@@ -118,38 +118,7 @@ void ChatInviteVerifyHandler::handle(const http::HttpRequest& req, http::HttpRes
             }
         }
 
-        if (invite.contains("locked_until"))
-        {
-            std::string lockStr = invite["locked_until"];
-            if (!lockStr.empty())
-            {
-                std::tm tm = {};
-                std::istringstream ss(lockStr);
-                ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-                if (!ss.fail())
-                {
-                    auto lockTime = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-                    auto now = std::chrono::system_clock::now();
-                    if (now < lockTime)
-                    {
-                        json err;
-                        err["valid"] = false;
-                        err["message"] = "Invite code is temporarily locked";
-                        std::string body = err.dump();
-                        resp->setStatusLine(req.getVersion(), http::HttpResponse::k200Ok, "OK");
-                        resp->setCloseConnection(false);
-                        resp->setContentType("application/json");
-                        resp->setContentLength(body.size());
-                        resp->setBody(body);
-                        return;
-                    }
-                }
-            }
-        }
-
-        int usedCount = invite["used_count"].get<int>();
-        int maxUses = invite["max_uses"].get<int>();
-        if (usedCount >= maxUses)
+        if (invite.value("used_count", 0) >= invite.value("max_uses", 0))
         {
             json err;
             err["valid"] = false;
