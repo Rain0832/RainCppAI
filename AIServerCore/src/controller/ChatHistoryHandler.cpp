@@ -64,7 +64,7 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             {
                 storage::MysqlUtil mu;
                 std::string sql =
-                    "SELECT role, content, model FROM messages WHERE session_id = ? "
+                    "SELECT role, content, model, payload FROM messages WHERE session_id = ? "
                     "ORDER BY created_at ASC, id ASC";
                 auto res = mu.executeQuery(sql, sessionId);
                 while (res && res->next())
@@ -72,9 +72,11 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
                     std::string role = res->getString("role");
                     std::string content = res->getString("content");
                     std::string model = res->isNull("model") ? "" : res->getString("model");
-                    messages.push_back({role, content, model, "", 0});
+                    std::string payload = res->isNull("payload") ? "" : res->getString("payload");
+                    Message m{role, content, model, "", 0, payload};
+                    messages.push_back(m);
                     // 同时恢复到内存中
-                    AIHelperPtr->restoreMessage(content, 0, role, model);
+                    AIHelperPtr->restoreMessage(content, 0, role, model, payload);
                 }
             }
             catch (const std::exception& dbErr)
@@ -95,6 +97,17 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
             msgJson["is_user"] = (msg.role == "user");
             msgJson["content"] = msg.content;
             msgJson["model"] = msg.model;
+            if (!msg.payload.empty())
+            {
+                try
+                {
+                    msgJson["payload"] = json::parse(msg.payload);
+                }
+                catch (...)
+                {
+                    msgJson["payload"] = msg.payload;
+                }
+            }
             successResp["history"].push_back(msgJson);
         }
 

@@ -94,14 +94,24 @@ function hideWelcome() {
 
 // ---- 消息渲染 ----
 
-function appendMsg(role, content, modelName, idx, imageBase64) {
+function appendMsg(role, content, modelName, idx, imageBase64, payload) {
     hideWelcome();
     const d = document.createElement('div');
     d.className = 'msg ' + role;
     if (typeof idx === 'number') d.dataset.idx = idx;
     const safe = DOMPurify.sanitize(marked.parse(content));
     let html = '';
-    if (role === 'user' && imageBase64) html += `<img src="${imageBase64}" class="chat-bubble-img" alt="uploaded image">`;
+    // SP 10.4: 图片气泡渲染 — payload.image (历史) 优先，fallback 到 imageBase64 (实时)
+    if (role === 'user') {
+        if (payload && payload.image && payload.image.thumbnail) {
+            html += `<img src="${payload.image.thumbnail}" class="chat-bubble-img" alt="uploaded image" onclick="window.open('${payload.image.thumbnail}','_blank')">`;
+        } else if (imageBase64) {
+            html += `<img src="${imageBase64}" class="chat-bubble-img" alt="uploaded image">`;
+        }
+        if (payload && payload.image && payload.image.recognition) {
+            html += `<div class="vision-tag">🖼️ 识别结果: ${payload.image.recognition}</div>`;
+        }
+    }
     if (role === 'assistant' && modelName) html += `<div class="model-tag">${modelName}</div>`;
     html += `<div class="msg-content"><span>${safe}</span></div>`;
     let actions = '<div class="msg-actions">';
@@ -188,7 +198,7 @@ async function switchSession(id) {
         if (history) sessions[id].messages = history;
     }
     if (sessions[id].messages?.length) {
-        sessions[id].messages.forEach((m, i) => appendMsg(m.role, m.content, m.model, i));
+        sessions[id].messages.forEach((m, i) => appendMsg(m.role, m.content, m.model, i, undefined, m.payload));
     } else {
         const hint = document.createElement('div');
         hint.className = 'welcome-hint';
@@ -217,9 +227,6 @@ function bindEvents() {
         openProfile();
     };
 
-    // 图像识别入口
-    $('#uploadBtn').onclick = () => { window.open('/upload', '_blank'); };
-
     // 图片附件
     $('#attachBtn').onclick = () => $('#imageInput').click();
     $('#imageInput').onchange = () => {
@@ -247,6 +254,38 @@ function bindEvents() {
 
     // 退出登录
     $('#profileLogoutBtn').onclick = () => logout();
+
+    // 修改密码
+    $('#profileChangePwdBtn').onclick = () => {
+        const form = $('#changePwdForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
+    $('#changePwdCancel').onclick = () => {
+        $('#changePwdForm').style.display = 'none';
+        $('#oldPwd').value = ''; $('#newPwd').value = '';
+    };
+    $('#changePwdSubmit').onclick = async () => {
+        const oldPwd = $('#oldPwd').value;
+        const newPwd = $('#newPwd').value;
+        if (!oldPwd || !newPwd) { showToast('请填写旧密码和新密码'); return; }
+        if (newPwd.length < 6) { showToast('新密码长度不能少于 6 位'); return; }
+        try {
+            const resp = await fetch('/api/user/password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                showToast('密码修改成功，请重新登录');
+                $('#changePwdForm').style.display = 'none';
+                $('#oldPwd').value = ''; $('#newPwd').value = '';
+                setTimeout(() => logout(), 2000);
+            } else {
+                showToast((data.error && data.error.message) || '修改失败');
+            }
+        } catch (err) { showToast('请求失败'); }
+    };
 
     // 意见反馈
     $('#profileFeedbackBtn').onclick = () => {

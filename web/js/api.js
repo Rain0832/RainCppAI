@@ -171,7 +171,7 @@ export async function fetchHistory(sessionId) {
         });
         const d = await r.json();
         if (d.success && Array.isArray(d.history)) {
-            return d.history.map(m => ({ role: m.is_user ? 'user' : 'assistant', content: m.content, model: m.model || '' }));
+            return d.history.map(m => ({ role: m.is_user ? 'user' : 'assistant', content: m.content, model: m.model || '', payload: m.payload || null }));
         }
     } catch (e) { console.error(e); }
     return null;
