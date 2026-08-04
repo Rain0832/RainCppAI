@@ -41,6 +41,10 @@
     "username": "",
     "password": ""
   },
+  "default_api_keys": {
+    "dashscope": "sk-your-dashscope-key",
+    "doubao": "your-doubao-key"
+  },
   "jwt": {
     "secret": "change-this-to-a-random-secret"
   },

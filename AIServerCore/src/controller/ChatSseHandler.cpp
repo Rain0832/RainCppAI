@@ -7,6 +7,8 @@
 #include <sstream>
 
 #include "Common/Auth/JwtService.h"
+#include "common/base64.h"
+#include "Common/Config/ConfigManager.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 #include "common/AISessionIdGenerator.h"
@@ -122,7 +124,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
 
         SPDLOG_INFO_TAG("AI") << "Received chat request: provider=" << provider << ", model=" << modelType;
 
-        // provider → DB api_key provider 映射
+        // provider → DB api_key provider 映射, 无记录时 fallback 到 config.json 默认 Key
         const std::string dbProvider = (provider == "volcengine") ? "doubao" : "dashscope";
         std::string apiKey;
         try
@@ -134,6 +136,14 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
         }
         catch (...)
         {
+        }
+        if (apiKey.empty())
+        {
+            auto& cfg = common::ConfigManager::instance();
+            std::string cfgKey = (provider == "volcengine") ? "doubao" : "dashscope";
+            apiKey = cfg.get("default_api_keys." + cfgKey, "");
+            if (!apiKey.empty())
+                SPDLOG_INFO_TAG("AI") << "Using default " << cfgKey << " API key from config.json";
         }
 
         // 新会话：前端不传 sessionId，后端自动生成
