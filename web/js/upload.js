@@ -53,7 +53,7 @@ $('#uploadForm').onsubmit = async e => {
         appendMsg('user', `上传图片: ${file.name}`, b64Url);
         $('#sendBtn').disabled = true;
         try {
-            const r = await fetch('/upload/send', {
+            const r = await fetch('/upload/send', { credentials: 'include',
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ filename: file.name, image: b64Data })

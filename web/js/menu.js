@@ -49,7 +49,7 @@ if (!sessionStorage.getItem('userId')) window.location.href = '/entry';
 $('#logout').onclick = e => {
     e.stopPropagation();
     const userId = sessionStorage.getItem('userId');
-    fetch('/user/logout', {
+    fetch('/user/logout', { credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, type: 'manual', gameType: 0 })

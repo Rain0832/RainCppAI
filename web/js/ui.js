@@ -270,7 +270,7 @@ function bindEvents() {
         if (!oldPwd || !newPwd) { showToast('请填写旧密码和新密码'); return; }
         if (newPwd.length < 6) { showToast('新密码长度不能少于 6 位'); return; }
         try {
-            const resp = await fetch('/api/user/password', {
+            const resp = await fetch('/api/user/password', { credentials: 'include',
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
@@ -302,7 +302,7 @@ function bindEvents() {
         const btn = $('#feedbackSubmit');
         btn.disabled = true; btn.textContent = '提交中...';
         try {
-            const resp = await fetch('/api/feedback', {
+            const resp = await fetch('/api/feedback', { credentials: 'include',
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content })

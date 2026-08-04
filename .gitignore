@@ -11,7 +11,7 @@ Docs/
 *.db
 *.sqlite
 config.json
-model.json
+models.json
 mcp_config.json
 plan.md
 TODO.md/update_*.py

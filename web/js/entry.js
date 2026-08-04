@@ -39,13 +39,18 @@ function showToast(msg, dur = 2000) {
     setTimeout(() => t.classList.remove('show'), dur);
 }
 
-// If already logged in, redirect to chat
-if (sessionStorage.getItem('userId')) window.location.href = '/chat';
+// If already logged in, redirect to proper page (only on entry/login/register pages)
+const currentPath = window.location.pathname;
+if (sessionStorage.getItem('userId') && (currentPath === '/' || currentPath === '/entry' || currentPath === '/login')) {
+    const role = sessionStorage.getItem('role') || 'user';
+    window.location.href = (role === 'admin') ? '/admin/dashboard' : '/chat';
+}
 
 $('#login-form').onsubmit = e => {
     e.preventDefault();
     fetch('/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: $('#login-username').value, password: $('#login-password').value })
     }).then(r => {

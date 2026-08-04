@@ -60,7 +60,7 @@
     $("btnStep1").disabled = true;
     $("btnStep1").textContent = C.text_verifying;
     try {
-      const r = await fetch("/api/invite/verify", {
+      const r = await fetch("/api/invite/verify", { credentials: "include",
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
       });
@@ -84,7 +84,7 @@
     $("btnSendCode").disabled = true;
     $("btnSendCode").textContent = C.text_sending;
     try {
-      const r = await fetch("/api/verify/send", {
+      const r = await fetch("/api/verify/send", { credentials: "include",
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
       });
@@ -133,7 +133,7 @@
     $("btnStep3").disabled = true;
     $("btnStep3").textContent = C.text_verifying;
     try {
-      const r = await fetch("/api/verify/check", {
+      const r = await fetch("/api/verify/check", { credentials: "include",
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: state.email, code })
       });
@@ -164,7 +164,7 @@
     $("btnStep4").disabled = true;
     $("btnStep4").textContent = C.text_registering;
     try {
-      const r = await fetch("/register", {
+      const r = await fetch("/register", { credentials: "include",
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inviteCode: state.inviteCode,

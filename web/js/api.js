@@ -17,7 +17,7 @@ export function getModelName() {
 
 export async function fetchModels() {
     try {
-        const r = await fetch('/api/chat/models');
+        const r = await fetch('/api/chat/models', { credentials: 'include' });
         const d = await r.json();
         if (d.success && Array.isArray(d.models)) return d.models;
     } catch (_) {}
@@ -30,7 +30,7 @@ let _apiKeyCache = null;
 
 export async function fetchApiKeysFromDb() {
     try {
-        const r = await fetch('/api/user/apikey');
+        const r = await fetch('/api/user/apikey', { credentials: 'include' });
         const d = await r.json();
         if (d.success && Array.isArray(d.keys)) {
             _apiKeyCache = {};
@@ -102,6 +102,7 @@ export async function saveApiKey(n) {
     try {
         await fetch('/api/user/apikey', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider: n, apiKey: v })
         });
@@ -134,6 +135,7 @@ export async function summarizeTitle(sid, question, sessions, renderSessions) {
     if (ak) {
         fetch('/chat/update-title', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId: sid, title: sessions[sid].name })
         }).catch(() => { });
@@ -146,6 +148,7 @@ export async function playTTS(text) {
     try {
         const r = await fetch('/chat/tts', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text })
         });
@@ -166,6 +169,7 @@ export async function fetchHistory(sessionId) {
     try {
         const r = await fetch('/chat/history', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId })
         });
@@ -181,6 +185,7 @@ export async function deleteSession(sessionId) {
     try {
         const r = await fetch('/chat/delete-session', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId })
         });
@@ -191,7 +196,7 @@ export async function deleteSession(sessionId) {
 
 export async function fetchSessions(sessions, renderSessions) {
     try {
-        const r = await fetch('/chat/sessions');
+        const r = await fetch('/chat/sessions', { credentials: 'include' });
         const d = await r.json();
         if (d.success && Array.isArray(d.sessions)) {
             d.sessions.forEach(s => {
@@ -228,6 +233,7 @@ export async function sendWithSSE(question, modelType, provider, modelName, sess
         const response = await fetch('/chat/send-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(body)
         });
 
