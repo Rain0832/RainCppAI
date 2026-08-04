@@ -1,0 +1,12 @@
+{
+  "_comment": "Python path from config.json mcp.python; args resolved relative to resource_root",
+  "mcpServers": {
+    "weather_agent": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "mcp_servers/weather_server.py"
+      ]
+    }
+  }
+}

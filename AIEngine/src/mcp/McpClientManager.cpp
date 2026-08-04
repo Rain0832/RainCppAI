@@ -3,12 +3,14 @@
 #include <curl/curl.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <filesystem>
 #include <fstream>
 #include <set>
 #include <sstream>
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "Common/Config/ConfigManager.h"
 #include "Common/Logging/Logger.h"
 #include "JsonUtil.h"
 
@@ -154,9 +156,22 @@ void McpClientManager::registerServer(const std::string& name, const json& serve
             return;
         }
 
+        // 解析路径：相对路径基于 project root，command 特殊处理取 config mcp.python
+        auto& cfg = common::ConfigManager::instance();
+        std::string projectRoot = cfg.get("paths.resource_root", "../");
+        if (command == "python")
+            command = cfg.get("mcp.python", "/usr/bin/python3");
+        else if (command[0] != '/')
+            command = projectRoot + command;
+
         json argsArr = serverDef.value("args", json::array());
         std::vector<std::string> args;
-        for (auto& a : argsArr) args.push_back(a.get<std::string>());
+        for (auto& a : argsArr)
+        {
+            std::string arg = a.get<std::string>();
+            if (arg[0] != '/') arg = projectRoot + arg;
+            args.push_back(arg);
+        }
 
         // 构建 argv for execvp
         std::vector<char*> argv;
