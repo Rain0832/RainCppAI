@@ -7,7 +7,6 @@
 #include <sstream>
 
 #include "Common/Auth/JwtService.h"
-#include "common/base64.h"
 #include "Common/Config/ConfigManager.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
@@ -142,8 +141,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             auto& cfg = common::ConfigManager::instance();
             std::string cfgKey = (provider == "volcengine") ? "doubao" : "dashscope";
             apiKey = cfg.get("default_api_keys." + cfgKey, "");
-            if (!apiKey.empty())
-                SPDLOG_INFO_TAG("AI") << "Using default " << cfgKey << " API key from config.json";
+            if (!apiKey.empty()) SPDLOG_INFO_TAG("AI") << "Using default " << cfgKey << " API key from config.json";
         }
 
         // 新会话：前端不传 sessionId，后端自动生成
