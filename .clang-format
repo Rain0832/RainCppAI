@@ -1,0 +1,20 @@
+---
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^".*\.h"'
+    Priority: 5
+  - Regex: '^<.*>'
+    Priority: 3
+Standard: c++17
+UseTab: Never
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Empty
+BinPackParameters: false

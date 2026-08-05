@@ -6,12 +6,9 @@
 build/
 docs/
 Docs/
-.clang-format
 .env
 *.db
 *.sqlite
 config.json
-models.json
-mcp_config.json
 plan.md
 TODO.md/update_*.py

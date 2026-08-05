@@ -66,7 +66,8 @@ std::vector<std::string> AdminLogsHandler::readLastLines(const std::string& path
     std::string leftover;
     std::streamoff size = file.tellg();
 
-    while (size > 0 && static_cast<int>(lines.size()) < maxLines)
+    bool unlimited = (maxLines <= 0);
+    while (size > 0 && (unlimited || static_cast<int>(lines.size()) < maxLines))
     {
         std::streamoff readSize = std::min<std::streamoff>(kChunk, size);
         size -= readSize;
@@ -93,12 +94,12 @@ std::vector<std::string> AdminLogsHandler::readLastLines(const std::string& path
             pos = nl;
             if (!revLines.empty() && !revLines.back().empty() && revLines.back().back() == '\r')
                 revLines.back().pop_back();
-            if (static_cast<int>(revLines.size() + lines.size()) >= maxLines) break;
+            if (!unlimited && static_cast<int>(revLines.size() + lines.size()) >= maxLines) break;
         }
         for (auto it = revLines.rbegin(); it != revLines.rend(); ++it) lines.insert(lines.begin(), std::move(*it));
         if (pos == 0 && !chunk.empty() && chunk[0] != '\n') lines.insert(lines.begin(), std::move(leftover));
     }
-    while (static_cast<int>(lines.size()) > maxLines) lines.erase(lines.begin());
+    if (!unlimited) while (static_cast<int>(lines.size()) > maxLines) lines.erase(lines.begin());
     return lines;
 }
 
@@ -127,7 +128,7 @@ void AdminLogsHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     std::string logPath = "logs/app_" + dateStr + ".log";
     SPDLOG_INFO_TAG("ADMIN") << "Loading logs from: " << logPath;
 
-    auto lines = readLastLines(logPath, 200);
+    auto lines = readLastLines(logPath, 0);  // 0 = 全量读取
     std::string fmt = req.getQueryParameters("format");
 
     // ── JSON API mode (for dashboard tab) ──
@@ -154,7 +155,7 @@ void AdminLogsHandler::handle(const http::HttpRequest& req, http::HttpResponse* 
     }
 
     // ── SSR mode (standalone page, legacy) ──
-    std::string logHtml = readLastLinesHtml(logPath, 200);
+    std::string logHtml = readLastLinesHtml(logPath, 0);  // 0 = 全量读取
 
     std::string infoLine;
     if (logHtml.empty())

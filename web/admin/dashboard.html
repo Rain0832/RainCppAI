@@ -712,6 +712,10 @@
           <span class="count" id="logFileInfo"></span>
         </div>
         <div class="log-tabs">
+          <span class="ltab active" data-scope="global" onclick="setLogScope('global',this)">🗂️ 全局</span>
+          <span class="ltab" data-scope="user" onclick="setLogScope('user',this)">👤 用户</span>
+        </div>
+        <div class="log-tabs">
           <span class="ltab active" data-lvl="all" onclick="filterLogLines('all',this)">全部 <b id="lc-all">0</b></span>
           <span class="ltab ltab-error" data-lvl="error" onclick="filterLogLines('error',this)">🔴 错误 <b
               id="lc-error">0</b></span>
@@ -1020,6 +1024,18 @@
 
     // ═══ 日志查看 ═══
     let logLines = [];
+    let logScope = 'global';  // 'global' | 'user'
+
+    function setLogScope(scope, tab) {
+      logScope = scope;
+      document.querySelectorAll('[data-scope]').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      // 重置级别 Tab 到 "全部"
+      document.querySelectorAll('[data-lvl]').forEach(function (t) { t.classList.remove('active'); });
+      var allTab = document.querySelector('[data-lvl="all"]');
+      if (allTab) allTab.classList.add('active');
+      renderLogLines('all');
+    }
 
     async function loadLogs(date) {
       const dt = date || document.getElementById('logDatePicker').value || new Date().toISOString().slice(0, 10);
@@ -1043,13 +1059,19 @@
 
     function renderLogLines(level) {
       const el = document.getElementById('logViewer');
+      const isUser = logScope === 'user';
       let html = '';
       var c = { all: 0, error: 0, warn: 0, info: 0, debug: 0 };
       for (const l of logLines) {
+        var txt = l.text || '';
+        // 用户日志：包含 userId= 或 [AUTH] 标签的
+        var isUserLine = txt.indexOf('userId=') !== -1 || txt.indexOf('[AUTH]') !== -1;
+        if (isUser && !isUserLine) continue;
+        if (!isUser && isUserLine) continue;
         c.all++; c[l.level]++;
         const show = level === 'all' || l.level === level;
         const cls = 'log-line log-' + l.level + (show ? '' : ' hidden');
-        html += '<div class="' + cls + '">' + esc(l.text) + '</div>';
+        html += '<div class="' + cls + '">' + esc(txt) + '</div>';
       }
       el.innerHTML = html || '<span class="loading">暂无内容</span>';
       ['all', 'error', 'warn', 'info', 'debug'].forEach(function (k) { document.getElementById('lc-' + k).textContent = c[k]; });
