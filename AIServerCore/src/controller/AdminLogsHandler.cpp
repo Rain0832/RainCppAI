@@ -99,7 +99,8 @@ std::vector<std::string> AdminLogsHandler::readLastLines(const std::string& path
         for (auto it = revLines.rbegin(); it != revLines.rend(); ++it) lines.insert(lines.begin(), std::move(*it));
         if (pos == 0 && !chunk.empty() && chunk[0] != '\n') lines.insert(lines.begin(), std::move(leftover));
     }
-    if (!unlimited) while (static_cast<int>(lines.size()) > maxLines) lines.erase(lines.begin());
+    if (!unlimited)
+        while (static_cast<int>(lines.size()) > maxLines) lines.erase(lines.begin());
     return lines;
 }
 
