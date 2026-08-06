@@ -567,6 +567,9 @@
       <a href="#" data-page="logs"><span class="icon">📋</span>日志查看</a>
       <a href="#" data-page="settings"><span class="icon">⚙️</span>修改密码</a>
     </nav>
+    <div style="padding:0 20px 10px">
+      <a href="/" onclick="adminLogout()" style="color:#8890a8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);cursor:pointer"><span style="font-size:15px">🚪</span>退出登录</a>
+    </div>
     <div class="side-footer">
       Dr.Rain <span class="ver">v3.0.0</span> — Admin Panel
     </div>
@@ -757,11 +760,14 @@
         document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
         this.classList.add('active');
         const page = this.dataset.page;
+        if (page === 'settings') {
+          document.getElementById('pwdModal').style.display = 'flex';
+          return;
+        }
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + page).classList.add('active');
         if (page === 'users') loadUsers(); if (page === 'invites') loadInviteCodes(); if (page === 'feedback') loadFeedback();
         if (page === 'logs') loadLogs();
-        if (page === 'settings') { document.getElementById('pwdModal').style.display = 'flex'; }
       });
     });
 
@@ -959,6 +965,12 @@
       } else {
         showToast((data.error && data.error.message) || action + '失败', 'error');
       }
+    }
+
+    // ═══ 退出登录 (Admin) ═══
+    function adminLogout() {
+      fetch('/user/logout', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+        .finally(() => { sessionStorage.clear(); window.location.href = '/'; });
     }
 
     // ═══ 修改密码 (Admin) ═══
