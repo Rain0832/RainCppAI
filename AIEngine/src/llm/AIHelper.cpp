@@ -5,9 +5,12 @@
 
 #include "AIServerCore/include/Repository/CallLogRepository.h"
 #include "Common/Logging/Logger.h"
+#include "Infralib/Cache/SessionCache.h"
 
-AIHelper::AIHelper(storage::MysqlUtil* mysqlUtil, common::ThreadPool* threadPool)
-    : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
+AIHelper::AIHelper(storage::MysqlUtil* mysqlUtil,
+                   common::ThreadPool* threadPool,
+                   infra::cache::SessionCache* sessionCache)
+    : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool), sessionCache_(sessionCache)
 {
     strategy = StrategyFactory::instance().create("aliyun");
 }
@@ -141,6 +144,35 @@ std::string AIHelper::chatStream(int userId,
         toolsSchema.push_back(std::move(openAiTool));
     }
 
+    // L2 Redis 对话上下文恢复（v3.2.0）：避免重启/多节点场景下重复从 MySQL 拉取
+    if (sessionCache_)
+    {
+        std::string cached = sessionCache_->getChatContext(userId, sessionId, []() { return std::string(); });
+        if (!cached.empty() && cached != "__NIL__")
+        {
+            try
+            {
+                json j = json::parse(cached);
+                std::lock_guard<std::mutex> lock(msgMutex_);
+                // 保留刚追加的 user 消息，在前面插入缓存的历史
+                Message currentUser = messages_.back();
+                messages_.pop_back();
+                for (auto& mj : j)
+                {
+                    messages_.push_back({mj.value("role", ""), mj.value("content", ""), mj.value("model", ""),
+                                         mj.value("tool_call_id", ""), mj.value("ts", 0LL)});
+                }
+                messages_.push_back(currentUser);
+                SPDLOG_INFO_TAG("AI") << "ChatContext restored from Redis: userId=" << userId
+                                      << " sessionId=" << sessionId << " msgs=" << j.size();
+            }
+            catch (...)
+            {
+                SPDLOG_WARN_TAG("AI") << "Failed to parse Redis chat context, falling back to memory only";
+            }
+        }
+    }
+
     // 最大流式工具调用轮次
     const int MAX_TOOL_ROUNDS = 5;
 
@@ -219,6 +251,26 @@ std::string AIHelper::chatStream(int userId,
                 }
                 pushMessageToMysql(userId, userName, "assistant", textContent, tsNow, sessionId, strategy->getModel());
 
+                // Redis 保存对话上下文（v3.2.0）
+                if (sessionCache_)
+                {
+                    json snapshot = json::array();
+                    {
+                        std::lock_guard<std::mutex> lock(msgMutex_);
+                        for (auto& m : messages_)
+                        {
+                            json jm;
+                            jm["role"] = m.role;
+                            jm["content"] = m.content;
+                            jm["model"] = m.model;
+                            jm["tool_call_id"] = m.tool_call_id;
+                            jm["ts"] = m.ts;
+                            snapshot.push_back(jm);
+                        }
+                    }
+                    sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
+                }
+
                 // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
                 if (isNewSession && !apiKey.empty())
                 {
@@ -286,6 +338,27 @@ std::string AIHelper::chatStream(int userId,
                 messages_.push_back({"assistant", roundResponse, strategy->getModel(), "", tsNow});
             }
             pushMessageToMysql(userId, userName, "assistant", roundResponse, tsNow, sessionId, strategy->getModel());
+
+            // Redis 保存对话上下文（v3.2.0）
+            if (sessionCache_)
+            {
+                json snapshot = json::array();
+                {
+                    std::lock_guard<std::mutex> lock(msgMutex_);
+                    for (auto& m : messages_)
+                    {
+                        json jm;
+                        jm["role"] = m.role;
+                        jm["content"] = m.content;
+                        jm["model"] = m.model;
+                        jm["tool_call_id"] = m.tool_call_id;
+                        jm["ts"] = m.ts;
+                        snapshot.push_back(jm);
+                    }
+                }
+                sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
+            }
+
             _logCall("success");
             return roundResponse;
         }

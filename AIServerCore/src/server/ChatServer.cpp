@@ -361,7 +361,7 @@ void ChatServer::readDataFromMySQL()
         auto itSession = userSessions.find(session_id);
         if (itSession == userSessions.end())
         {
-            helper = std::make_shared<AIHelper>(&mysqlUtil_, &aiThreadPool_);
+            helper = std::make_shared<AIHelper>(&mysqlUtil_, &aiThreadPool_, sessionCache_.get());
             userSessions[session_id] = helper;
             sessionsIdsMap[user_id].push_back(session_id);
         }

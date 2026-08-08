@@ -1,5 +1,6 @@
 ﻿#include "controller/ChatSseHandler.h"
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -13,6 +14,10 @@
 #include "common/AISessionIdGenerator.h"
 #include "common/base64.h"
 #include "llm/AIHelper.h"
+#ifdef HAS_AMQPCPP
+#include "Infralib/Mq/TaskMessage.h"
+#include "Infralib/Mq/TaskProducer.h"
+#endif
 
 /// 生成 UUID v4 风格的随机文件名
 static std::string generateUUID()
@@ -169,8 +174,8 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             auto& us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
             {
-                us.emplace(sessionId,
-                           std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
+                us.emplace(sessionId, std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool(),
+                                                                 server_->getSessionCache().get()));
                 // 同步记录 sessionId 到列表中
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
@@ -199,6 +204,45 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                     "\r\n";
                 conn->send(sseHeader);
             });
+
+#ifdef HAS_AMQPCPP
+        // v3.2.0: 图片异步削峰 — 投递到 RabbitMQ，立即返回 202
+        if (!imageBase64.empty() && server_->getTaskProducer() && server_->getTaskProducer()->isConnected())
+        {
+            AISessionIdGenerator gen;
+            std::string taskId = gen.generate();
+
+            infra::mq::TaskMessage taskMsg;
+            taskMsg.taskId = taskId;
+            taskMsg.type = "vision";
+            taskMsg.payload["userId"] = userId;
+            taskMsg.payload["sessionId"] = sessionId;
+            taskMsg.payload["question"] = userQuestion;
+            taskMsg.payload["imageBase64"] = imageBase64;
+            taskMsg.payload["provider"] = provider;
+            taskMsg.payload["modelType"] = modelType;
+            taskMsg.payload["apiKey"] = apiKey;
+
+            server_->getTaskProducer()->publish("vision_tasks", taskMsg);
+            SPDLOG_INFO_TAG("AI") << "Vision task offloaded to MQ: taskId=" << taskId;
+
+            auto loop = conn->getLoop();
+            loop->runInLoop(
+                [conn, sessionId, taskId, isNewSession]()
+                {
+                    if (!conn->connected()) return;
+                    json ack;
+                    if (isNewSession) ack["sessionId"] = sessionId;
+                    ack["status"] = "accepted";
+                    ack["taskId"] = taskId;
+                    std::string data = "data: " + ack.dump() + "\n\n";
+                    conn->send(data);
+                    conn->send("data: [DONE]\n\n");
+                    conn->shutdown();
+                });
+            return;
+        }
+#endif
 
         // 提交流式 AI 调用到线程池
         server_->getAiThreadPool().submit(

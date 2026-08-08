@@ -772,3 +772,16 @@ Plan 9 (社区模板) + Plan 10 (Vision-Agent) + SP 12 (Root播种/Admin邀请�
 - **【清理】`~/.bashrc`**：移除 5 行 API Key export（DASHSCOPE / DOUBAO / BAIDU / Knowledge_Base）
 - **【清理】C++ 源码中 `std::getenv()` 全量清零**（ConfigManager 自身的环境变量覆盖机制保留）
 
+### Redis 对话上下文缓存 (#19 任务一)
+
+- **【AIEngine】`AIHelper` 构造注入 `SessionCache*`**：chatStream 启动时从 Redis `GET chat:{userId}:{sessionId}` 恢复对话上下文
+- **【AIEngine】Redis 上下文热保存**：每次 `pushMessageToMysql` 后 JSON 序列化 `messages_` → `SETEX`（30min TTL + 抖动）
+- **【AIServerCore】ChatSseHandler / ChatServer**：创建 AIHelper 时传入 `sessionCache_` 指针
+- **防崩溃**：Redis 反序列化失败时 catch 异常 → fallback 到内存/MySQL，不中断服务
+
+### RabbitMQ 图片异步削峰 (#19 任务二)
+
+- **【AIServerCore】ChatSseHandler 图片 MQ 分流**：检测到 `imageBase64` → 组装 TaskMessage → `publish("vision_tasks")` → 立即返回 SSE `{"status":"accepted","taskId":"..."}`
+- **非阻塞保证**：在 `#ifdef HAS_AMQPCPP` 下生效；未编译 AMQP-CPP 时静默回退到内联 ONNX 推理
+- **TaskMessage payload 全量**：userId / sessionId / question / imageBase64 / provider / modelType / apiKey
+
