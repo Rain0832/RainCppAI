@@ -11,6 +11,7 @@
 #include "Common/Config/ConfigManager.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
+#include "Infralib/Cache/SessionCache.h"
 #include "common/AISessionIdGenerator.h"
 #include "common/base64.h"
 #include "llm/AIHelper.h"
@@ -176,10 +177,20 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             {
                 us.emplace(sessionId, std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool(),
                                                                  server_->getSessionCache().get()));
-                // 同步记录 sessionId 到列表中
+                // 记录 sessionId 到列表并刷新 Redis 缓存
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
                     server_->getSessionIdsMap()[userId].push_back(sessionId);
+                }
+                if (server_->getSessionCache())
+                {
+                    std::vector<std::string> allSids;
+                    {
+                        std::shared_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
+                        auto it = server_->getSessionIdsMap().find(userId);
+                        if (it != server_->getSessionIdsMap().end()) allSids = it->second;
+                    }
+                    server_->getSessionCache()->saveSessionList(static_cast<int>(userId), allSids);
                 }
             }
             AIHelperPtr = us[sessionId];

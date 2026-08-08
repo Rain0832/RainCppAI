@@ -29,6 +29,8 @@ export async function fetchModels() {
 let _apiKeyCache = null;
 
 export async function fetchApiKeysFromDb() {
+    // v3.2.0: 功能暂不开放
+    return;
     try {
         const r = await fetch('/api/user/apikey', { credentials: 'include' });
         const d = await r.json();
