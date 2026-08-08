@@ -28,28 +28,10 @@
 ### 🏗 Architecture
 
 ```
-Browser / Nginx
-  └─► muduo EventLoop (Reactor pattern)
-        └─► CorsMiddleware → RequestId → Auth → AdminAuth → RateLimit → SecurityHeaders
-              └─► Router::dispatch()
-                    ├─► StaticFileHandler    ← CSS / JS / images
-                    ├─► ChatSseHandler        ← SSE streaming (only dialog entry)
-                    ├─► ChatHistoryHandler    ← Session history from MySQL
-                    ├─► ChatSessionsHandler   ← Session list
-                    ├─► Admin*Handler (×8)    ← Dashboard / users / invites / logs
-                    ├─► ChangePasswordHandler ← Password change
-                    ├─► HealthHandler         ← GET /health
-                    ├─► MetricsHandler        ← GET /metrics
-                    └─► McpHandler            ← MCP JSON-RPC 2.0
-                          ↓
-                    AIEngine::AIHelper
-                      ├─► AIModelStrategy    ← Qwen / DouBao
-                      ├─► AIToolRegistry     ← MCP tools
-                      ├─► McpClientManager   ← stdio/sse client
-                      ├─► ImageRecognizer    ← ONNX Runtime
-                      └─► AISpeechProcessor  ← TTS
-                          ↓
-                    Storage::MysqlUtil → MySQL (8 tables + FK)
+Browser / Nginx → muduo Reactor → Middleware Chain → Router
+  └─► AIServerCore (30+ Handlers)
+        └─► AIEngine (LLM / MCP / Vision / TTS)
+              └─► Storage → MySQL
 ```
 
 ### 🔧 Quick Start
@@ -75,106 +57,7 @@ bash ../scripts/download_models.sh
 ./http_server -p 8088
 ```
 
-### 🌍 Environment Variables
-
-All config.json values can be overridden via environment variables (ConfigManager auto-loads):
-
-| Config Path | Env Var |
-|------------|---------|
-| `db.host` | `DB_HOST` |
-| `db.port` | `DB_PORT` |
-| `db.user` | `DB_USER` |
-| `db.password` | `DB_PASSWORD` |
-| `db.name` | `DB_NAME` |
-| `mail.username` | `MAIL_USERNAME` |
-| `mail.password` | `MAIL_PASSWORD` |
-| `jwt.secret` | `JWT_SECRET` |
-| `default_api_keys.dashscope` | `DEFAULT_API_KEYS_DASHSCOPE` |
-| `default_api_keys.doubao` | `DEFAULT_API_KEYS_DOUBAO` |
-
-### 📚 API Reference
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/` `/entry` | ✗ | Login / Register page |
-| GET | `/register` | ✗ | Registration page |
-| POST | `/login` | ✗ | Login |
-| POST | `/register` | ✗ | Register |
-| GET | `/chat` | ✓ | Chat page |
-| POST | `/chat/send-stream` | ✓ | **SSE streaming dialog** (only entry) |
-| GET | `/chat/sessions` | ✓ | Session list |
-| POST | `/chat/history` | ✓ | Session history |
-| POST | `/chat/delete-session` | ✓ | Soft-delete session |
-| POST | `/chat/update-title` | ✓ | Update session title |
-| POST | `/chat/tts` | ✓ | Text-to-speech |
-| POST | `/user/logout` | ✓ | Logout |
-| GET | `/upload` | ✓ | Image recognition page |
-| POST | `/upload/send` | ✓ | Image recognition upload |
-| GET/POST | `/api/user/apikey` | ✓ | API Key CRUD |
-| POST | `/api/user/password` | ✓ | Change password |
-| POST | `/api/invite/verify` | ✗ | Verify invite code |
-| POST | `/api/verify/send` | ✗ | Send email verification code |
-| POST | `/api/verify/check` | ✗ | Check email verification code |
-| POST | `/api/feedback` | ✓ | Submit feedback |
-| GET | `/api/chat/models` | ✓ | Model registry (models.json) |
-| POST | `/mcp` | ✗ | MCP JSON-RPC 2.0 |
-| GET | `/health` | ✗ | Health check (MySQL SELECT 1) |
-| GET | `/metrics` | ✗ | Prometheus metrics |
-| GET | `/admin/dashboard` | admin | Admin panel |
-| GET | `/admin/sse` | admin | Real-time dashboard SSE |
-| GET | `/admin/logs` | admin | Log viewer |
-| GET | `/admin/api/users` | admin | User list |
-| POST | `/admin/api/users/toggle` | admin | Enable/disable user |
-| GET | `/admin/api/feedback` | admin | Feedback list |
-| GET | `/admin/api/invite-codes` | admin | Invite code list |
-| POST | `/admin/api/invite-codes/create` | admin | Create invite code |
-| POST | `/admin/api/invite-codes/toggle` | admin | Enable/disable invite code |
-
-### 📁 Project Structure
-
-```
-RainCppAI/
-├── HttpServer/          # Self-developed HTTP framework (muduo Reactor)
-│   ├── include/http/    # HttpServer, HttpRequest, HttpResponse
-│   ├── include/router/  # Router + RouterHandler
-│   ├── include/middleware/ # Cors, Auth, AdminAuth, RateLimit, RequestId, SecurityHeaders
-│   └── include/session/ # Session + SessionManager
-├── AIServerCore/        # Business orchestration (30+ handlers)
-│   ├── include/controller/  # All Handler headers
-│   ├── include/Repository/  # Data access layer (Account/Session/Message/ApiKey...)
-│   ├── include/Service/     # Business logic (Auth/Session/ApiKey/Chat)
-│   ├── include/server/      # ChatServer + SessionStore
-│   └── src/                 # Implementation
-├── AIEngine/            # AI utility library (zero HttpServer dependency)
-│   ├── include/llm/     # AIHelper, AIStrategy, AIFactory
-│   ├── include/mcp/     # McpServer, McpClientManager, AIToolRegistry
-│   ├── include/vision/  # ImageRecognizer (ONNX Runtime)
-│   ├── include/audio/   # AISpeechProcessor (TTS)
-│   └── include/common/  # Message, base64, AISessionIdGenerator
-├── Storage/             # MySQL connection pool + PreparedStatement
-├── Common/              # Shared: Config, Logging (spdlog), Auth (JWT), Crypto (argon2id), Mail
-├── web/                 # Frontend (HTML + vanilla JS ES modules)
-├── mcp_servers/         # Python MCP microservices (weather)
-├── Tests/               # GoogleTest unit tests
-├── deploy/              # nginx.conf + systemd service
-├── scripts/             # download_models.sh
-└── Docs/                # Design documents
-```
-
-### 📦 Dependencies
-
-| Library | Version | Usage |
-|---------|---------|-------|
-| muduo | 2.0+ | Network I/O (Reactor) |
-| MySQL Connector C++ | 8.0 | Database |
-| ONNX Runtime | 1.17.1 | Image recognition |
-| OpenCV | 4.x | Image preprocessing |
-| libcurl | 7.x | LLM API + SMTP |
-| OpenSSL | 3.x | HTTPS + JWT |
-| libsodium | 1.0.18 | argon2id |
-| spdlog | 1.x | Logging |
-| nlohmann/json | 3.x | JSON |
-| GoogleTest | 1.15.2 | Unit tests (FetchContent) |
+> 📖 **深度文档请查阅 [Wiki](https://github.com/Rain0832/RainCppAI/wiki)**  — 架构设计、API 参考、部署指南、MCP 插件开发、项目结构、依赖清单。
 
 ---
 
@@ -192,7 +75,14 @@ RainCppAI/
 | **管理后台** | 实时看板、用户/邀请码/反馈管理、日志查看器、Root 账号自动播种 |
 | **工程基建** | Repository/Service 分层架构、ConfigManager 统一配置、GoogleTest、GitHub Actions CI |
 
-### 🏗 架构（同上）
+### 🏗 架构
+
+```
+浏览器 / Nginx → muduo Reactor → 中间件链 → 路由分发
+  └─► AIServerCore (30+ Handler)
+        └─► AIEngine (LLM / MCP / 视觉 / 语音)
+              └─► Storage → MySQL
+```
 
 ### 🔧 快速开始
 
@@ -217,26 +107,7 @@ bash ../scripts/download_models.sh
 ./http_server -p 8088
 ```
 
-### 🌍 环境变量对照
-
-| config.json 路径 | 环境变量 |
-|-----------------|---------|
-| `db.host` | `DB_HOST` |
-| `db.port` | `DB_PORT` |
-| `db.user` | `DB_USER` |
-| `db.password` | `DB_PASSWORD` |
-| `db.name` | `DB_NAME` |
-| `mail.username` | `MAIL_USERNAME` |
-| `mail.password` | `MAIL_PASSWORD` |
-| `jwt.secret` | `JWT_SECRET` |
-| `default_api_keys.dashscope` | `DEFAULT_API_KEYS_DASHSCOPE` |
-| `default_api_keys.doubao` | `DEFAULT_API_KEYS_DOUBAO` |
-
-### 📚 API 路由表（同英文版）
-
-### 📁 项目结构（同英文版）
-
-### 📦 依赖清单（同英文版）
+> 📖 **深度文档请查阅 [Wiki](https://github.com/Rain0832/RainCppAI/wiki)**  — 架构设计、API 参考、部署指南、MCP 插件开发、项目结构、依赖清单。
 
 ---
 
