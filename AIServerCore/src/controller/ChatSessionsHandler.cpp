@@ -74,7 +74,23 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
             auto redisSessions = sessionCache->getSessionList(uid, dbFallback);
             if (!redisSessions.empty())
             {
-                // Redis 命中：直接构建响应
+                // Redis 只缓存 ID 列表，标题仍需从 MySQL 查
+                std::unordered_map<std::string, std::string> redisTitleMap;
+                try
+                {
+                    storage::MysqlUtil mu;
+                    auto tRes = mu.executeQuery(
+                        "SELECT id, title FROM sessions WHERE account_id = ? AND is_deleted = 0", userId);
+                    while (tRes && tRes->next())
+                    {
+                        std::string tid = tRes->getString("id");
+                        if (!tRes->isNull("title")) redisTitleMap[tid] = tRes->getString("title");
+                    }
+                }
+                catch (...)
+                {
+                }
+
                 json successResp;
                 successResp["success"] = true;
                 json sessionArray = json::array();
@@ -82,7 +98,9 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
                 {
                     json s;
                     s["sessionId"] = sid;
-                    s["name"] = "会话 " + sid.substr(0, 8);
+                    auto tit = redisTitleMap.find(sid);
+                    s["name"] = (tit != redisTitleMap.end() && !tit->second.empty()) ? tit->second
+                                                                                      : "会话 " + sid.substr(0, 8);
                     sessionArray.push_back(s);
                 }
                 successResp["sessions"] = sessionArray;

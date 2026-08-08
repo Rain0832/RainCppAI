@@ -387,8 +387,8 @@ function bindEvents() {
                     renderSessions();
                     summarizeTitle(currentSessionId, q, sessions, renderSessions);
 
-                    // 延迟 1.5s 等待后端 LLM 异步标题落库后刷新侧边栏
-                    setTimeout(() => fetchSessions(sessions, renderSessions), 1500);
+                    // 延迟 3s 等待后端 LLM 异步标题落库后刷新侧边栏
+                    setTimeout(() => fetchSessions(sessions, renderSessions), 3000);
                 }
             } else {
                 if (!sessions[currentSessionId]) {
