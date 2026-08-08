@@ -5,6 +5,7 @@
 #include "Common/Auth/JwtService.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
+#include "Infralib/Cache/SessionCache.h"
 
 void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -45,6 +46,49 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
             server_->packageResp(req.getVersion(), http::HttpResponse::k401Unauthorized, "Unauthorized", true,
                                  "application/json", errorBody.size(), errorBody, resp);
             return;
+        }
+
+        // v3.2.0: 优先尝试 Redis 缓存（三级存储 L2）
+        int uid = static_cast<int>(userId);
+        auto sessionCache = server_->getSessionCache();
+        if (sessionCache)
+        {
+            // Redis DB fallback: 查 MySQL sessions 表
+            auto dbFallback = [&]() -> std::vector<std::string> {
+                std::vector<std::string> sids;
+                try
+                {
+                    storage::MysqlUtil mu;
+                    auto res = mu.executeQuery(
+                        "SELECT id FROM sessions WHERE account_id = ? AND is_deleted = 0 ORDER BY updated_at DESC",
+                        userId);
+                    while (res && res->next())
+                        sids.push_back(res->getString("id"));
+                }
+                catch (...) {}
+                return sids;
+            };
+
+            auto redisSessions = sessionCache->getSessionList(uid, dbFallback);
+            if (!redisSessions.empty())
+            {
+                // Redis 命中：直接构建响应
+                json successResp;
+                successResp["success"] = true;
+                json sessionArray = json::array();
+                for (auto& sid : redisSessions)
+                {
+                    json s;
+                    s["sessionId"] = sid;
+                    s["name"] = "会话 " + sid.substr(0, 8);
+                    sessionArray.push_back(s);
+                }
+                successResp["sessions"] = sessionArray;
+                std::string successBody = successResp.dump(4);
+                server_->packageResp(req.getVersion(), http::HttpResponse::k200Ok, "OK", false,
+                                     "application/json", successBody.size(), successBody, resp);
+                return;
+            }
         }
 
         // Phase 2: 从 sessions 表读取含 title 的会话列表
@@ -139,6 +183,10 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
             sessionArray.push_back(s);
         }
         successResp["sessions"] = sessionArray;
+
+        // v3.2.0: 回写 Redis 缓存
+        if (sessionCache && !allSids.empty())
+            sessionCache->saveSessionList(uid, allSids);
 
         std::string successBody = successResp.dump(4);
 

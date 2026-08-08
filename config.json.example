@@ -51,5 +51,16 @@
   "log": {
     "level": "info",
     "path": "logs/app.log"
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  },
+  "rabbitmq": {
+    "uri": "",
+    "vision_queue": "vision_tasks",
+    "tts_queue": "tts_tasks"
   }
 }

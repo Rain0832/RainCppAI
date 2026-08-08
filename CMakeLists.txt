@@ -48,6 +48,28 @@ find_library(MYSQLCLIENT_LIBRARY
         /usr/local/lib
 )
 
+# v3.2.0: hiredis (Redis client)
+find_library(HIREDIS_LIBRARY
+    NAMES hiredis
+    PATHS
+        /usr/local/lib
+        /usr/lib
+)
+
+# v3.2.0: AMQP-CPP + libev (RabbitMQ)
+find_library(AMQPCPP_LIBRARY
+    NAMES amqpcpp
+    PATHS
+        /usr/local/lib
+        /usr/lib
+)
+find_library(EV_LIBRARY
+    NAMES ev
+    PATHS
+        /usr/local/lib
+        /usr/lib
+)
+
 # -----------------------------
 # 源文件
 # -----------------------------
@@ -85,6 +107,8 @@ set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/Common/Metrics/MetricsCollector.cpp
     ${PROJECT_SOURCE_DIR}/Common/RateLimit/TokenBucket.cpp
     ${PROJECT_SOURCE_DIR}/Common/Auth/JwtService.cpp
+    ${PROJECT_SOURCE_DIR}/Infralib/Cache/RedisClient.cpp
+    ${PROJECT_SOURCE_DIR}/Infralib/Cache/SessionCache.cpp
 )
 
 # ==== 静态库：AIEngine ====
@@ -119,6 +143,30 @@ target_include_directories(http_server PRIVATE
     /usr/local/onnxruntime/include)
 target_link_libraries(http_server PRIVATE -Wl,--whole-archive aiengine -Wl,--no-whole-archive httpserver storage pthread)
 target_link_libraries(http_server PRIVATE spdlog::spdlog)
+
+# v3.2.0: Redis + RabbitMQ (optional)
+if(HIREDIS_LIBRARY)
+    target_link_libraries(http_server PRIVATE ${HIREDIS_LIBRARY})
+    target_compile_definitions(http_server PRIVATE HAS_REDIS=1)
+    message(STATUS "hiredis found: Redis cache enabled")
+else()
+    message(STATUS "hiredis NOT found — Redis cache disabled")
+endif()
+if(AMQPCPP_LIBRARY AND EV_LIBRARY)
+    target_link_libraries(http_server PRIVATE ${AMQPCPP_LIBRARY} ${EV_LIBRARY})
+    target_compile_definitions(http_server PRIVATE HAS_AMQPCPP=1)
+    message(STATUS "AMQP-CPP + libev found: RabbitMQ enabled")
+else()
+    message(STATUS "AMQP-CPP/libev NOT found — RabbitMQ disabled")
+endif()
+
+# v3.2.0: MQ source files (only when AMQP-CPP is available)
+if(AMQPCPP_LIBRARY AND EV_LIBRARY)
+    target_sources(http_server PRIVATE
+        ${PROJECT_SOURCE_DIR}/Infralib/Mq/TaskProducer.cpp
+        ${PROJECT_SOURCE_DIR}/Infralib/Mq/TaskConsumer.cpp
+    )
+endif()
 
 # ==== GoogleTest ====
 include(FetchContent)

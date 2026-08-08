@@ -728,3 +728,37 @@ Plan 9 (社区模板) + Plan 10 (Vision-Agent) + SP 12 (Root播种/Admin邀请�
 - **【CI/CD】CodeQL 安全扫描**：`.github/workflows/codeql.yml`，合入 `main`/`dev` 后自动 C/C++ 静态分析（内存安全 / 未定义行为 / 注入漏洞），每周日兜底全量扫描
 - **【Infra】CodeQL 优化**：移除 `pull_request` 触发器仅保留合入后扫描（省 CI 算力）
 
+
+
+## v3.2.0 — 中间件与高可用重构 (2026-08)
+
+> 🚀 **Redis 二级缓存 + RabbitMQ 异步削峰**
+
+### Redis 二级缓存 (#10)
+
+##### v3.2.0 — Redis 三级存储 + AMQP 任务队列
+- **【Infralib】新增 `Infralib/Cache/RedisClient`**：hiredis 封装（连接管理、GET/SETEX/DEL/EXPIRE、Pipeline 批量）
+- **【Infralib】新增 `Infralib/Cache/SessionCache`**：内存 → Redis → MySQL 三级流转门面
+- **【Cache】缓存雪崩防护**：所有 SETEX TTL 附加 ±20% 随机抖动（`jitteredTTL`）
+- **【Cache】缓存击穿防护**：互斥锁 + double-check，仅一个线程查 DB 重建缓存
+- **【Cache】缓存穿透防护**：不存在的 session ID 缓存 `__NULL__` 标记（60s TTL）
+- **【AIServerCore】ChatSessionsHandler 接入 SessionCache**：优先 Redis → 降级 MySQL，命中后异步刷新 TTL
+- **【Infra】CMakeLists 新增 hiredis 依赖**：`find_library(HIREDIS_LIBRARY)` + 链接
+- **【Infra】config.json 新增 `redis` 配置节**：host/port/password/db
+
+### RabbitMQ 异步削峰 (#11)
+
+##### v3.2.0 — RabbitMQ 任务队列
+- **【Infralib】新增 `Infralib/Mq/TaskMessage`**：JSON 消息协议（version/taskId/type/payload/replyTo/ttl）
+- **【Infralib】新增 `Infralib/Mq/TaskProducer`**：AMQP-CPP 生产者，publish() 投递任务不阻塞 Reactor
+- **【Infralib】新增 `Infralib/Mq/TaskConsumer`**：独立消费者进程，type 路由分发（vision/tts/summarize）
+- **【AIServerCore】新增 `TaskStatusHandler`**：`GET /task/{taskId}/status` SSE 轮询端点
+- **【AIServerCore】ChatSseHandler 异步分流**：图片请求 → MQ 投递 + 立即返回 202 taskId
+- **【HttpServer】HttpResponse 新增 `k202Accepted`**：异步任务受理状态码
+- **【Infra】config.json 新增 `rabbitmq` 配置节**：host/port/vhost/user/password
+
+### 工程
+
+- **【Docs】CHANGELOG 追加 v3.2.0**
+- **【Docs】wiki/Project-Structure.md 更新依赖清单**
+

@@ -38,6 +38,7 @@
 #include "controller/McpHandler.h"
 #include "controller/MetricsHandler.h"
 #include "controller/ModelListHandler.h"
+#include "controller/TaskStatusHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "http/HttpServer.h"
@@ -46,6 +47,12 @@
 #include "middleware/AuthMiddleware.h"
 #include "middleware/RateLimitMiddleware.h"
 #include "middleware/RequestIdMiddleware.h"
+
+#include "Infralib/Cache/RedisClient.h"
+#include "Infralib/Cache/SessionCache.h"
+#ifdef HAS_AMQPCPP
+#include "Infralib/Mq/TaskProducer.h"
+#endif
 
 using namespace http;
 
@@ -80,6 +87,10 @@ void ChatServer::initialize()
     seedRootAccount();
     initializeSession();
     initializeMiddleware();
+    initializeRedis();
+#ifdef HAS_AMQPCPP
+    initializeMQ();
+#endif
     initializeRouter();
 }
 
@@ -433,6 +444,11 @@ void ChatServer::initializeRouter()
     // MCP Server 路由（标准 JSON-RPC 2.0）
     httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));
 
+    // v3.2.0: 异步任务状态查询（RabbitMQ 削峰）
+    if (redisClient_)
+        httpServer_.addRoute(http::HttpRequest::kGet, "/task/:taskId/status",
+                             std::make_shared<TaskStatusHandler>(redisClient_));
+
     // Admin 后台路由
     httpServer_.Get("/admin/dashboard", std::make_shared<AdminDashboardHandler>(this));
     httpServer_.Get("/admin/logs", std::make_shared<AdminLogsHandler>(this));
@@ -481,6 +497,54 @@ void ChatServer::initializeMiddleware()
     auto rateLimitMiddleware = std::make_shared<http::middleware::RateLimitMiddleware>();
     httpServer_.addMiddleware(rateLimitMiddleware);
 }
+
+void ChatServer::initializeRedis()
+{
+    auto& cfg = common::ConfigManager::instance();
+    std::string host = cfg.get("redis.host", "127.0.0.1");
+    int port = cfg.getInt("redis.port", 6379);
+    std::string password = cfg.get("redis.password", "");
+    int db = cfg.getInt("redis.db", 0);
+
+    redisClient_ = std::make_shared<infra::cache::RedisClient>();
+    if (redisClient_->connect(host, port, password, db))
+    {
+        sessionCache_ = std::make_shared<infra::cache::SessionCache>(redisClient_);
+        SPDLOG_INFO_TAG("REDIS") << "Redis initialized: " << host << ":" << port;
+    }
+    else
+    {
+        SPDLOG_WARN_TAG("REDIS") << "Redis unavailable — falling back to MySQL-only mode";
+        redisClient_.reset();
+    }
+}
+
+#ifdef HAS_AMQPCPP
+void ChatServer::initializeMQ()
+{
+    auto& cfg = common::ConfigManager::instance();
+    std::string mqUri = cfg.get("rabbitmq.uri", "");
+
+    if (mqUri.empty())
+    {
+        SPDLOG_INFO_TAG("MQ") << "RabbitMQ URI not configured — MQ disabled";
+        return;
+    }
+
+    taskProducer_ = std::make_shared<infra::mq::TaskProducer>();
+    if (taskProducer_->connect(mqUri))
+    {
+        taskProducer_->declareQueue("vision_tasks");
+        taskProducer_->declareQueue("tts_tasks");
+        SPDLOG_INFO_TAG("MQ") << "RabbitMQ producer initialized";
+    }
+    else
+    {
+        SPDLOG_WARN_TAG("MQ") << "RabbitMQ unavailable — async tasks disabled";
+        taskProducer_.reset();
+    }
+}
+#endif
 
 void ChatServer::packageResp(const std::string& version,
                              http::HttpResponse::HttpStatusCode statusCode,
