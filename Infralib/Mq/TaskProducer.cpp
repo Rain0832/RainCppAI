@@ -27,15 +27,19 @@ bool TaskProducer::connect(const std::string& uri)
 
     channel_ = std::make_unique<AMQP::TcpChannel>(connection_.get());
 
-    channel_->onError([this](const char* message) {
-        SPDLOG_ERROR_TAG("MQ") << "Channel error: " << message;
-        connected_ = false;
-    });
+    channel_->onError(
+        [this](const char* message)
+        {
+            SPDLOG_ERROR_TAG("MQ") << "Channel error: " << message;
+            connected_ = false;
+        });
 
-    channel_->onReady([this]() {
-        connected_ = true;
-        SPDLOG_INFO_TAG("MQ") << "RabbitMQ channel ready";
-    });
+    channel_->onReady(
+        [this]()
+        {
+            connected_ = true;
+            SPDLOG_INFO_TAG("MQ") << "RabbitMQ channel ready";
+        });
 
     // 运行几次事件循环等待握手完成（最多 3s）
     ev_timer timeout_watcher;
@@ -62,7 +66,8 @@ void TaskProducer::declareQueue(const std::string& queueName)
 
     channel_->declareQueue(queueName, AMQP::durable)
         .onSuccess([queueName]() { SPDLOG_INFO_TAG("MQ") << "Queue declared: " << queueName; })
-        .onError([queueName](const char* msg) { SPDLOG_ERROR_TAG("MQ") << "Queue declare failed: " << queueName << " - " << msg; });
+        .onError([queueName](const char* msg)
+                 { SPDLOG_ERROR_TAG("MQ") << "Queue declare failed: " << queueName << " - " << msg; });
 
     // 运行事件循环处理声明
     ev_timer timeout_watcher;

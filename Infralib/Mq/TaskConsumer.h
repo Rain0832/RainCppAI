@@ -9,9 +9,8 @@
 
 #include <amqpcpp.h>
 #include <amqpcpp/libev.h>
-#include <hiredis/hiredis.h>
-
 #include <functional>
+#include <hiredis/hiredis.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -39,7 +38,8 @@ public:
      * @brief 连接到 RabbitMQ 和 Redis
      */
     bool connect(const std::string& amqpUri,
-                 const std::string& redisHost, int redisPort,
+                 const std::string& redisHost,
+                 int redisPort,
                  const std::string& redisPassword);
 
     /**

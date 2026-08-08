@@ -159,11 +159,20 @@ public:
     };
 
     // Redis (v3.2.0)
-    std::shared_ptr<infra::cache::RedisClient> getRedisClient() const { return redisClient_; }
-    std::shared_ptr<infra::cache::SessionCache> getSessionCache() const { return sessionCache_; }
+    std::shared_ptr<infra::cache::RedisClient> getRedisClient() const
+    {
+        return redisClient_;
+    }
+    std::shared_ptr<infra::cache::SessionCache> getSessionCache() const
+    {
+        return sessionCache_;
+    }
 
     // MQ (v3.2.0)
-    std::shared_ptr<infra::mq::TaskProducer> getTaskProducer() const { return taskProducer_; }
+    std::shared_ptr<infra::mq::TaskProducer> getTaskProducer() const
+    {
+        return taskProducer_;
+    }
 
     void packageResp(const std::string& version,
                      http::HttpResponse::HttpStatusCode statusCode,

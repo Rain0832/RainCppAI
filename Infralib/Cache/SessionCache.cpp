@@ -7,10 +7,10 @@ namespace infra
 namespace cache
 {
 
-static constexpr int kSessionListTTL = 3600;    // 1h
-static constexpr int kSessionMetaTTL = 1800;    // 30min
-static constexpr int kChatContextTTL = 1800;    // 30min
-static constexpr int kNilCacheTTL = 60;         // 空标记 60s
+static constexpr int kSessionListTTL = 3600;  // 1h
+static constexpr int kSessionMetaTTL = 1800;  // 30min
+static constexpr int kChatContextTTL = 1800;  // 30min
+static constexpr int kNilCacheTTL = 60;       // 空标记 60s
 static constexpr const char* kNilMarker = "__NIL__";
 
 SessionCache::SessionCache(std::shared_ptr<RedisClient> redis) : redis_(std::move(redis)) {}
@@ -54,7 +54,8 @@ std::string SessionCache::getOrRebuild(const std::string& key, std::function<std
     }
 
     // 获取或创建互斥锁（按 key 分片，防击穿）
-    std::mutex& mtx = [this, &key]() -> std::mutex& {
+    std::mutex& mtx = [this, &key]() -> std::mutex&
+    {
         std::lock_guard<std::mutex> lock(mutexMapMutex_);
         return mutexes_[key];
     }();
@@ -86,8 +87,7 @@ std::string SessionCache::getOrRebuild(const std::string& key, std::function<std
     return val;
 }
 
-std::vector<std::string> SessionCache::getSessionList(int userId,
-                                                       std::function<std::vector<std::string>()> dbFallback)
+std::vector<std::string> SessionCache::getSessionList(int userId, std::function<std::vector<std::string>()> dbFallback)
 {
     std::string key = makeSessionListKey(userId);
 
@@ -100,7 +100,8 @@ std::vector<std::string> SessionCache::getSessionList(int userId,
     }
 
     // 互斥锁防击穿
-    std::mutex& mtx = [this, &key]() -> std::mutex& {
+    std::mutex& mtx = [this, &key]() -> std::mutex&
+    {
         std::lock_guard<std::mutex> lock(mutexMapMutex_);
         return mutexes_[key];
     }();
@@ -121,8 +122,7 @@ std::vector<std::string> SessionCache::getSessionList(int userId,
     }
 
     // 回写 Redis（批量 LPUSH 后 LTRIM）
-    for (auto it = list.rbegin(); it != list.rend(); ++it)
-        redis_->lpush(key, *it);
+    for (auto it = list.rbegin(); it != list.rend(); ++it) redis_->lpush(key, *it);
     redis_->expire(key, jitteredTTL(kSessionListTTL));
 
     SPDLOG_INFO_TAG("CACHE") << "SessionList cached: userId=" << userId << " count=" << list.size();
@@ -133,15 +133,13 @@ void SessionCache::saveSessionList(int userId, const std::vector<std::string>& s
 {
     std::string key = makeSessionListKey(userId);
     redis_->del(key);
-    for (auto it = sessionIds.rbegin(); it != sessionIds.rend(); ++it)
-        redis_->lpush(key, *it);
+    for (auto it = sessionIds.rbegin(); it != sessionIds.rend(); ++it) redis_->lpush(key, *it);
     redis_->expire(key, jitteredTTL(kSessionListTTL));
     SPDLOG_INFO_TAG("CACHE") << "SessionList saved: userId=" << userId << " count=" << sessionIds.size();
 }
 
 std::vector<std::pair<std::string, std::string>> SessionCache::getSessionMeta(
-    const std::string& sessionId,
-    std::function<std::vector<std::pair<std::string, std::string>>()> dbFallback)
+    const std::string& sessionId, std::function<std::vector<std::pair<std::string, std::string>>()> dbFallback)
 {
     std::string key = makeSessionMetaKey(sessionId);
     auto fields = redis_->hgetall(key);
@@ -152,7 +150,8 @@ std::vector<std::pair<std::string, std::string>> SessionCache::getSessionMeta(
     }
 
     // 互斥锁
-    std::mutex& mtx = [this, &key]() -> std::mutex& {
+    std::mutex& mtx = [this, &key]() -> std::mutex&
+    {
         std::lock_guard<std::mutex> lock(mutexMapMutex_);
         return mutexes_[key];
     }();
@@ -163,24 +162,23 @@ std::vector<std::pair<std::string, std::string>> SessionCache::getSessionMeta(
 
     SPDLOG_INFO_TAG("CACHE") << "SessionMeta miss, DB fallback: " << sessionId;
     fields = dbFallback();
-    for (auto& [f, v] : fields)
-        redis_->hset(key, f, v);
+    for (auto& [f, v] : fields) redis_->hset(key, f, v);
     redis_->expire(key, jitteredTTL(kSessionMetaTTL));
     return fields;
 }
 
 void SessionCache::saveSessionMeta(const std::string& sessionId,
-                                    const std::vector<std::pair<std::string, std::string>>& fields)
+                                   const std::vector<std::pair<std::string, std::string>>& fields)
 {
     std::string key = makeSessionMetaKey(sessionId);
     redis_->del(key);
-    for (auto& [f, v] : fields)
-        redis_->hset(key, f, v);
+    for (auto& [f, v] : fields) redis_->hset(key, f, v);
     redis_->expire(key, jitteredTTL(kSessionMetaTTL));
 }
 
-std::string SessionCache::getChatContext(int userId, const std::string& sessionId,
-                                          std::function<std::string()> dbFallback)
+std::string SessionCache::getChatContext(int userId,
+                                         const std::string& sessionId,
+                                         std::function<std::string()> dbFallback)
 {
     std::string key = makeChatContextKey(userId, sessionId);
     return getOrRebuild(key, dbFallback, kChatContextTTL);

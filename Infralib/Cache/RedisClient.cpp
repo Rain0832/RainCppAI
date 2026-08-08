@@ -187,8 +187,7 @@ bool RedisClient::lpush(const std::string& key, const std::string& value)
     std::lock_guard<std::mutex> lock(mutex_);
     ensureConnected();
 
-    auto* reply = static_cast<redisReply*>(
-        redisCommand(ctx_, "LPUSH %s %b", key.c_str(), value.data(), value.size()));
+    auto* reply = static_cast<redisReply*>(redisCommand(ctx_, "LPUSH %s %b", key.c_str(), value.data(), value.size()));
     bool ok = reply && reply->type == REDIS_REPLY_INTEGER;
     freeReply(reply);
     return ok;

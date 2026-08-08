@@ -20,8 +20,9 @@ TaskConsumer::~TaskConsumer()
 }
 
 bool TaskConsumer::connect(const std::string& amqpUri,
-                            const std::string& redisHost, int redisPort,
-                            const std::string& redisPassword)
+                           const std::string& redisHost,
+                           int redisPort,
+                           const std::string& redisPassword)
 {
     // Redis
     struct timeval timeout = {2, 0};
@@ -61,9 +62,7 @@ void TaskConsumer::consume(const std::string& queueName)
     if (!channel_) return;
 
     channel_->declareQueue(queueName, AMQP::durable)
-        .onSuccess([this, queueName]() {
-            SPDLOG_INFO_TAG("MQ") << "Queue ready: " << queueName;
-        });
+        .onSuccess([this, queueName]() { SPDLOG_INFO_TAG("MQ") << "Queue ready: " << queueName; });
 
     // 短暂运行事件循环完成声明
     ev_timer timeout_watcher;
@@ -73,13 +72,14 @@ void TaskConsumer::consume(const std::string& queueName)
     ev_run(loop_, 0);
 
     channel_->consume(queueName)
-        .onReceived([this](const AMQP::Message& msg, uint64_t tag, bool redelivered) {
-            onMessage(msg, tag, redelivered);
-        })
-        .onSuccess([&](const std::string& tag) {
-            currentConsumerTag_ = tag;
-            SPDLOG_INFO_TAG("MQ") << "Consuming queue: " << queueName << " tag: " << tag;
-        })
+        .onReceived([this](const AMQP::Message& msg, uint64_t tag, bool redelivered)
+                    { onMessage(msg, tag, redelivered); })
+        .onSuccess(
+            [&](const std::string& tag)
+            {
+                currentConsumerTag_ = tag;
+                SPDLOG_INFO_TAG("MQ") << "Consuming queue: " << queueName << " tag: " << tag;
+            })
         .onError([](const char* msg) { SPDLOG_ERROR_TAG("MQ") << "Consume error: " << msg; });
 
     // 短暂运行完成注册

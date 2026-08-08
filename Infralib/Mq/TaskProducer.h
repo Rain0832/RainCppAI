@@ -9,7 +9,6 @@
 
 #include <amqpcpp.h>
 #include <amqpcpp/libev.h>
-
 #include <memory>
 #include <string>
 

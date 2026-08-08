@@ -13,8 +13,7 @@
 class TaskStatusHandler : public http::router::RouterHandler
 {
 public:
-    explicit TaskStatusHandler(std::shared_ptr<infra::cache::RedisClient> redis)
-        : redis_(std::move(redis)) {}
+    explicit TaskStatusHandler(std::shared_ptr<infra::cache::RedisClient> redis) : redis_(std::move(redis)) {}
 
     void handle(const http::HttpRequest& req, http::HttpResponse* resp) override;
 

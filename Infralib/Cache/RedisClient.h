@@ -7,9 +7,8 @@
  */
 #pragma once
 
-#include <hiredis/hiredis.h>
-
 #include <functional>
+#include <hiredis/hiredis.h>
 #include <memory>
 #include <mutex>
 #include <string>

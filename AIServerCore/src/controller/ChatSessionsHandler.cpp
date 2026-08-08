@@ -54,7 +54,8 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         if (sessionCache)
         {
             // Redis DB fallback: 查 MySQL sessions 表
-            auto dbFallback = [&]() -> std::vector<std::string> {
+            auto dbFallback = [&]() -> std::vector<std::string>
+            {
                 std::vector<std::string> sids;
                 try
                 {
@@ -62,10 +63,11 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
                     auto res = mu.executeQuery(
                         "SELECT id FROM sessions WHERE account_id = ? AND is_deleted = 0 ORDER BY updated_at DESC",
                         userId);
-                    while (res && res->next())
-                        sids.push_back(res->getString("id"));
+                    while (res && res->next()) sids.push_back(res->getString("id"));
                 }
-                catch (...) {}
+                catch (...)
+                {
+                }
                 return sids;
             };
 
@@ -85,8 +87,8 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
                 }
                 successResp["sessions"] = sessionArray;
                 std::string successBody = successResp.dump(4);
-                server_->packageResp(req.getVersion(), http::HttpResponse::k200Ok, "OK", false,
-                                     "application/json", successBody.size(), successBody, resp);
+                server_->packageResp(req.getVersion(), http::HttpResponse::k200Ok, "OK", false, "application/json",
+                                     successBody.size(), successBody, resp);
                 return;
             }
         }
@@ -185,8 +187,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         successResp["sessions"] = sessionArray;
 
         // v3.2.0: 回写 Redis 缓存
-        if (sessionCache && !allSids.empty())
-            sessionCache->saveSessionList(uid, allSids);
+        if (sessionCache && !allSids.empty()) sessionCache->saveSessionList(uid, allSids);
 
         std::string successBody = successResp.dump(4);
 

@@ -32,8 +32,7 @@ public:
      * @brief 获取用户的会话 ID 列表（优先 Redis，miss 查 MySQL）
      * @param dbFallback 回调：查 MySQL 返回 session ID 列表
      */
-    std::vector<std::string> getSessionList(int userId,
-                                            std::function<std::vector<std::string>()> dbFallback);
+    std::vector<std::string> getSessionList(int userId, std::function<std::vector<std::string>()> dbFallback);
 
     /**
      * @brief 保存用户的会话 ID 列表到 Redis
@@ -45,22 +44,20 @@ public:
     /**
      * @brief 获取会话元数据 Hash
      */
-    std::vector<std::pair<std::string, std::string>> getSessionMeta(const std::string& sessionId,
-                                                                     std::function<std::vector<std::pair<std::string, std::string>>()> dbFallback);
+    std::vector<std::pair<std::string, std::string>> getSessionMeta(
+        const std::string& sessionId, std::function<std::vector<std::pair<std::string, std::string>>()> dbFallback);
 
     /**
      * @brief 保存会话元数据到 Redis
      */
-    void saveSessionMeta(const std::string& sessionId,
-                         const std::vector<std::pair<std::string, std::string>>& fields);
+    void saveSessionMeta(const std::string& sessionId, const std::vector<std::pair<std::string, std::string>>& fields);
 
     // ---- Chat Context (对话历史) ----
 
     /**
      * @brief 获取对话上下文 JSON
      */
-    std::string getChatContext(int userId, const std::string& sessionId,
-                               std::function<std::string()> dbFallback);
+    std::string getChatContext(int userId, const std::string& sessionId, std::function<std::string()> dbFallback);
 
     /**
      * @brief 保存对话上下文 JSON 到 Redis

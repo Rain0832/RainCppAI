@@ -8,6 +8,8 @@
 #include "Common/Config/ConfigManager.h"
 #include "Common/Crypto/PasswordHash.h"
 #include "Common/Logging/Logger.h"
+#include "Infralib/Cache/RedisClient.h"
+#include "Infralib/Cache/SessionCache.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/AdminDashboardHandler.h"
@@ -47,9 +49,6 @@
 #include "middleware/AuthMiddleware.h"
 #include "middleware/RateLimitMiddleware.h"
 #include "middleware/RequestIdMiddleware.h"
-
-#include "Infralib/Cache/RedisClient.h"
-#include "Infralib/Cache/SessionCache.h"
 #ifdef HAS_AMQPCPP
 #include "Infralib/Mq/TaskProducer.h"
 #endif
