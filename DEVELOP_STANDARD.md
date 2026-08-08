@@ -424,17 +424,17 @@ gitGraph
    branch dev
    checkout dev
    commit id: "dev-base"
-   branch feature/xxx
-   checkout feature/xxx
+   branch deve/alice/feat/login
+   checkout deve/alice/feat/login
    commit id: "wip"
    commit id: "done"
    checkout dev
-   merge feature/xxx tag: "PR #n"
-   branch feature/yyy
-   checkout feature/yyy
+   merge deve/alice/feat/login tag: "PR #n"
+   branch deve/bob/fix/typo
+   checkout deve/bob/fix/typo
    commit id: "wip2"
    checkout dev
-   merge feature/yyy tag: "PR #n+1"
+   merge deve/bob/fix/typo tag: "PR #n+1"
    checkout main
    merge dev tag: "v3.1.0"
    branch hotfix/urgent
@@ -450,9 +450,27 @@ gitGraph
 |------|------|------|------|
 | `main` | 生产就绪代码 | 🔒 锁定 — 禁止直接 push，必须通过 PR 合并 | 每次合并即发版，须打 tag |
 | `dev` | 开发集成分支 | 🛡️ 默认分支 — 所有 PR 的目标分支 | 日常开发的最新代码汇集地 |
-| `feature/xxx` | 功能开发 | 无 | 从 `dev` 切出，完成后 PR 回 `dev` |
-| `hotfix/xxx` | 紧急修复 | 无 | 从 `main` 切出，修复后 PR 回 `main` + 同步回 `dev` |
+| `deve/<user>/<type>/<desc>` | 个人开发分支 | 无 | 从 `dev` 切出，完成后 PR 回 `dev`（见下方命名规范） |
+| `hotfix/<desc>` | 紧急修复 | 无 | 从 `main` 切出，修复后 PR 回 `main` + 同步回 `dev` |
 | `release/x.y.z` | 发版准备 | 无（可选） | 从 `dev` 切出，仅允许 bugfix，最终合并到 `main` 并打 tag，再同步回 `dev` |
+
+> ⚠️ **为什么是 `deve/` 而非 `dev/`？** Git 不允许在已有分支名 `dev` 下创建子路径（`dev/xxx`），因此使用 `deve/` 前缀作为替代方案，语义上等价于 "dev extension"。
+
+#### 个人分支命名规范
+
+```text
+deve/<username>/<type>/<description>
+  │       │         │         └── 简短英文描述（kebab-case）
+  │       │         └── 变更类型：feat / fix / docs / refactor / chore / test
+  │       └── GitHub 用户名（小写）
+  └── dev 的个人分支前缀（因 Git 限制不能用 dev/）
+```
+
+**示例**：
+- `deve/rain0832/feat/vision-thumbnail-cache`
+- `deve/alice/fix/session-empty-after-refresh`
+- `deve/bob/docs/api-reference-update`
+- `deve/carol/refactor/db-pool-locking`
 
 ### 10.2 GitHub 仓库设置（由仓库管理员配置）
 
@@ -472,15 +490,15 @@ gitGraph
 git checkout dev
 git pull origin dev
 
-# 2. 创建 feature 分支（命名：feature/<简短描述>）
-git checkout -b feature/vision-thumbnail-cache
+# 2. 创建个人开发分支（命名：deve/<username>/<type>/<desc>）
+git checkout -b deve/rain0832/feat/vision-thumbnail-cache
 
 # 3. 开发、提交
 git add -A
 git commit -m "feat(vision): add thumbnail cache with LRU eviction"
 
 # 4. 推送并创建 PR
-git push origin feature/vision-thumbnail-cache
+git push origin deve/rain0832/feat/vision-thumbnail-cache
 # → 在 GitHub 创建 PR，目标分支自动为 dev（因为 dev 是默认分支）
 ```
 
