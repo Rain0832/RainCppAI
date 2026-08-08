@@ -11,8 +11,8 @@ import {
 
 // ---- 全局状态（模块作用域） ----
 
-let currentSessionId = null;
-let tempSession = false;
+let currentSessionId = sessionStorage.getItem('currentSessionId') || null;
+let tempSession = !currentSessionId;
 let lastUserQuestion = '';
 let pendingImageBase64 = '';
 const sessions = {};
@@ -190,6 +190,7 @@ function clearChat() { $('#chatArea').innerHTML = ''; }
 
 async function switchSession(id) {
     currentSessionId = String(id);
+    sessionStorage.setItem('currentSessionId', currentSessionId);
     tempSession = false;
     clearChat();
     $('#chatForm').style.display = 'flex';
@@ -320,6 +321,7 @@ function bindEvents() {
     // 新建对话
     $('#newChatBtn').onclick = () => {
         currentSessionId = 'temp';
+        sessionStorage.removeItem('currentSessionId');
         tempSession = true;
         clearChat();
         $('#chatForm').style.display = 'flex';
@@ -376,6 +378,7 @@ function bindEvents() {
                 const result = await sendWithSSE(q, mt, pv, mn, '', ragId, endpointId, sessions, appendMsg, imgB64);
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
+                    sessionStorage.setItem('currentSessionId', currentSessionId);
                     tempSession = false;
                     // 确保新会话已入列（sendWithSSE 已创建 sessions[id]，此处兜底）
                     if (!sessions[currentSessionId]) {

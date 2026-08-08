@@ -307,7 +307,8 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                                 std::vector<unsigned char> imgData(decoded.begin(), decoded.end());
                                 std::string className = ImageRecognizerPtr->PredictFromBuffer(imgData);
                                 SPDLOG_INFO_TAG("AI") << "ONNX inference result: " << className;
-                                std::string visionPrompt = std::string("识别结果为 \"") + className + "\"";
+                                std::string visionPrompt = std::string("用户上传了一张图片，AI 识别结果为 ") +
+                                                           className + "，请根据识别结果来回答用户的问题";
                                 AIHelperPtr->injectVisionContext(visionPrompt);
 
                                 // SP 10.3: Base64 不入库，落地为文件

@@ -615,8 +615,15 @@ void AIHelper::startTitleSummarization(const std::string& sessionId,
                     if (msg.contains("content") && !msg["content"].is_null()) title = msg["content"].get<std::string>();
                 }
 
-                // 截断超长标题 + 清理空白
-                if (title.length() > 20) title = title.substr(0, 20);
+                // UTF-8 安全截断（不超过 60 字节，在合法边界截断）
+                if (title.length() > 60) title = title.substr(0, 60);
+                // 从末尾向前找到合法 UTF-8 边界（多字节字符不以 10xxxxxx 开头）
+                while (!title.empty())
+                {
+                    unsigned char last = static_cast<unsigned char>(title.back());
+                    if ((last & 0xC0) != 0x80) break;  // 不是 UTF-8 continuation byte
+                    title.pop_back();
+                }
                 // 移除首尾空白/引号
                 while (!title.empty() && (title.front() == '"' || title.front() == '\'' || title.front() == ' '))
                     title.erase(0, 1);
