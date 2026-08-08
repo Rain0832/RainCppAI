@@ -67,10 +67,11 @@ main.cpp
 | `include/controller/AdminLogsHandler.h` | 日志查看器 |
 | `include/controller/AdminInviteCodesHandler.h` | 邀请码管理（列表/创建/启禁） |
 | `include/controller/ChangePasswordHandler.h` | 修改密码（POST /api/user/password） |
+| `include/controller/TaskStatusHandler.h` | 异步任务状态轮询（GET /task/{id}/status） |
 | `include/server/SessionStore.h` | 会话池 + LRU 驱逐封装 |
 | `include/Repository/` | 数据访问层（Account/Session/Message/ApiKey/Admin/InviteCode/VerificationCode） |
 | `include/Service/` | 业务逻辑层（Auth/Session/ApiKey/Chat） |
-| `include/server/ChatServer.h` | 服务启动器：路由注册、DB 初始化、Root 播种、ONNX 检查 |
+| `include/server/ChatServer.h` | 服务启动器：路由注册、DB 初始化、Root 播种、ONNX 检查、Redis/MQ 初始化 |
 
 ## v3.0.0 变更摘要
 - Vision-Agent: ChatSseHandler 支持 image_base64 → ONNX 推理 → Prompt 注入
@@ -80,6 +81,13 @@ main.cpp
 - 中间件链: RequestId → Auth → AdminAuth → RateLimit → SecurityHeaders
 - ChatServer::checkOnnxModel() 启动自检
 - 全量 Handler 清单已从 15 更新至 30+
+
+## v3.2.0 变更摘要
+- Redis 三级缓存: ChatSessionsHandler 接入 SessionCache（内存→Redis→MySQL），hit 率>90% 时零 DB 查询
+- RabbitMQ 异步削峰: ChatSseHandler 图片请求分流至 TaskProducer，HTTP 202 + taskId 立即返回，不阻塞 Reactor
+- 新增 TaskStatusHandler: GET /task/{taskId}/status → Redis GET → 状态 (processing/completed/failed)
+- ChatServer 新增 initializeRedis() / initializeMQ()，启动时连接 Infralib 中间件
+- HttpResponse 新增 k202Accepted
 
 ## 对外依赖与耦合边界
 
