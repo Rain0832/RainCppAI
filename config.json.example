@@ -41,9 +41,16 @@
     "username": "",
     "password": ""
   },
-  "default_api_keys": {
-    "dashscope": "sk-your-dashscope-key",
-    "doubao": "your-doubao-key"
+  "api_keys": {
+    "dashscope": "sk-your-dashscope-api-key",
+    "doubao": "your-doubao-api-key",
+    "baidu": {
+      "client_id": "your-baidu-client-id",
+      "client_secret": "your-baidu-client-secret"
+    },
+    "rag": {
+      "knowledge_base_id": "your-knowledge-base-id"
+    }
   },
   "jwt": {
     "secret": "change-this-to-a-random-secret"

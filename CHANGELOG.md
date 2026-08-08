@@ -762,3 +762,13 @@ Plan 9 (社区模板) + Plan 10 (Vision-Agent) + SP 12 (Root播种/Admin邀请�
 - **【Docs】CHANGELOG 追加 v3.2.0**
 - **【Docs】wiki/Project-Structure.md 更新依赖清单**
 
+### 统一私密信息管理 (#18)
+
+- **【Refactor】`default_api_keys` → `api_keys`**：扩展为 dashscope / doubao / baidu (client_id+secret) / rag (knowledge_base_id)
+- **【AIEngine】`AIStrategy.h` 三构造函数**：`std::getenv("DASHSCOPE_API_KEY")` / `DOUBAO_API_KEY` / `Knowledge_Base_ID` → `ConfigManager::instance().get("api_keys.xxx")`
+- **【AIServerCore】`ChatSpeechHandler.cpp`**：`std::getenv("BAIDU_CLIENT_ID/SECRET")` → `ConfigManager::instance().get("api_keys.baidu.xxx")`
+- **【AIServerCore】`ChatSseHandler.cpp`**：`default_api_keys.` → `api_keys.` 路径更新
+- **【Infra】`config.json.example`**：新增 `api_keys.baidu` / `api_keys.rag` 脱敏模板
+- **【清理】`~/.bashrc`**：移除 5 行 API Key export（DASHSCOPE / DOUBAO / BAIDU / Knowledge_Base）
+- **【清理】C++ 源码中 `std::getenv()` 全量清零**（ConfigManager 自身的环境变量覆盖机制保留）
+

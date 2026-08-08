@@ -140,7 +140,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
         {
             auto& cfg = common::ConfigManager::instance();
             std::string cfgKey = (provider == "volcengine") ? "doubao" : "dashscope";
-            apiKey = cfg.get("default_api_keys." + cfgKey, "");
+            apiKey = cfg.get("api_keys." + cfgKey, "");
             if (!apiKey.empty()) SPDLOG_INFO_TAG("AI") << "Using default " << cfgKey << " API key from config.json";
         }
 

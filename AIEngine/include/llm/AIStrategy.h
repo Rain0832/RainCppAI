@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "3rdparty/JsonUtil.h"
+#include "Common/Config/ConfigManager.h"
 #include "common/Message.h"
 
 /// OpenAI tool_calls 中的单个调用信息
@@ -62,8 +63,7 @@ class AliyunStrategy : public AIStrategy
 public:
     AliyunStrategy()
     {
-        const char* key = std::getenv("DASHSCOPE_API_KEY");
-        if (key) api_key_ = key;
+        api_key_ = common::ConfigManager::instance().get("api_keys.dashscope", "");
     }
 
     std::string getApiUrl() const override;
@@ -89,8 +89,7 @@ class DouBaoStrategy : public AIStrategy
 public:
     DouBaoStrategy()
     {
-        const char* key = std::getenv("DOUBAO_API_KEY");
-        if (key) api_key_ = key;
+        api_key_ = common::ConfigManager::instance().get("api_keys.doubao", "");
     }
 
     std::string getApiUrl() const override;
@@ -116,10 +115,9 @@ class AliyunRAGStrategy : public AIStrategy
 public:
     AliyunRAGStrategy()
     {
-        const char* key = std::getenv("DASHSCOPE_API_KEY");
-        if (key) api_key_ = key;
-        const char* rid = std::getenv("Knowledge_Base_ID");
-        if (rid) rag_id_ = rid;
+        auto& cfg = common::ConfigManager::instance();
+        api_key_ = cfg.get("api_keys.dashscope", "");
+        rag_id_ = cfg.get("api_keys.rag.knowledge_base_id", "");
     }
 
     std::string getApiUrl() const override;
