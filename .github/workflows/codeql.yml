@@ -3,10 +3,8 @@ name: CodeQL Analysis
 on:
   push:
     branches: [main, dev]
-  pull_request:
-    branches: [main, dev]
   schedule:
-    - cron: '0 8 * * 1'  # 每周一 UTC 08:00 运行
+    - cron: '0 0 * * 0'  # 每周日 UTC 00:00 全量扫描
 
 jobs:
   analyze:
