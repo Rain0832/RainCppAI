@@ -711,3 +711,20 @@ C++17 · muduo · MySQL · ONNX Runtime · OpenCV · libcurl · OpenSSL · libso
 ### 变更统计 (v2.9.7 → v3.0.0)
 Plan 9 (社区模板) + Plan 10 (Vision-Agent) + SP 12 (Root播种/Admin邀请码) + SP 13 (SQL修复/修改密码) + UI 补丁（背景图/对齐/Data URL修复/Vision上下文修复）
 
+
+
+## v3.1.0 — 开源社区基础设施建设 (2026-08)
+
+> 🏗️ **Git 工作流规范化 + CI/CD 基础设施搭建**
+
+### 分支策略标准化
+
+##### v3.1.0 — 分支模型 + CI/CD + Wiki + PR 模板 + CodeQL
+- **【Docs】分支策略**：确立 `main`（生产🔒）/ `dev`（默认）双主干模型，采用 `deve/<username>/<type>/<desc>` 个人分支命名规范（`DEVELOP_STANDARD.md` §10）
+- **【Docs】PR 模板**：`.github/PULL_REQUEST_TEMPLATE.md` 标准化代码合入检查单（变更类型 / Issue 关联 / C++ 底层逻辑说明 / 测试清单）
+- **【Docs】Wiki 迁移**：新建 `wiki/` 目录（Architecture / API-Reference / Deployment / MCP-Plugin-Development / Project-Structure），README 从 240+ 行瘦身至 129 行
+- **【CI/CD】ci.yml 升级**：push/PR 触发增加 `dev` 分支，引入 `ccache` + `actions/cache@v4` 编译缓存（热缓存减少 80%+ 编译时间），clang-format 格式检查从不阻断 warning 升级为硬性 `exit 1`
+- **【CI/CD】Release 自动化**：`.github/workflows/release.yml`，`v*.*.*` tag 触发云端编译 → 打包 `http_server` + `web/` → 自动发布 GitHub Releases
+- **【CI/CD】CodeQL 安全扫描**：`.github/workflows/codeql.yml`，合入 `main`/`dev` 后自动 C/C++ 静态分析（内存安全 / 未定义行为 / 注入漏洞），每周日兜底全量扫描
+- **【Infra】CodeQL 优化**：移除 `pull_request` 触发器仅保留合入后扫描（省 CI 算力）
+
