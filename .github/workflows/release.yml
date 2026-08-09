@@ -39,8 +39,7 @@ jobs:
             libsodium-dev \
             nlohmann-json3-dev \
             libhiredis-dev \
-            libev-dev \
-            libamqp-cpp-dev
+            libev-dev
 
       - name: Install muduo
         run: |
