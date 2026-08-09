@@ -83,6 +83,18 @@ main.cpp
 - 全量 Handler 清单已从 15 更新至 30+
 
 ## v3.2.0 变更摘要
+
+### v3.2.0 关键实现点映射
+- `AIServerCore/src/server/ChatServer.cpp`: 启动时初始化 RedisClient、SessionCache 与 TaskProducer
+- `Infralib/Cache/RedisClient.{h,cpp}`: hiredis 封装，提供 GET/SETEX/LPUSH/LRANGE/HGET/HSET 等基础 Redis 操作
+- `Infralib/Cache/SessionCache.{h,cpp}`: 会话三级缓存门面，Memory → Redis → MySQL；包括会话列表、会话元数据、chat context 缓存
+- `Infralib/Mq/TaskProducer.{h,cpp}`: RabbitMQ 生产者；`publish()` 投递 vision_tasks/tts_tasks，不阻塞 HTTP Reactor
+- `AIServerCore/src/controller/ChatSessionsHandler.cpp`: 使用 SessionCache 读取 Redis 会话列表，未命中时回退 MySQL，并在返回后回写 Redis
+- `AIServerCore/src/controller/ChatSseHandler.cpp`: image_base64 请求直接投递到 RabbitMQ；同时对新会话进行 Redis 会话列表同步
+- `AIEngine/src/llm/AIHelper.cpp`: chatStream 启动时恢复 Redis chat context；助手回复完成后保存最新上下文到 Redis
+- `AIServerCore/src/controller/ChatSpeechHandler.cpp`: 统一从 config.json 的 `api_keys.baidu.*` 读取百度 TTS Key，避免 getenv()
+- `AIServerCore/src/main.cpp`: 统一加载 config.json，初始化主流程；DB 密码等敏感项仍建议环境变量注入，保持 config.json 与运行时密钥分离
+
 - Redis 三级缓存: ChatSessionsHandler 接入 SessionCache（内存→Redis→MySQL），hit 率>90% 时零 DB 查询
 - RabbitMQ 异步削峰: ChatSseHandler 图片请求分流至 TaskProducer，HTTP 202 + taskId 立即返回，不阻塞 Reactor
 - 新增 TaskStatusHandler: GET /task/{taskId}/status → Redis GET → 状态 (processing/completed/failed)

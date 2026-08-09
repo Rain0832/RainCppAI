@@ -53,7 +53,8 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         auto sessionCache = server_->getSessionCache();
         if (sessionCache)
         {
-            // Redis DB fallback: 查 MySQL sessions 表
+            // 通过 SessionCache 实现 Redis 优先 + MySQL fallback 的三级存储。
+            // 这里 Redis 只缓存会话 ID 列表，本次仍从 MySQL 查询 title。
             auto dbFallback = [&]() -> std::vector<std::string>
             {
                 std::vector<std::string> sids;
@@ -74,7 +75,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
             auto redisSessions = sessionCache->getSessionList(uid, dbFallback);
             if (!redisSessions.empty())
             {
-                // Redis 只缓存 ID 列表，标题仍需从 MySQL 查
+                // Redis 只缓存 ID 列表，标题仍需从 MySQL 查询。
                 std::unordered_map<std::string, std::string> redisTitleMap;
                 try
                 {
@@ -204,7 +205,7 @@ void ChatSessionsHandler::handle(const http::HttpRequest& req, http::HttpRespons
         }
         successResp["sessions"] = sessionArray;
 
-        // v3.2.0: 回写 Redis 缓存
+        // v3.2.0: 回写 Redis 缓存，保持会话列表与内存/MySQL 同步。
         if (sessionCache && !allSids.empty()) sessionCache->saveSessionList(uid, allSids);
 
         std::string successBody = successResp.dump(4);

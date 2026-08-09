@@ -499,6 +499,9 @@ void ChatServer::initializeMiddleware()
 
 void ChatServer::initializeRedis()
 {
+    // v3.2.0 Redis 初始化入口：从 config.json 读取 Redis 连接信息，
+    // 如果可用则构建 RedisClient 和 SessionCache。
+    // 该缓存层用于会话列表、会话元信息和 chat context 的 L2 缓存。
     auto& cfg = common::ConfigManager::instance();
     std::string host = cfg.get("redis.host", "127.0.0.1");
     int port = cfg.getInt("redis.port", 6379);
@@ -508,6 +511,7 @@ void ChatServer::initializeRedis()
     redisClient_ = std::make_shared<infra::cache::RedisClient>();
     if (redisClient_->connect(host, port, password, db))
     {
+        // RedisClient 连接成功后注入 SessionCache，用于后续的会话列表和历史上下文缓存。
         sessionCache_ = std::make_shared<infra::cache::SessionCache>(redisClient_);
         SPDLOG_INFO_TAG("REDIS") << "Redis initialized: " << host << ":" << port;
     }
@@ -521,6 +525,8 @@ void ChatServer::initializeRedis()
 #ifdef HAS_AMQPCPP
 void ChatServer::initializeMQ()
 {
+    // v3.2.0 RabbitMQ 初始化入口：只在配置了 rabbitmq.uri 时启用。
+    // 这个 producer 仅用于视觉任务异步削峰，不影响普通文本对话。
     auto& cfg = common::ConfigManager::instance();
     std::string mqUri = cfg.get("rabbitmq.uri", "");
 

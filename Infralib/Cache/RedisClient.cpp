@@ -20,6 +20,7 @@ RedisClient::~RedisClient()
 
 bool RedisClient::connect(const std::string& host, int port, const std::string& password, int db)
 {
+    // Redis 连接由 ChatServer 初始化，所有 Redis 调用通过同一个 RedisClient 实例复用。
     host_ = host;
     port_ = port;
     password_ = password;
@@ -70,6 +71,7 @@ bool RedisClient::connect(const std::string& host, int port, const std::string& 
 
 void RedisClient::ensureConnected()
 {
+    // 保存连接状态，出现错误时自动重连。
     if (connected_ && ctx_ && !ctx_->err) return;
     if (ctx_)
     {
@@ -87,6 +89,7 @@ void RedisClient::freeReply(redisReply* reply)
 
 std::string RedisClient::get(const std::string& key)
 {
+    // 所有 Redis 命令都在内部加锁，避免多线程并发访问同一个 hiredis ctx。
     std::lock_guard<std::mutex> lock(mutex_);
     ensureConnected();
 

@@ -184,6 +184,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                 }
                 if (server_->getSessionCache())
                 {
+                    // 新会话创建后，同时回写 Redis 会话列表缓存。
                     std::vector<std::string> allSids;
                     {
                         std::shared_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
@@ -217,7 +218,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             });
 
 #ifdef HAS_AMQPCPP
-        // v3.2.0: 图片异步削峰 — 投递到 RabbitMQ，立即返回 202
+        // v3.2.0: 图片异步削峰 — 当请求包含图像时，HTTP 线程不做重型推理，直接投递到 RabbitMQ。
         if (!imageBase64.empty() && server_->getTaskProducer() && server_->getTaskProducer()->isConnected())
         {
             AISessionIdGenerator gen;

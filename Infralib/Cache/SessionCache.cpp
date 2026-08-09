@@ -17,6 +17,7 @@ SessionCache::SessionCache(std::shared_ptr<RedisClient> redis) : redis_(std::mov
 
 int SessionCache::jitteredTTL(int baseTTL)
 {
+    // 防雪崩：为 TTL 增加 ±20% 的随机抖动，避免大量缓存同时过期。
     thread_local std::mt19937 rng(std::random_device{}());
     int offset = static_cast<int>(rng() % (baseTTL / 5));  // ±20%
     int direction = (rng() % 2 == 0) ? -1 : 1;
@@ -40,7 +41,7 @@ std::string SessionCache::makeChatContextKey(int userId, const std::string& sess
 
 std::string SessionCache::getOrRebuild(const std::string& key, std::function<std::string()> dbFallback, int ttl)
 {
-    // L2: Redis
+    // L2: Redis 缓存优先读取；如果命中则直接返回。
     auto val = redis_->get(key);
     if (!val.empty())
     {
@@ -76,7 +77,7 @@ std::string SessionCache::getOrRebuild(const std::string& key, std::function<std
 
     if (val.empty())
     {
-        // 缓存穿透保护：不存在的 key 也缓存空标记
+        // 缓存穿透保护：不存在的 key 也缓存空标记，避免频繁查 DB。
         redis_->setex(key, kNilCacheTTL, kNilMarker);
         SPDLOG_INFO_TAG("CACHE") << "Nil cache set: " << key;
         return {};
@@ -91,7 +92,7 @@ std::vector<std::string> SessionCache::getSessionList(int userId, std::function<
 {
     std::string key = makeSessionListKey(userId);
 
-    // 先查 Redis List
+    // 先查 Redis 列表缓存：命中则直接返回会话 ID 列表。
     auto list = redis_->lrange(key, 0, -1);
     if (!list.empty())
     {
@@ -117,6 +118,7 @@ std::vector<std::string> SessionCache::getSessionList(int userId, std::function<
 
     if (list.empty())
     {
+        // 会话列表空时写入 nil 标记，避免缓存穿透。
         redis_->setex(key + ":nil", kNilCacheTTL, kNilMarker);
         return {};
     }
@@ -131,6 +133,7 @@ std::vector<std::string> SessionCache::getSessionList(int userId, std::function<
 
 void SessionCache::saveSessionList(int userId, const std::vector<std::string>& sessionIds)
 {
+    // 会话列表发生变化时回写 Redis，保持与内存 / MySQL 的缓存一致性。
     std::string key = makeSessionListKey(userId);
     redis_->del(key);
     for (auto it = sessionIds.rbegin(); it != sessionIds.rend(); ++it) redis_->lpush(key, *it);
@@ -180,12 +183,14 @@ std::string SessionCache::getChatContext(int userId,
                                          const std::string& sessionId,
                                          std::function<std::string()> dbFallback)
 {
+    // chat context 使用 JSON 序列化存储，作为对话历史的 L2 缓存。
     std::string key = makeChatContextKey(userId, sessionId);
     return getOrRebuild(key, dbFallback, kChatContextTTL);
 }
 
 void SessionCache::saveChatContext(int userId, const std::string& sessionId, const std::string& jsonContext)
 {
+    // 保存最新对话上下文到 Redis，后续会话可直接恢复，降低 MySQL 读取频次。
     std::string key = makeChatContextKey(userId, sessionId);
     redis_->setex(key, jitteredTTL(kChatContextTTL), jsonContext);
     SPDLOG_INFO_TAG("CACHE") << "ChatContext saved: " << key;

@@ -30,6 +30,13 @@ Frontend
   └─ SSE poll GET /task/{id}/status → Redis GET → result
 ```
 
+## 代码对应
+- `AIServerCore/src/controller/ChatSseHandler.cpp`: 视觉请求检测、TaskMessage 组装与 `TaskProducer::publish()` 投递
+- `AIServerCore/src/server/ChatServer.cpp`: 初始化 RabbitMQ 连接并声明 `vision_tasks` / `tts_tasks`
+- `AIServerCore/src/controller/TaskStatusHandler.cpp`: 根据 taskId 从 Redis 读取结果并返回处理状态
+- `Infralib/Mq/TaskProducer.{h,cpp}`: AMQP-CPP 生产者封装，负责推送异步任务消息
+- `Infralib/Mq/TaskConsumer.{h,cpp}`: 独立消费者进程，拉取队列任务并将结果写入 Redis
+
 ## 消息协议
 
 ```json

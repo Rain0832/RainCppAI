@@ -148,6 +148,7 @@ std::string AIHelper::chatStream(int userId,
     // L2 Redis 对话上下文恢复（v3.2.0）：避免重启/多节点场景下重复从 MySQL 拉取
     if (sessionCache_)
     {
+        // chatStream 启动时优先从 Redis 恢复最近对话上下文，避免 MySQL 重复加载历史。
         std::string cached = sessionCache_->getChatContext(userId, sessionId, []() { return std::string(); });
         if (!cached.empty() && cached != "__NIL__")
         {
@@ -255,6 +256,7 @@ std::string AIHelper::chatStream(int userId,
                 // Redis 保存对话上下文（v3.2.0）
                 if (sessionCache_)
                 {
+                    // 将当前消息历史快照保存到 Redis，以便后续会话快速恢复。
                     json snapshot = json::array();
                     {
                         std::lock_guard<std::mutex> lock(msgMutex_);

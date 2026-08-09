@@ -14,6 +14,7 @@ TaskProducer::~TaskProducer()
 
 bool TaskProducer::connect(const std::string& uri)
 {
+    // 以 AMQP-CPP + libev 建立 RabbitMQ 连接，生产者仅用于发送异步任务。
     loop_ = ev_loop_new(EVFLAG_AUTO);
     if (!loop_)
     {
@@ -51,6 +52,7 @@ bool TaskProducer::connect(const std::string& uri)
     connected_ = channel_->connected();
     if (connected_)
     {
+        // 连接成功后，channel_->onReady() 已标记为 connected_。
         SPDLOG_INFO_TAG("MQ") << "Connected to RabbitMQ: " << uri;
     }
     else
@@ -79,6 +81,7 @@ void TaskProducer::declareQueue(const std::string& queueName)
 
 bool TaskProducer::publish(const std::string& queueName, const TaskMessage& message)
 {
+    // publish 仅负责将任务消息投递到 RabbitMQ，不等待任务执行结果。
     if (!channel_ || !connected_)
     {
         SPDLOG_ERROR_TAG("MQ") << "Cannot publish: not connected";

@@ -32,6 +32,7 @@ void ChatSpeechHandler::handle(const http::HttpRequest& req, http::HttpResponse*
             if (j.contains("text")) text = j["text"];
         }
 
+        // 统一从 config.json 中读取私密 API Key，避免直接依赖 getenv().
         auto& cfg = common::ConfigManager::instance();
         std::string clientId = cfg.get("api_keys.baidu.client_id", "");
         std::string clientSecret = cfg.get("api_keys.baidu.client_secret", "");
