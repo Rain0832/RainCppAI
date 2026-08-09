@@ -15,7 +15,14 @@ let currentSessionId = sessionStorage.getItem('currentSessionId') || null;
 let tempSession = !currentSessionId;
 let lastUserQuestion = '';
 let pendingImageBase64 = '';
+let pendingSessionId = null;
+let sessionCreationPending = false;
 const sessions = {};
+const beforeUnloadHandler = (e) => {
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+};
 
 // ---- 工具函数 ----
 
@@ -90,6 +97,39 @@ function hideWelcome() {
     const h = $('#welcomeHint');
     if (h) h.remove();
     document.querySelectorAll('.welcome-hint').forEach(e => e.remove());
+}
+
+function createLocalSessionId() {
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function setUnloadWarning(enabled) {
+    if (enabled) window.addEventListener('beforeunload', beforeUnloadHandler);
+    else window.removeEventListener('beforeunload', beforeUnloadHandler);
+}
+
+function setLoading(isLoading) {
+    const btn = $('#sendBtn');
+    if (!btn) return;
+    if (isLoading) {
+        btn.classList.add('loading');
+        btn.disabled = true;
+        btn.dataset.origText = btn.textContent;
+        btn.textContent = '发送中...';
+        setUnloadWarning(true);
+    } else {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        btn.removeAttribute('disabled');
+        if (btn.dataset.origText) {
+            btn.textContent = btn.dataset.origText;
+        } else {
+            btn.textContent = '发送';
+        }
+        setUnloadWarning(false);
+    }
 }
 
 // ---- 消息渲染 ----
@@ -323,6 +363,8 @@ function bindEvents() {
         currentSessionId = 'temp';
         sessionStorage.removeItem('currentSessionId');
         tempSession = true;
+        pendingSessionId = null;
+        sessionCreationPending = false;
         clearChat();
         $('#chatForm').style.display = 'flex';
         const hint = document.createElement('div');
@@ -351,6 +393,16 @@ function bindEvents() {
         e.preventDefault();
         const q = ta.value.trim();
         if (!q) return;
+        if (sessionCreationPending) {
+            console.warn('send blocked because sessionCreationPending is true', {
+                currentSessionId,
+                tempSession,
+                sessionCreationPending,
+                lastUserQuestion
+            });
+            showToast('会话正在创建中，请稍候');
+            return;
+        }
         if (!currentSessionId && !tempSession) {
             showToast('请先新建对话或选择会话');
             return;
@@ -370,32 +422,34 @@ function bindEvents() {
         appendMsg('user', q, '', null, imgB64);
         ta.value = '';
         ta.style.height = 'auto';
-        $('#sendBtn').disabled = true;
         showThinking();
+        setLoading(true);
 
         try {
             if (tempSession) {
+                sessionCreationPending = true;
                 const result = await sendWithSSE(q, mt, pv, mn, '', ragId, endpointId, sessions, appendMsg, imgB64);
+                sessionCreationPending = false;
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
                     sessionStorage.setItem('currentSessionId', currentSessionId);
                     tempSession = false;
-                    // 确保新会话已入列（sendWithSSE 已创建 sessions[id]，此处兜底）
+                    pendingSessionId = null;
                     if (!sessions[currentSessionId]) {
                         sessions[currentSessionId] = { name: '新会话', messages: [] };
                     }
                     renderSessions();
                     summarizeTitle(currentSessionId, q, sessions, renderSessions);
-
-                    // 延迟 3s 等待后端 LLM 异步标题落库后刷新侧边栏
                     setTimeout(() => fetchSessions(sessions, renderSessions), 3000);
+                } else {
+                    console.warn('temp session send completed without sessionId', { result, q, currentSessionId, tempSession });
                 }
             } else {
                 if (!sessions[currentSessionId]) {
                     const tk = $('#thinkingMsg');
                     if (tk) tk.remove();
                     showToast('请先选择或创建会话');
-                    $('#sendBtn').disabled = false;
+                    setLoading(false);
                     return;
                 }
                 sessions[currentSessionId].messages.push({ role: 'user', content: q });
@@ -405,8 +459,10 @@ function bindEvents() {
             const tk = $('#thinkingMsg');
             if (tk) tk.remove();
             appendMsg('assistant', '无法连接到服务器', mn);
+        } finally {
+            sessionCreationPending = false;
+            setLoading(false);
         }
-        $('#sendBtn').disabled = false;
     };
 }
 
@@ -466,9 +522,11 @@ function getSelectedProvider() {
     // 自动加载会话列表
     const result = await fetchSessions(sessions, renderSessions);
     if (result && result.length > 0) {
-        // 自动激活第一个会话（最近使用的）
-        const firstSid = String(result[0].sessionId);
-        await switchSession(firstSid);
+        let restoreSid = currentSessionId;
+        if (!restoreSid || !result.some(s => String(s.sessionId) === restoreSid)) {
+            restoreSid = String(result[0].sessionId);
+        }
+        await switchSession(restoreSid);
     } else {
         // 无会话：自动触发新建
         currentSessionId = 'temp';

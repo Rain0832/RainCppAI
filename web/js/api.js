@@ -289,6 +289,16 @@ export async function sendWithSSE(question, modelType, provider, modelName, sess
         + `<button class="del-btn" onclick="window.__deleteMsg(this)">✕ 删除</button>`;
     d.appendChild(acts);
 
+    if (!sessionId && !resolvedSid) {
+        console.warn('sendWithSSE returned without sessionId for new temp session', {
+            question,
+            modelType,
+            provider,
+            ragId,
+            endpointId,
+            fullContent
+        });
+    }
     if (sessions[resolvedSid]) {
         sessions[resolvedSid].messages.push({ role: 'assistant', content: fullContent, model: modelName || '' });
     }

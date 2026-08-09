@@ -307,7 +307,8 @@ std::string AIHelper::chatStream(int userId,
             // ── 执行所有工具并加入历史 ──
             for (auto& tc : toolCalls)
             {
-                SPDLOG_INFO_TAG("AI") << "MCP tool call: " << tc.name << " args=" << tc.arguments.dump();
+                auto toolStart = std::chrono::steady_clock::now();
+                SPDLOG_INFO_TAG("AI") << "MCP tool call start: " << tc.name << " args=" << tc.arguments.dump();
                 json toolResult;
                 try
                 {
@@ -317,6 +318,12 @@ std::string AIHelper::chatStream(int userId,
                 {
                     toolResult = json{{"error", std::string(e.what())}};
                 }
+                auto toolEnd = std::chrono::steady_clock::now();
+                auto toolDurationMs =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(toolEnd - toolStart).count();
+                SPDLOG_INFO_TAG("AI") << "MCP tool call completed: " << tc.name << " durationMs=" << toolDurationMs
+                                      << " result="
+                                      << (toolResult.contains("error") ? toolResult["error"].get<std::string>() : "ok");
 
                 {
                     std::lock_guard<std::mutex> lock(msgMutex_);

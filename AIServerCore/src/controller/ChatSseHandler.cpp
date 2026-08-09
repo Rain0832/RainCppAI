@@ -255,10 +255,11 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
         }
 #endif
 
+        auto requestStart = std::chrono::steady_clock::now();
         // 提交流式 AI 调用到线程池
         server_->getAiThreadPool().submit(
             [this, conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider,
-             isNewSession, imageBase64]()
+             isNewSession, imageBase64, requestStart]()
             {
                 try
                 {
@@ -388,6 +389,13 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                         },
                         "", isNewSession);
                     sendSseDone(conn);
+                    conn->shutdown();
+                    auto requestEnd = std::chrono::steady_clock::now();
+                    auto durationMs =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(requestEnd - requestStart).count();
+                    SPDLOG_INFO_TAG("AI")
+                        << "Chat request completed: userId=" << userId << " sessionId=" << sessionId
+                        << " isNewSession=" << (isNewSession ? "true" : "false") << " durationMs=" << durationMs;
                 }
                 catch (const std::exception& e)
                 {
@@ -395,6 +403,13 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                     err["error"] = e.what();
                     sendSseChunk(conn, err.dump());
                     sendSseDone(conn);
+                    conn->shutdown();
+                    auto requestEnd = std::chrono::steady_clock::now();
+                    auto durationMs =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(requestEnd - requestStart).count();
+                    SPDLOG_ERROR_TAG("AI") << "Chat request failed: userId=" << userId << " sessionId=" << sessionId
+                                           << " isNewSession=" << (isNewSession ? "true" : "false")
+                                           << " durationMs=" << durationMs << " error=" << e.what();
                 }
             });
     }
