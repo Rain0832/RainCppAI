@@ -55,6 +55,13 @@ find_library(HIREDIS_LIBRARY
         /usr/local/lib
         /usr/lib
 )
+# hiredis 头文件路径：RedisClient.h 被 AIEngine 无条件引用，必须显式暴露
+find_path(HIREDIS_INCLUDE_DIR
+    NAMES hiredis/hiredis.h
+    PATHS
+        /usr/local/include
+        /usr/include
+)
 
 # v3.2.0: AMQP-CPP + libev (RabbitMQ)
 find_library(AMQPCPP_LIBRARY
@@ -115,6 +122,10 @@ set(MAIN_SRC
 add_library(aiengine STATIC ${AI_ENGINE_SRC})
 target_include_directories(aiengine PUBLIC ${PROJECT_SOURCE_DIR}/AIEngine/include ${PROJECT_SOURCE_DIR}/Storage/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common ${PROJECT_SOURCE_DIR})
 target_include_directories(aiengine PUBLIC /usr/local/onnxruntime/include)
+# hiredis 头文件被 AIHelper.cpp 经 SessionCache.h 无条件引用
+if(HIREDIS_INCLUDE_DIR)
+    target_include_directories(aiengine PUBLIC ${HIREDIS_INCLUDE_DIR})
+endif()
 target_link_libraries(aiengine PUBLIC CURL::libcurl OpenSSL::SSL OpenSSL::Crypto ${OpenCV_LIBS} ${ONNXRUNTIME_LIBRARY} pthread storage)
 target_link_libraries(aiengine PUBLIC sodium)
 
@@ -141,6 +152,9 @@ target_include_directories(http_server PRIVATE
     /usr/local/include
     /usr/local/include/jdbc
     /usr/local/onnxruntime/include)
+if(HIREDIS_INCLUDE_DIR)
+    target_include_directories(http_server PRIVATE ${HIREDIS_INCLUDE_DIR})
+endif()
 target_link_libraries(http_server PRIVATE -Wl,--whole-archive aiengine -Wl,--no-whole-archive httpserver storage pthread)
 target_link_libraries(http_server PRIVATE spdlog::spdlog)
 

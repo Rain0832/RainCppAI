@@ -38,6 +38,9 @@ jobs:
             libmysqlclient-dev \
             libsodium-dev \
             nlohmann-json3-dev \
+            libhiredis-dev \
+            libev-dev \
+            libamqp-cpp-dev \
             clang-format
 
       - name: Install muduo
