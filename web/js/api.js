@@ -48,7 +48,7 @@ export async function fetchApiKeysFromDb() {
 
 export function getApiKey(mt) {
     // mt 为 provider 字符串（如 "aliyun" / "volcengine"）
-    if (mt === 'aliyun' || mt === 'aliyun-rag' || mt === 'aliyun-mcp')
+    if (mt === 'aliyun' || mt === 'aliyun-rag')
         return localStorage.getItem('rain-key-dashscope') || '';
     if (mt === 'volcengine')
         return localStorage.getItem('rain-key-doubao') || '';
