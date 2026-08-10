@@ -1,10 +1,9 @@
 #include <chrono>
+#include <gtest/gtest.h>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <gtest/gtest.h>
 
 #include "llm/ReActLoop.h"
 #include "llm/ReActStateMachine.h"
@@ -97,8 +96,7 @@ public:
 std::string makeTextResponse(const std::string& content)
 {
     json resp;
-    resp["choices"] =
-        json::array({json{{"message", json{{"role", "assistant"}, {"content", content}}}}});
+    resp["choices"] = json::array({json{{"message", json{{"role", "assistant"}, {"content", content}}}}});
     return resp.dump();
 }
 
@@ -189,11 +187,12 @@ TEST(ReActStateMachineTest, MaxRoundsExceededTransitionsToDone)
 TEST(TokenRouterTest, ForwardsTokensWhenNotSuspended)
 {
     std::vector<std::string> received;
-    TokenRouter router([&received](const std::string& chunk)
-                       {
-                           received.push_back(chunk);
-                           return true;
-                       });
+    TokenRouter router(
+        [&received](const std::string& chunk)
+        {
+            received.push_back(chunk);
+            return true;
+        });
     EXPECT_TRUE(router.onTextToken("你"));
     EXPECT_TRUE(router.onTextToken("好"));
     ASSERT_EQ(received.size(), 2u);
@@ -204,11 +203,12 @@ TEST(TokenRouterTest, ForwardsTokensWhenNotSuspended)
 TEST(TokenRouterTest, SuspendBuffersThenResumeFlushes)
 {
     std::vector<std::string> received;
-    TokenRouter router([&received](const std::string& chunk)
-                       {
-                           received.push_back(chunk);
-                           return true;
-                       });
+    TokenRouter router(
+        [&received](const std::string& chunk)
+        {
+            received.push_back(chunk);
+            return true;
+        });
     router.suspend();
     EXPECT_TRUE(router.suspended());
     EXPECT_TRUE(router.onTextToken("隐藏"));
@@ -223,11 +223,12 @@ TEST(TokenRouterTest, SuspendBuffersThenResumeFlushes)
 TEST(TokenRouterTest, CancelDiscardsBuffer)
 {
     std::vector<std::string> received;
-    TokenRouter router([&received](const std::string& chunk)
-                       {
-                           received.push_back(chunk);
-                           return true;
-                       });
+    TokenRouter router(
+        [&received](const std::string& chunk)
+        {
+            received.push_back(chunk);
+            return true;
+        });
     router.suspend();
     router.onTextToken("丢弃");
     router.cancel();
@@ -241,11 +242,12 @@ TEST(TokenRouterTest, CancelDiscardsBuffer)
 TEST(TokenRouterTest, ToolCallEventFormat)
 {
     std::vector<std::string> received;
-    TokenRouter router([&received](const std::string& chunk)
-                       {
-                           received.push_back(chunk);
-                           return true;
-                       });
+    TokenRouter router(
+        [&received](const std::string& chunk)
+        {
+            received.push_back(chunk);
+            return true;
+        });
     json args = {{"city", "北京"}};
     EXPECT_TRUE(router.onToolCall("get_weather", args));
     ASSERT_EQ(received.size(), 1u);
@@ -301,7 +303,7 @@ protected:
         };
     }
 
-    static json okTool()
+    static json okTool(const std::string&, const json&)
     {
         return json{{"ok", true}};
     }
@@ -310,7 +312,7 @@ protected:
 TEST_F(ReActLoopTest, PlainTextCompletes)
 {
     responses_ = {makeTextResponse("今天天气很好")};
-    ReActLoop loop(strategy_, tools_schema_);
+    ReActLoop loop(strategy_, tools_schema_, ReActLoop::Options{});
     auto result = loop.run({{"user", "你好", "", "", 0}}, makeLlm(), okTool, {});
 
     EXPECT_FALSE(result.max_rounds_exceeded);
@@ -328,15 +330,14 @@ TEST_F(ReActLoopTest, ToolCallRoundTrip)
     json args = {{"city", "北京"}};
     responses_ = {makeToolCallResponse("call_1", "get_weather", args), makeTextResponse("北京今天晴")};
     std::vector<std::string> tool_names;
-    ReActLoop loop(strategy_, tools_schema_);
-    auto result = loop.run(
-        {{"user", "北京天气？", "", "", 0}}, makeLlm(),
-        [&tool_names](const std::string& name, const json&)
-        {
-            tool_names.push_back(name);
-            return json{{"weather", "晴"}};
-        },
-        {});
+    ReActLoop loop(strategy_, tools_schema_, ReActLoop::Options{});
+    auto result = loop.run({{"user", "北京天气？", "", "", 0}}, makeLlm(),
+                           [&tool_names](const std::string& name, const json&)
+                           {
+                               tool_names.push_back(name);
+                               return json{{"weather", "晴"}};
+                           },
+                           {});
 
     EXPECT_EQ(llm_call_count_, 2);
     ASSERT_EQ(tool_names.size(), 1u);
@@ -356,18 +357,16 @@ TEST_F(ReActLoopTest, ToolCallRoundTrip)
 TEST_F(ReActLoopTest, MultipleToolRounds)
 {
     responses_ = {makeToolCallResponse("c1", "tool_a", json{{"n", 1}}),
-                  makeToolCallResponse("c2", "tool_b", json{{"n", 2}}),
-                  makeTextResponse("完成")};
+                  makeToolCallResponse("c2", "tool_b", json{{"n", 2}}), makeTextResponse("完成")};
     std::vector<std::string> tool_names;
-    ReActLoop loop(strategy_, tools_schema_);
-    auto result = loop.run(
-        {{"user", "hi", "", "", 0}}, makeLlm(),
-        [&tool_names](const std::string& name, const json&)
-        {
-            tool_names.push_back(name);
-            return json{{"ok", true}};
-        },
-        {});
+    ReActLoop loop(strategy_, tools_schema_, ReActLoop::Options{});
+    auto result = loop.run({{"user", "hi", "", "", 0}}, makeLlm(),
+                           [&tool_names](const std::string& name, const json&)
+                           {
+                               tool_names.push_back(name);
+                               return json{{"ok", true}};
+                           },
+                           {});
 
     EXPECT_EQ(llm_call_count_, 3);
     ASSERT_EQ(tool_names.size(), 2u);
@@ -380,15 +379,10 @@ TEST_F(ReActLoopTest, MultipleToolRounds)
 
 TEST_F(ReActLoopTest, ToolFailureInjectsErrorObservation)
 {
-    responses_ = {makeToolCallResponse("call_1", "get_weather", json::object()),
-                  makeTextResponse("工具不可用，抱歉")};
-    ReActLoop loop(strategy_, tools_schema_);
+    responses_ = {makeToolCallResponse("call_1", "get_weather", json::object()), makeTextResponse("工具不可用，抱歉")};
+    ReActLoop loop(strategy_, tools_schema_, ReActLoop::Options{});
     auto result = loop.run({{"user", "hi", "", "", 0}}, makeLlm(),
-                           [](const std::string&, const json&) -> json
-                           {
-                               throw std::runtime_error("boom");
-                           },
-                           {});
+                           [](const std::string&, const json&) -> json { throw std::runtime_error("boom"); }, {});
 
     EXPECT_EQ(llm_call_count_, 2);
     ASSERT_EQ(result.new_messages.size(), 3u);
@@ -404,14 +398,13 @@ TEST_F(ReActLoopTest, ToolTimeoutInjectsErrorObservation)
     ReActLoop::Options opts;
     opts.tool_timeout_ms = 50;
     ReActLoop loop(strategy_, tools_schema_, opts);
-    auto result = loop.run(
-        {{"user", "hi", "", "", 0}}, makeLlm(),
-        [](const std::string&, const json&)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            return json{{"ok", true}};
-        },
-        {});
+    auto result = loop.run({{"user", "hi", "", "", 0}}, makeLlm(),
+                           [](const std::string&, const json&)
+                           {
+                               std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                               return json{{"ok", true}};
+                           },
+                           {});
 
     // 超时注入 {"error":...}，但循环继续到下一轮 LLM
     ASSERT_EQ(result.new_messages.size(), 3u);
@@ -445,16 +438,15 @@ TEST_F(ReActLoopTest, TotalTimeoutCircuitBreaker)
     ReActLoop::Options opts;
     opts.total_timeout_ms = 50;
     ReActLoop loop(strategy_, tools_schema_, opts);
-    auto result = loop.run(
-        {{"user", "hi", "", "", 0}},
-        [this](const json& payload, const ReActLoop::StreamCallback& on_chunk) -> std::string
-        {
-            (void)on_chunk;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            llm_call_count_++;
-            return responses_.empty() ? makeTextResponse("x") : responses_[0];
-        },
-        okTool, {});
+    auto result = loop.run({{"user", "hi", "", "", 0}},
+                           [this](const json& payload, const ReActLoop::StreamCallback& on_chunk) -> std::string
+                           {
+                               (void)on_chunk;
+                               std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                               llm_call_count_++;
+                               return responses_.empty() ? makeTextResponse("x") : responses_[0];
+                           },
+                           okTool, {});
 
     EXPECT_TRUE(result.timed_out);
     EXPECT_EQ(llm_call_count_, 1);
@@ -482,7 +474,7 @@ TEST_F(ReActLoopTest, ToolCallbacksInvoked)
 {
     json args = {{"city", "上海"}};
     responses_ = {makeToolCallResponse("c1", "get_weather", args), makeTextResponse("上海晴")};
-    ReActLoop loop(strategy_, tools_schema_);
+    ReActLoop loop(strategy_, tools_schema_, ReActLoop::Options{});
     std::vector<std::string> calls;
     std::vector<std::string> results;
     ReActLoop::EventCallbacks cbs;

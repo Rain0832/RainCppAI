@@ -47,10 +47,10 @@ public:
 
     struct Options
     {
-        int max_rounds = 5;            ///< 最大工具调用轮次（熔断阈值）
-        int tool_timeout_ms = 30000;   ///< 单次工具执行超时
-        int total_timeout_ms = 120000; ///< 整个 ReAct 循环总超时
-        std::string model_name;        ///< 前端传入的模型名（空时使用策略默认模型）
+        int max_rounds = 5;             ///< 最大工具调用轮次（熔断阈值）
+        int tool_timeout_ms = 30000;    ///< 单次工具执行超时
+        int total_timeout_ms = 120000;  ///< 整个 ReAct 循环总超时
+        std::string model_name;         ///< 前端传入的模型名（空时使用策略默认模型）
     };
 
     /// 事件回调（前端 SSE 协议 / 业务日志）
@@ -74,7 +74,10 @@ public:
         bool llm_failed = false;            ///< LLM 请求失败（不可恢复）
     };
 
-    ReActLoop(std::shared_ptr<AIStrategy> strategy, const json& tools_schema, Options options = Options());
+    /**
+     * @param options 熔断/超时配置（无默认值：嵌套类型在类内作默认参数受限，调用方显式传入）
+     */
+    ReActLoop(std::shared_ptr<AIStrategy> strategy, const json& tools_schema, Options options);
 
     /**
      * @brief 执行完整 ReAct 循环
@@ -106,10 +109,7 @@ private:
     RoundResponse parseRoundResponse(const std::string& raw_response) const;
 
     /// 带超时的工具调用；超时/异常时向 error_out 写入 {"error":...} 并返回空对象
-    json invokeToolWithTimeout(const std::string& name,
-                               const json& args,
-                               ToolInvokeFn invoke,
-                               json& error_out);
+    json invokeToolWithTimeout(const std::string& name, const json& args, ToolInvokeFn invoke, json& error_out);
 
     static long long nowMs();
 

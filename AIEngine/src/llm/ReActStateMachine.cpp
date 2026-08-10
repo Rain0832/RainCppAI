@@ -15,68 +15,68 @@ bool ReActStateMachine::transition(ReActEvent event)
 
     switch (state_)
     {
-    case ReActState::kIdle:
-        if (event == ReActEvent::kStart)
-        {
-            state_ = ReActState::kThinking;
-            return true;
-        }
-        break;
+        case ReActState::kIdle:
+            if (event == ReActEvent::kStart)
+            {
+                state_ = ReActState::kThinking;
+                return true;
+            }
+            break;
 
-    case ReActState::kThinking:
-        switch (event)
-        {
-        case ReActEvent::kToolCallDetected:
-            state_ = ReActState::kActing;
-            return true;
-        case ReActEvent::kStreamComplete:
-            state_ = ReActState::kDone;
-            return true;
-        case ReActEvent::kMaxRoundsExceeded:
-            state_ = ReActState::kDone;  // 熔断：视为可接受的终止
-            return true;
-        case ReActEvent::kTimeout:
-        case ReActEvent::kError:
-            state_ = ReActState::kError;
-            return true;
+        case ReActState::kThinking:
+            switch (event)
+            {
+                case ReActEvent::kToolCallDetected:
+                    state_ = ReActState::kActing;
+                    return true;
+                case ReActEvent::kStreamComplete:
+                    state_ = ReActState::kDone;
+                    return true;
+                case ReActEvent::kMaxRoundsExceeded:
+                    state_ = ReActState::kDone;  // 熔断：视为可接受的终止
+                    return true;
+                case ReActEvent::kTimeout:
+                case ReActEvent::kError:
+                    state_ = ReActState::kError;
+                    return true;
+                default:
+                    break;
+            }
+            break;
+
+        case ReActState::kActing:
+            switch (event)
+            {
+                case ReActEvent::kToolDispatched:
+                    state_ = ReActState::kObserving;
+                    return true;
+                case ReActEvent::kTimeout:
+                case ReActEvent::kError:
+                    state_ = ReActState::kError;
+                    return true;
+                default:
+                    break;
+            }
+            break;
+
+        case ReActState::kObserving:
+            switch (event)
+            {
+                case ReActEvent::kObservationReady:
+                    // 工具结果（成功或失败）注入后回到 Thinking，开启下一轮
+                    state_ = ReActState::kThinking;
+                    return true;
+                case ReActEvent::kTimeout:
+                case ReActEvent::kError:
+                    state_ = ReActState::kError;
+                    return true;
+                default:
+                    break;
+            }
+            break;
+
         default:
             break;
-        }
-        break;
-
-    case ReActState::kActing:
-        switch (event)
-        {
-        case ReActEvent::kToolDispatched:
-            state_ = ReActState::kObserving;
-            return true;
-        case ReActEvent::kTimeout:
-        case ReActEvent::kError:
-            state_ = ReActState::kError;
-            return true;
-        default:
-            break;
-        }
-        break;
-
-    case ReActState::kObserving:
-        switch (event)
-        {
-        case ReActEvent::kObservationReady:
-            // 工具结果（成功或失败）注入后回到 Thinking，开启下一轮
-            state_ = ReActState::kThinking;
-            return true;
-        case ReActEvent::kTimeout:
-        case ReActEvent::kError:
-            state_ = ReActState::kError;
-            return true;
-        default:
-            break;
-        }
-        break;
-
-    default:
-        break;
     }
 
     return false;

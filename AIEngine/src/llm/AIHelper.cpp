@@ -223,13 +223,11 @@ std::string AIHelper::chatStream(int userId,
     ai::ReActLoop::EventCallbacks loop_cbs;
     loop_cbs.on_text = onChunk;  // 文本 token 直接复用前端回调
     loop_cbs.on_tool_call = [](const std::string& name, const json& args)
-    {
-        SPDLOG_INFO_TAG("AI") << "MCP tool call start: " << name << " args=" << args.dump();
-    };
+    { SPDLOG_INFO_TAG("AI") << "MCP tool call start: " << name << " args=" << args.dump(); };
     loop_cbs.on_tool_result = [](const std::string& name, const json& result)
     {
-        SPDLOG_INFO_TAG("AI") << "MCP tool call completed: " << name << " result="
-                              << (result.contains("error") ? result["error"].get<std::string>() : "ok");
+        SPDLOG_INFO_TAG("AI") << "MCP tool call completed: " << name
+                              << " result=" << (result.contains("error") ? result["error"].get<std::string>() : "ok");
     };
     loop_cbs.on_notice = [&onChunk](const std::string& message) { onChunk(message); };
 

@@ -31,10 +31,7 @@ ReActLoop::FinalAnswer ReActLoop::run(const std::vector<Message>& messages,
     FinalAnswer answer;
     auto start = std::chrono::steady_clock::now();
     auto elapsedMs = [&start]()
-    {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)
-            .count();
-    };
+    { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count(); };
 
     // TokenRouter 默认回退到空回调，避免空指针
     TokenRouter router(cbs.on_text ? cbs.on_text : [](const std::string&) { return true; });
@@ -73,15 +70,14 @@ ReActLoop::FinalAnswer ReActLoop::run(const std::vector<Message>& messages,
         answer.total_rounds = sm.roundCount();
 
         json payload = strategy_->buildRequest(
-            working, tools_schema_,
-            options_.model_name.empty() ? strategy_->getModel() : options_.model_name);
+            working, tools_schema_, options_.model_name.empty() ? strategy_->getModel() : options_.model_name);
         payload["stream"] = true;
 
         std::string raw_response;
         try
         {
-            raw_response = llm_round(
-                payload, [&router](const std::string& token) { return router.onTextToken(token); });
+            raw_response =
+                llm_round(payload, [&router](const std::string& token) { return router.onTextToken(token); });
         }
         catch (const std::exception& e)
         {
@@ -100,8 +96,7 @@ ReActLoop::FinalAnswer ReActLoop::run(const std::vector<Message>& messages,
         {
             sm.transition(ReActEvent::kStreamComplete);
             answer.content = round.content;
-            answer.new_messages.push_back(
-                {"assistant", round.content, strategy_->getModel(), "", nowMs()});
+            answer.new_messages.push_back({"assistant", round.content, strategy_->getModel(), "", nowMs()});
             break;
         }
 
@@ -202,10 +197,7 @@ json ReActLoop::RoundResponse::assistantToolCallsJson() const
     return tc_arr;
 }
 
-json ReActLoop::invokeToolWithTimeout(const std::string& name,
-                                      const json& args,
-                                      ToolInvokeFn invoke,
-                                      json& error_out)
+json ReActLoop::invokeToolWithTimeout(const std::string& name, const json& args, ToolInvokeFn invoke, json& error_out)
 {
     error_out = json();  // null：表示成功
 
@@ -218,8 +210,8 @@ json ReActLoop::invokeToolWithTimeout(const std::string& name,
 
     if (future.wait_for(std::chrono::milliseconds(options_.tool_timeout_ms)) == std::future_status::timeout)
     {
-        error_out = json{{"error", "tool execution timeout (> " + std::to_string(options_.tool_timeout_ms) +
-                                       "ms): " + name}};
+        error_out =
+            json{{"error", "tool execution timeout (> " + std::to_string(options_.tool_timeout_ms) + "ms): " + name}};
         return json();
     }
 
@@ -236,8 +228,7 @@ json ReActLoop::invokeToolWithTimeout(const std::string& name,
 
 long long ReActLoop::nowMs()
 {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
         .count();
 }
 

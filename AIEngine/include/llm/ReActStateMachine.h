@@ -6,12 +6,12 @@ namespace ai
 /// ReAct Agent 状态
 enum class ReActState
 {
-    kIdle,        ///< 初始态
-    kThinking,    ///< 正在向 LLM 发起流式请求（可产出文本或工具调用）
-    kActing,      ///< 已识别工具调用，准备执行
-    kObserving,   ///< 工具执行中，等待 Observation
-    kDone,        ///< 正常结束（最终回答完成）
-    kError        ///< 不可恢复错误（总超时 / LLM 请求失败）
+    kIdle,       ///< 初始态
+    kThinking,   ///< 正在向 LLM 发起流式请求（可产出文本或工具调用）
+    kActing,     ///< 已识别工具调用，准备执行
+    kObserving,  ///< 工具执行中，等待 Observation
+    kDone,       ///< 正常结束（最终回答完成）
+    kError       ///< 不可恢复错误（总超时 / LLM 请求失败）
 };
 
 /// 状态转移事件
