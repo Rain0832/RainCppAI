@@ -48,35 +48,6 @@ find_library(MYSQLCLIENT_LIBRARY
         /usr/local/lib
 )
 
-# v3.2.0: hiredis (Redis client)
-find_library(HIREDIS_LIBRARY
-    NAMES hiredis
-    PATHS
-        /usr/local/lib
-        /usr/lib
-)
-# hiredis 头文件路径：RedisClient.h 被 AIEngine 无条件引用，必须显式暴露
-find_path(HIREDIS_INCLUDE_DIR
-    NAMES hiredis/hiredis.h
-    PATHS
-        /usr/local/include
-        /usr/include
-)
-
-# v3.2.0: AMQP-CPP + libev (RabbitMQ)
-find_library(AMQPCPP_LIBRARY
-    NAMES amqpcpp
-    PATHS
-        /usr/local/lib
-        /usr/lib
-)
-find_library(EV_LIBRARY
-    NAMES ev
-    PATHS
-        /usr/local/lib
-        /usr/lib
-)
-
 # -----------------------------
 # 源文件
 # -----------------------------
@@ -114,18 +85,12 @@ set(MAIN_SRC
     ${PROJECT_SOURCE_DIR}/Common/Metrics/MetricsCollector.cpp
     ${PROJECT_SOURCE_DIR}/Common/RateLimit/TokenBucket.cpp
     ${PROJECT_SOURCE_DIR}/Common/Auth/JwtService.cpp
-    ${PROJECT_SOURCE_DIR}/Infralib/Cache/RedisClient.cpp
-    ${PROJECT_SOURCE_DIR}/Infralib/Cache/SessionCache.cpp
 )
 
 # ==== 静态库：AIEngine ====
 add_library(aiengine STATIC ${AI_ENGINE_SRC})
 target_include_directories(aiengine PUBLIC ${PROJECT_SOURCE_DIR}/AIEngine/include ${PROJECT_SOURCE_DIR}/Storage/include ${PROJECT_SOURCE_DIR}/3rdparty ${PROJECT_SOURCE_DIR}/Common ${PROJECT_SOURCE_DIR})
 target_include_directories(aiengine PUBLIC /usr/local/onnxruntime/include)
-# hiredis 头文件被 AIHelper.cpp 经 SessionCache.h 无条件引用
-if(HIREDIS_INCLUDE_DIR)
-    target_include_directories(aiengine PUBLIC ${HIREDIS_INCLUDE_DIR})
-endif()
 target_link_libraries(aiengine PUBLIC CURL::libcurl OpenSSL::SSL OpenSSL::Crypto ${OpenCV_LIBS} ${ONNXRUNTIME_LIBRARY} pthread storage)
 target_link_libraries(aiengine PUBLIC sodium)
 
@@ -152,35 +117,8 @@ target_include_directories(http_server PRIVATE
     /usr/local/include
     /usr/local/include/jdbc
     /usr/local/onnxruntime/include)
-if(HIREDIS_INCLUDE_DIR)
-    target_include_directories(http_server PRIVATE ${HIREDIS_INCLUDE_DIR})
-endif()
 target_link_libraries(http_server PRIVATE -Wl,--whole-archive aiengine -Wl,--no-whole-archive httpserver storage pthread)
 target_link_libraries(http_server PRIVATE spdlog::spdlog)
-
-# v3.2.0: Redis + RabbitMQ (optional)
-if(HIREDIS_LIBRARY)
-    target_link_libraries(http_server PRIVATE ${HIREDIS_LIBRARY})
-    target_compile_definitions(http_server PRIVATE HAS_REDIS=1)
-    message(STATUS "hiredis found: Redis cache enabled")
-else()
-    message(STATUS "hiredis NOT found — Redis cache disabled")
-endif()
-if(AMQPCPP_LIBRARY AND EV_LIBRARY)
-    target_link_libraries(http_server PRIVATE ${AMQPCPP_LIBRARY} ${EV_LIBRARY})
-    target_compile_definitions(http_server PRIVATE HAS_AMQPCPP=1)
-    message(STATUS "AMQP-CPP + libev found: RabbitMQ enabled")
-else()
-    message(STATUS "AMQP-CPP/libev NOT found — RabbitMQ disabled")
-endif()
-
-# v3.2.0: MQ source files (only when AMQP-CPP is available)
-if(AMQPCPP_LIBRARY AND EV_LIBRARY)
-    target_sources(http_server PRIVATE
-        ${PROJECT_SOURCE_DIR}/Infralib/Mq/TaskProducer.cpp
-        ${PROJECT_SOURCE_DIR}/Infralib/Mq/TaskConsumer.cpp
-    )
-endif()
 
 # ==== GoogleTest ====
 include(FetchContent)

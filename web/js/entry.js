@@ -64,8 +64,6 @@ $('#login-form').onsubmit = e => {
             if (d.role) sessionStorage.setItem('role', d.role);
             if (d.username) sessionStorage.setItem('username', d.username);
             if (d.email) sessionStorage.setItem('email', d.email);
-            // 清除旧会话 ID，避免旧浏览器会话影响新用户登录后的会话恢复
-            sessionStorage.removeItem('currentSessionId');
             showToast('登录成功');
             const dest = (d.role === 'admin') ? '/admin/dashboard' : '/chat';
             setTimeout(() => window.location.href = dest, 500);

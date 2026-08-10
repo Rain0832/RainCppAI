@@ -27,8 +27,7 @@ int main(int argc, char* argv[])
     std::string serverName = "ChatServer";
     auto& cfg = common::ConfigManager::instance();
     cfg.load("../config.json");
-    // 安全检查：配置文件负责读取结构性配置，数据库密码等敏感值仍可通过环境变量注入。
-    // 这里的逻辑保证了 config.json 与运行时密钥分离。
+    // 安全检查：DB 密码应从环境变量注入，config.json 中密码字段应为空
     std::string dbPass = cfg.get("db.password", "");
     if (dbPass.empty())
     {

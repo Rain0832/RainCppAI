@@ -67,11 +67,10 @@ main.cpp
 | `include/controller/AdminLogsHandler.h` | 日志查看器 |
 | `include/controller/AdminInviteCodesHandler.h` | 邀请码管理（列表/创建/启禁） |
 | `include/controller/ChangePasswordHandler.h` | 修改密码（POST /api/user/password） |
-| `include/controller/TaskStatusHandler.h` | 异步任务状态轮询（GET /task/{id}/status） |
 | `include/server/SessionStore.h` | 会话池 + LRU 驱逐封装 |
 | `include/Repository/` | 数据访问层（Account/Session/Message/ApiKey/Admin/InviteCode/VerificationCode） |
 | `include/Service/` | 业务逻辑层（Auth/Session/ApiKey/Chat） |
-| `include/server/ChatServer.h` | 服务启动器：路由注册、DB 初始化、Root 播种、ONNX 检查、Redis/MQ 初始化 |
+| `include/server/ChatServer.h` | 服务启动器：路由注册、DB 初始化、Root 播种、ONNX 检查 |
 
 ## v3.0.0 变更摘要
 - Vision-Agent: ChatSseHandler 支持 image_base64 → ONNX 推理 → Prompt 注入
@@ -81,25 +80,6 @@ main.cpp
 - 中间件链: RequestId → Auth → AdminAuth → RateLimit → SecurityHeaders
 - ChatServer::checkOnnxModel() 启动自检
 - 全量 Handler 清单已从 15 更新至 30+
-
-## v3.2.0 变更摘要
-
-### v3.2.0 关键实现点映射
-- `AIServerCore/src/server/ChatServer.cpp`: 启动时初始化 RedisClient、SessionCache 与 TaskProducer
-- `Infralib/Cache/RedisClient.{h,cpp}`: hiredis 封装，提供 GET/SETEX/LPUSH/LRANGE/HGET/HSET 等基础 Redis 操作
-- `Infralib/Cache/SessionCache.{h,cpp}`: 会话三级缓存门面，Memory → Redis → MySQL；包括会话列表、会话元数据、chat context 缓存
-- `Infralib/Mq/TaskProducer.{h,cpp}`: RabbitMQ 生产者；`publish()` 投递 vision_tasks/tts_tasks，不阻塞 HTTP Reactor
-- `AIServerCore/src/controller/ChatSessionsHandler.cpp`: 使用 SessionCache 读取 Redis 会话列表，未命中时回退 MySQL，并在返回后回写 Redis
-- `AIServerCore/src/controller/ChatSseHandler.cpp`: image_base64 请求直接投递到 RabbitMQ；同时对新会话进行 Redis 会话列表同步
-- `AIEngine/src/llm/AIHelper.cpp`: chatStream 启动时恢复 Redis chat context；助手回复完成后保存最新上下文到 Redis
-- `AIServerCore/src/controller/ChatSpeechHandler.cpp`: 统一从 config.json 的 `api_keys.baidu.*` 读取百度 TTS Key，避免 getenv()
-- `AIServerCore/src/main.cpp`: 统一加载 config.json，初始化主流程；DB 密码等敏感项仍建议环境变量注入，保持 config.json 与运行时密钥分离
-
-- Redis 三级缓存: ChatSessionsHandler 接入 SessionCache（内存→Redis→MySQL），hit 率>90% 时零 DB 查询
-- RabbitMQ 异步削峰: ChatSseHandler 图片请求分流至 TaskProducer，HTTP 202 + taskId 立即返回，不阻塞 Reactor
-- 新增 TaskStatusHandler: GET /task/{taskId}/status → Redis GET → 状态 (processing/completed/failed)
-- ChatServer 新增 initializeRedis() / initializeMQ()，启动时连接 Infralib 中间件
-- HttpResponse 新增 k202Accepted
 
 ## 对外依赖与耦合边界
 

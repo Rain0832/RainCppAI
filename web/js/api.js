@@ -29,8 +29,6 @@ export async function fetchModels() {
 let _apiKeyCache = null;
 
 export async function fetchApiKeysFromDb() {
-    // v3.2.0: 功能暂不开放
-    return;
     try {
         const r = await fetch('/api/user/apikey', { credentials: 'include' });
         const d = await r.json();
@@ -48,7 +46,7 @@ export async function fetchApiKeysFromDb() {
 
 export function getApiKey(mt) {
     // mt 为 provider 字符串（如 "aliyun" / "volcengine"）
-    if (mt === 'aliyun' || mt === 'aliyun-rag')
+    if (mt === 'aliyun' || mt === 'aliyun-rag' || mt === 'aliyun-mcp')
         return localStorage.getItem('rain-key-dashscope') || '';
     if (mt === 'volcengine')
         return localStorage.getItem('rain-key-doubao') || '';
@@ -289,16 +287,6 @@ export async function sendWithSSE(question, modelType, provider, modelName, sess
         + `<button class="del-btn" onclick="window.__deleteMsg(this)">✕ 删除</button>`;
     d.appendChild(acts);
 
-    if (!sessionId && !resolvedSid) {
-        console.warn('sendWithSSE returned without sessionId for new temp session', {
-            question,
-            modelType,
-            provider,
-            ragId,
-            endpointId,
-            fullContent
-        });
-    }
     if (sessions[resolvedSid]) {
         sessions[resolvedSid].messages.push({ role: 'assistant', content: fullContent, model: modelName || '' });
     }

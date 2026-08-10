@@ -5,13 +5,9 @@
 
 #include "AIServerCore/include/Repository/CallLogRepository.h"
 #include "Common/Logging/Logger.h"
-#include "Common/Utf8.h"
-#include "Infralib/Cache/SessionCache.h"
 
-AIHelper::AIHelper(storage::MysqlUtil* mysqlUtil,
-                   common::ThreadPool* threadPool,
-                   infra::cache::SessionCache* sessionCache)
-    : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool), sessionCache_(sessionCache)
+AIHelper::AIHelper(storage::MysqlUtil* mysqlUtil, common::ThreadPool* threadPool)
+    : processing_(false), mysqlUtil_(mysqlUtil), threadPool_(threadPool)
 {
     strategy = StrategyFactory::instance().create("aliyun");
 }
@@ -145,36 +141,6 @@ std::string AIHelper::chatStream(int userId,
         toolsSchema.push_back(std::move(openAiTool));
     }
 
-    // L2 Redis 对话上下文恢复（v3.2.0）：避免重启/多节点场景下重复从 MySQL 拉取
-    if (sessionCache_)
-    {
-        // chatStream 启动时优先从 Redis 恢复最近对话上下文，避免 MySQL 重复加载历史。
-        std::string cached = sessionCache_->getChatContext(userId, sessionId, []() { return std::string(); });
-        if (!cached.empty() && cached != "__NIL__")
-        {
-            try
-            {
-                json j = json::parse(cached);
-                std::lock_guard<std::mutex> lock(msgMutex_);
-                // 保留刚追加的 user 消息，在前面插入缓存的历史
-                Message currentUser = messages_.back();
-                messages_.pop_back();
-                for (auto& mj : j)
-                {
-                    messages_.push_back({mj.value("role", ""), mj.value("content", ""), mj.value("model", ""),
-                                         mj.value("tool_call_id", ""), mj.value("ts", 0LL)});
-                }
-                messages_.push_back(currentUser);
-                SPDLOG_INFO_TAG("AI") << "ChatContext restored from Redis: userId=" << userId
-                                      << " sessionId=" << sessionId << " msgs=" << j.size();
-            }
-            catch (...)
-            {
-                SPDLOG_WARN_TAG("AI") << "Failed to parse Redis chat context, falling back to memory only";
-            }
-        }
-    }
-
     // 最大流式工具调用轮次
     const int MAX_TOOL_ROUNDS = 5;
 
@@ -253,27 +219,6 @@ std::string AIHelper::chatStream(int userId,
                 }
                 pushMessageToMysql(userId, userName, "assistant", textContent, tsNow, sessionId, strategy->getModel());
 
-                // Redis 保存对话上下文（v3.2.0）
-                if (sessionCache_)
-                {
-                    // 将当前消息历史快照保存到 Redis，以便后续会话快速恢复。
-                    json snapshot = json::array();
-                    {
-                        std::lock_guard<std::mutex> lock(msgMutex_);
-                        for (auto& m : messages_)
-                        {
-                            json jm;
-                            jm["role"] = m.role;
-                            jm["content"] = m.content;
-                            jm["model"] = m.model;
-                            jm["tool_call_id"] = m.tool_call_id;
-                            jm["ts"] = m.ts;
-                            snapshot.push_back(jm);
-                        }
-                    }
-                    sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
-                }
-
                 // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
                 if (isNewSession && !apiKey.empty())
                 {
@@ -309,8 +254,7 @@ std::string AIHelper::chatStream(int userId,
             // ── 执行所有工具并加入历史 ──
             for (auto& tc : toolCalls)
             {
-                auto toolStart = std::chrono::steady_clock::now();
-                SPDLOG_INFO_TAG("AI") << "MCP tool call start: " << tc.name << " args=" << tc.arguments.dump();
+                SPDLOG_INFO_TAG("AI") << "MCP tool call: " << tc.name << " args=" << tc.arguments.dump();
                 json toolResult;
                 try
                 {
@@ -320,12 +264,6 @@ std::string AIHelper::chatStream(int userId,
                 {
                     toolResult = json{{"error", std::string(e.what())}};
                 }
-                auto toolEnd = std::chrono::steady_clock::now();
-                auto toolDurationMs =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(toolEnd - toolStart).count();
-                SPDLOG_INFO_TAG("AI") << "MCP tool call completed: " << tc.name << " durationMs=" << toolDurationMs
-                                      << " result="
-                                      << (toolResult.contains("error") ? toolResult["error"].get<std::string>() : "ok");
 
                 {
                     std::lock_guard<std::mutex> lock(msgMutex_);
@@ -348,27 +286,6 @@ std::string AIHelper::chatStream(int userId,
                 messages_.push_back({"assistant", roundResponse, strategy->getModel(), "", tsNow});
             }
             pushMessageToMysql(userId, userName, "assistant", roundResponse, tsNow, sessionId, strategy->getModel());
-
-            // Redis 保存对话上下文（v3.2.0）
-            if (sessionCache_)
-            {
-                json snapshot = json::array();
-                {
-                    std::lock_guard<std::mutex> lock(msgMutex_);
-                    for (auto& m : messages_)
-                    {
-                        json jm;
-                        jm["role"] = m.role;
-                        jm["content"] = m.content;
-                        jm["model"] = m.model;
-                        jm["tool_call_id"] = m.tool_call_id;
-                        jm["ts"] = m.ts;
-                        snapshot.push_back(jm);
-                    }
-                }
-                sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
-            }
-
             _logCall("success");
             return roundResponse;
         }
@@ -401,9 +318,6 @@ std::string AIHelper::executeCurlStream(const json& payload, StreamCallback onCh
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ctx);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1L);
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 60L);
 
     CURLcode curlRes = curl_easy_perform(curl);
     curl_slist_free_all(headers);
@@ -563,8 +477,6 @@ json AIHelper::executeCurl(const json& payload)
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
 
     CURLcode res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
@@ -630,8 +542,8 @@ void AIHelper::startTitleSummarization(const std::string& sessionId,
                     if (msg.contains("content") && !msg["content"].is_null()) title = msg["content"].get<std::string>();
                 }
 
-                // UTF-8 安全截断（不超过 120 字节 = VARCHAR(128) 安全边界）
-                title = common::utf8SafeTruncate(title, 120);
+                // 截断超长标题 + 清理空白
+                if (title.length() > 20) title = title.substr(0, 20);
                 // 移除首尾空白/引号
                 while (!title.empty() && (title.front() == '"' || title.front() == '\'' || title.front() == ' '))
                     title.erase(0, 1);

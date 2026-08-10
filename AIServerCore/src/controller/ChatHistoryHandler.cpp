@@ -127,9 +127,6 @@ void ChatHistoryHandler::handle(const http::HttpRequest& req, http::HttpResponse
 
         for (const auto& msg : messages)
         {
-            // 跳过工具调用的内部消息（role=tool），不渲染到前端
-            if (msg.role == "tool") continue;
-
             json msgJson;
             // 直接用 role 字段，彻底消除奇偶依赖
             msgJson["is_user"] = (msg.role == "user");

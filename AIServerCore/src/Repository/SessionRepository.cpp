@@ -1,6 +1,5 @@
 #include "Repository/SessionRepository.h"
 
-#include "Common/Utf8.h"
 #include "storage/MysqlUtil.h"
 
 json SessionRepository::findByAccount(long long accountId)
@@ -58,8 +57,7 @@ bool SessionRepository::softDelete(const std::string& sessionId)
 
 bool SessionRepository::updateTitle(const std::string& sessionId, const std::string& title)
 {
-    std::string safeTitle = common::utf8SafeTruncate(title, 120);
     storage::MysqlUtil mu;
-    mu.executeUpdate("UPDATE sessions SET title = ? WHERE id = ?", safeTitle, sessionId);
+    mu.executeUpdate("UPDATE sessions SET title = ? WHERE id = ?", title, sessionId);
     return true;
 }
