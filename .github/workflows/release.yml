@@ -1,0 +1,112 @@
+name: Release Build & Upload
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            ccache-release-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            g++ \
+            make \
+            ccache \
+            zip \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libspdlog-dev \
+            libopencv-dev \
+            libmysqlcppconn-dev \
+            libmysqlclient-dev \
+            libsodium-dev \
+            nlohmann-json3-dev \
+            libhiredis-dev \
+            libev-dev
+
+      - name: Install muduo
+        run: |
+          git clone --depth=1 https://github.com/chenshuo/muduo.git /tmp/muduo
+          cd /tmp/muduo
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DMUDUO_BUILD_EXAMPLES=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          sudo make install
+
+      - name: Install ONNX Runtime
+        run: |
+          curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v1.17.1/onnxruntime-linux-x64-1.17.1.tgz | tar xz -C /tmp
+          sudo mkdir -p /usr/local/onnxruntime
+          sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/include /usr/local/onnxruntime/
+          sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/lib /usr/local/onnxruntime/
+          echo "/usr/local/onnxruntime/lib" | sudo tee /etc/ld.so.conf.d/onnxruntime.conf
+          sudo ldconfig
+
+      - name: Configure CMake
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Package artifacts
+        run: |
+          mkdir -p release-pkg
+          cp build/http_server release-pkg/
+          cp -r web release-pkg/
+          cp config.json.example release-pkg/
+          cp mcp_config.json release-pkg/
+          cp -r mcp_servers release-pkg/
+          cd release-pkg
+          zip -r ../RainCppAI-${{ github.ref_name }}-linux-x64.zip .
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: RainCppAI-${{ github.ref_name }}-linux-x64.zip
+          body: |
+            ## Dr.Rain ${{ github.ref_name }} Release
+
+            ### 包含文件
+            - `http_server` — C++ 编译二进制
+            - `web/` — 前端静态资源
+            - `config.json.example` — 配置模板
+            - `mcp_config.json` — MCP 工具配置
+            - `mcp_servers/` — Python MCP 微服务
+
+            ### 部署说明
+            ```bash
+            unzip RainCppAI-${{ github.ref_name }}-linux-x64.zip
+            cp config.json.example config.json  # 编辑配置
+            ./http_server
+            ```
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

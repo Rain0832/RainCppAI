@@ -1,5 +1,6 @@
 #include "controller/ChatSpeechHandler.h"
 
+#include "Common/Config/ConfigManager.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
 
@@ -31,14 +32,13 @@ void ChatSpeechHandler::handle(const http::HttpRequest& req, http::HttpResponse*
             if (j.contains("text")) text = j["text"];
         }
 
-        const char* secretEnv = std::getenv("BAIDU_CLIENT_SECRET");
-        const char* idEnv = std::getenv("BAIDU_CLIENT_ID");
+        // 统一从 config.json 中读取私密 API Key，避免直接依赖 getenv().
+        auto& cfg = common::ConfigManager::instance();
+        std::string clientId = cfg.get("api_keys.baidu.client_id", "");
+        std::string clientSecret = cfg.get("api_keys.baidu.client_secret", "");
 
-        if (!secretEnv) throw std::runtime_error("BAIDU_CLIENT_SECRET not found!");
-        if (!idEnv) throw std::runtime_error("BAIDU_CLIENT_ID not found!");
-
-        std::string clientSecret(secretEnv);
-        std::string clientId(idEnv);
+        if (clientId.empty() || clientSecret.empty())
+            throw std::runtime_error("Baidu API keys not configured in config.json!");
 
         AISpeechProcessor speechProcessor(clientId, clientSecret);
 

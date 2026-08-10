@@ -1,0 +1,82 @@
+name: CodeQL Analysis
+
+on:
+  push:
+    branches: [main, dev]
+  schedule:
+    - cron: '0 0 * * 0'  # 每周日 UTC 00:00 全量扫描
+
+jobs:
+  analyze:
+    name: Analyze (cpp)
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          queries: security-extended,security-and-quality
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            g++ \
+            make \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libspdlog-dev \
+            libopencv-dev \
+            libmysqlcppconn-dev \
+            libmysqlclient-dev \
+            libsodium-dev \
+            nlohmann-json3-dev
+
+      - name: Install muduo
+        run: |
+          git clone --depth=1 https://github.com/chenshuo/muduo.git /tmp/muduo
+          cd /tmp/muduo
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DMUDUO_BUILD_EXAMPLES=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          sudo make install
+
+      - name: Install ONNX Runtime
+        run: |
+          curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v1.17.1/onnxruntime-linux-x64-1.17.1.tgz | tar xz -C /tmp
+          sudo mkdir -p /usr/local/onnxruntime
+          sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/include /usr/local/onnxruntime/
+          sudo cp -r /tmp/onnxruntime-linux-x64-1.17.1/lib /usr/local/onnxruntime/
+          echo "/usr/local/onnxruntime/lib" | sudo tee /etc/ld.so.conf.d/onnxruntime.conf
+          sudo ldconfig
+
+      - name: Configure CMake
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:c-cpp"

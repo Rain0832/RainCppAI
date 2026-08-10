@@ -121,6 +121,9 @@ void DbConnectionPool::checkConnections()
     {
         try
         {
+            // 从池中真正取出连接进行检查，避免与 getConnection() 并发操作同一连接。
+            // 之前复制引用的方式会让同一连接同时被检查线程和使用方 ping，
+            // 导致 MySQL "Commands out of sync" 错误。
             std::vector<std::shared_ptr<DbConnection>> connsToCheck;
             {
                 std::unique_lock<std::mutex> lock(mutex_);
@@ -129,12 +132,10 @@ void DbConnectionPool::checkConnections()
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                     continue;
                 }
-
-                auto temp = connections_;
-                while (!temp.empty())
+                while (!connections_.empty())
                 {
-                    connsToCheck.push_back(temp.front());
-                    temp.pop();
+                    connsToCheck.push_back(connections_.front());
+                    connections_.pop();
                 }
             }
 
@@ -152,6 +153,10 @@ void DbConnectionPool::checkConnections()
                         SPDLOG_ERROR_TAG("DB") << "Failed to reconnect: " << e.what();
                     }
                 }
+                // 检查完立即放回池，缩短池空窗口
+                std::lock_guard<std::mutex> lock(mutex_);
+                connections_.push(conn);
+                cv_.notify_one();
             }
 
             std::this_thread::sleep_for(std::chrono::seconds(60));

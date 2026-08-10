@@ -13,7 +13,8 @@
 
 ### Quick Links
 
-- [Full README with API reference, architecture diagram, env vars](README.md#english)
+- [📚 Wiki](https://github.com/Rain0832/RainCppAI/wiki) — Architecture, API Reference, Deployment, MCP Dev Guide
+- [README (中文)](README.md#chinese)
 - [Contributing Guide](CONTRIBUTING.md)
 - [Coding Standard](DEVELOP_STANDARD.md)
 - [Changelog](CHANGELOG.md)

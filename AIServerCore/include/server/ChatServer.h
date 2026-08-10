@@ -44,6 +44,19 @@
 #include "storage/MysqlUtil.h"
 #include "vision/ImageRecognizer.h"
 
+namespace infra
+{
+namespace cache
+{
+class RedisClient;
+class SessionCache;
+}  // namespace cache
+namespace mq
+{
+class TaskProducer;
+}  // namespace mq
+}  // namespace infra
+
 /**
  * @brief AI聊天服务器核心类
  *
@@ -144,6 +157,23 @@ public:
     {
         httpServer_.setSessionManager(std::move(manager));
     };
+
+    // Redis (v3.2.0)
+    std::shared_ptr<infra::cache::RedisClient> getRedisClient() const
+    {
+        return redisClient_;
+    }
+    std::shared_ptr<infra::cache::SessionCache> getSessionCache() const
+    {
+        return sessionCache_;
+    }
+
+    // MQ (v3.2.0)
+    std::shared_ptr<infra::mq::TaskProducer> getTaskProducer() const
+    {
+        return taskProducer_;
+    }
+
     void packageResp(const std::string& version,
                      http::HttpResponse::HttpStatusCode statusCode,
                      const std::string& statusMsg,
@@ -164,6 +194,8 @@ private:
     void initializeSession();
     void initializeRouter();
     void initializeMiddleware();
+    void initializeRedis();
+    void initializeMQ();
     void readDataFromMySQL();
     void touchSession(int userId, const std::string& sessionId);
     void evictIfNeeded();
@@ -183,4 +215,11 @@ private:
     std::list<std::string> lruList_;
     std::unordered_map<std::string, std::list<std::string>::iterator> lruMap_;
     static constexpr size_t MAX_SESSIONS = 500;
+
+    // v3.2.0: Redis 二级缓存
+    std::shared_ptr<infra::cache::RedisClient> redisClient_;
+    std::shared_ptr<infra::cache::SessionCache> sessionCache_;
+
+    // v3.2.0: RabbitMQ 任务削峰
+    std::shared_ptr<infra::mq::TaskProducer> taskProducer_;
 };

@@ -8,6 +8,8 @@
 #include "Common/Config/ConfigManager.h"
 #include "Common/Crypto/PasswordHash.h"
 #include "Common/Logging/Logger.h"
+#include "Infralib/Cache/RedisClient.h"
+#include "Infralib/Cache/SessionCache.h"
 #include "controller/AIUploadHandler.h"
 #include "controller/AIUploadSendHandler.h"
 #include "controller/AdminDashboardHandler.h"
@@ -38,6 +40,7 @@
 #include "controller/McpHandler.h"
 #include "controller/MetricsHandler.h"
 #include "controller/ModelListHandler.h"
+#include "controller/TaskStatusHandler.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
 #include "http/HttpServer.h"
@@ -46,6 +49,9 @@
 #include "middleware/AuthMiddleware.h"
 #include "middleware/RateLimitMiddleware.h"
 #include "middleware/RequestIdMiddleware.h"
+#ifdef HAS_AMQPCPP
+#include "Infralib/Mq/TaskProducer.h"
+#endif
 
 using namespace http;
 
@@ -80,6 +86,10 @@ void ChatServer::initialize()
     seedRootAccount();
     initializeSession();
     initializeMiddleware();
+    initializeRedis();
+#ifdef HAS_AMQPCPP
+    initializeMQ();
+#endif
     initializeRouter();
 }
 
@@ -351,7 +361,7 @@ void ChatServer::readDataFromMySQL()
         auto itSession = userSessions.find(session_id);
         if (itSession == userSessions.end())
         {
-            helper = std::make_shared<AIHelper>(&mysqlUtil_, &aiThreadPool_);
+            helper = std::make_shared<AIHelper>(&mysqlUtil_, &aiThreadPool_, sessionCache_.get());
             userSessions[session_id] = helper;
             sessionsIdsMap[user_id].push_back(session_id);
         }
@@ -433,6 +443,11 @@ void ChatServer::initializeRouter()
     // MCP Server 路由（标准 JSON-RPC 2.0）
     httpServer_.Post("/mcp", std::make_shared<McpHandler>(this));
 
+    // v3.2.0: 异步任务状态查询（RabbitMQ 削峰）
+    if (redisClient_)
+        httpServer_.addRoute(http::HttpRequest::kGet, "/task/:taskId/status",
+                             std::make_shared<TaskStatusHandler>(redisClient_));
+
     // Admin 后台路由
     httpServer_.Get("/admin/dashboard", std::make_shared<AdminDashboardHandler>(this));
     httpServer_.Get("/admin/logs", std::make_shared<AdminLogsHandler>(this));
@@ -481,6 +496,60 @@ void ChatServer::initializeMiddleware()
     auto rateLimitMiddleware = std::make_shared<http::middleware::RateLimitMiddleware>();
     httpServer_.addMiddleware(rateLimitMiddleware);
 }
+
+void ChatServer::initializeRedis()
+{
+    // v3.2.0 Redis 初始化入口：从 config.json 读取 Redis 连接信息，
+    // 如果可用则构建 RedisClient 和 SessionCache。
+    // 该缓存层用于会话列表、会话元信息和 chat context 的 L2 缓存。
+    auto& cfg = common::ConfigManager::instance();
+    std::string host = cfg.get("redis.host", "127.0.0.1");
+    int port = cfg.getInt("redis.port", 6379);
+    std::string password = cfg.get("redis.password", "");
+    int db = cfg.getInt("redis.db", 0);
+
+    redisClient_ = std::make_shared<infra::cache::RedisClient>();
+    if (redisClient_->connect(host, port, password, db))
+    {
+        // RedisClient 连接成功后注入 SessionCache，用于后续的会话列表和历史上下文缓存。
+        sessionCache_ = std::make_shared<infra::cache::SessionCache>(redisClient_);
+        SPDLOG_INFO_TAG("REDIS") << "Redis initialized: " << host << ":" << port;
+    }
+    else
+    {
+        SPDLOG_WARN_TAG("REDIS") << "Redis unavailable — falling back to MySQL-only mode";
+        redisClient_.reset();
+    }
+}
+
+#ifdef HAS_AMQPCPP
+void ChatServer::initializeMQ()
+{
+    // v3.2.0 RabbitMQ 初始化入口：只在配置了 rabbitmq.uri 时启用。
+    // 这个 producer 仅用于视觉任务异步削峰，不影响普通文本对话。
+    auto& cfg = common::ConfigManager::instance();
+    std::string mqUri = cfg.get("rabbitmq.uri", "");
+
+    if (mqUri.empty())
+    {
+        SPDLOG_INFO_TAG("MQ") << "RabbitMQ URI not configured — MQ disabled";
+        return;
+    }
+
+    taskProducer_ = std::make_shared<infra::mq::TaskProducer>();
+    if (taskProducer_->connect(mqUri))
+    {
+        taskProducer_->declareQueue("vision_tasks");
+        taskProducer_->declareQueue("tts_tasks");
+        SPDLOG_INFO_TAG("MQ") << "RabbitMQ producer initialized";
+    }
+    else
+    {
+        SPDLOG_WARN_TAG("MQ") << "RabbitMQ unavailable — async tasks disabled";
+        taskProducer_.reset();
+    }
+}
+#endif
 
 void ChatServer::packageResp(const std::string& version,
                              http::HttpResponse::HttpStatusCode statusCode,

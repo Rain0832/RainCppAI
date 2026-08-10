@@ -1,6 +1,7 @@
 #include "controller/ChatUpdateTitleHandler.h"
 
 #include "Common/Logging/Logger.h"
+#include "Common/Utf8.h"
 
 void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResponse* resp)
 {
@@ -34,6 +35,7 @@ void ChatUpdateTitleHandler::handle(const http::HttpRequest& req, http::HttpResp
         {
             try
             {
+                title = common::utf8SafeTruncate(title, 120);
                 storage::MysqlUtil mu;
                 mu.executeUpdate("UPDATE sessions SET title = ? WHERE id = ?", title, sessionId);
             }

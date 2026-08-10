@@ -41,9 +41,16 @@
     "username": "",
     "password": ""
   },
-  "default_api_keys": {
-    "dashscope": "sk-your-dashscope-key",
-    "doubao": "your-doubao-key"
+  "api_keys": {
+    "dashscope": "sk-your-dashscope-api-key",
+    "doubao": "your-doubao-api-key",
+    "baidu": {
+      "client_id": "your-baidu-client-id",
+      "client_secret": "your-baidu-client-secret"
+    },
+    "rag": {
+      "knowledge_base_id": "your-knowledge-base-id"
+    }
   },
   "jwt": {
     "secret": "change-this-to-a-random-secret"
@@ -51,5 +58,16 @@
   "log": {
     "level": "info",
     "path": "logs/app.log"
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  },
+  "rabbitmq": {
+    "uri": "",
+    "vision_queue": "vision_tasks",
+    "tts_queue": "tts_tasks"
   }
 }
