@@ -1,6 +1,5 @@
 ﻿#include "controller/ChatSseHandler.h"
 
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -11,14 +10,9 @@
 #include "Common/Config/ConfigManager.h"
 #include "Common/Http/ApiResult.h"
 #include "Common/Logging/Logger.h"
-#include "Infralib/Cache/SessionCache.h"
 #include "common/AISessionIdGenerator.h"
 #include "common/base64.h"
 #include "llm/AIHelper.h"
-#ifdef HAS_AMQPCPP
-#include "Infralib/Mq/TaskMessage.h"
-#include "Infralib/Mq/TaskProducer.h"
-#endif
 
 /// 生成 UUID v4 风格的随机文件名
 static std::string generateUUID()
@@ -146,7 +140,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
         {
             auto& cfg = common::ConfigManager::instance();
             std::string cfgKey = (provider == "volcengine") ? "doubao" : "dashscope";
-            apiKey = cfg.get("api_keys." + cfgKey, "");
+            apiKey = cfg.get("default_api_keys." + cfgKey, "");
             if (!apiKey.empty()) SPDLOG_INFO_TAG("AI") << "Using default " << cfgKey << " API key from config.json";
         }
 
@@ -175,23 +169,12 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
             auto& us = server_->getChatInformation()[userId];
             if (!us.count(sessionId))
             {
-                us.emplace(sessionId, std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool(),
-                                                                 server_->getSessionCache().get()));
-                // 记录 sessionId 到列表并刷新 Redis 缓存
+                us.emplace(sessionId,
+                           std::make_shared<AIHelper>(&server_->getMysqlUtil(), &server_->getAiThreadPool()));
+                // 同步记录 sessionId 到列表中
                 {
                     std::unique_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
                     server_->getSessionIdsMap()[userId].push_back(sessionId);
-                }
-                if (server_->getSessionCache())
-                {
-                    // 新会话创建后，同时回写 Redis 会话列表缓存。
-                    std::vector<std::string> allSids;
-                    {
-                        std::shared_lock<std::shared_mutex> slock(server_->getSessionIdsMutex());
-                        auto it = server_->getSessionIdsMap().find(userId);
-                        if (it != server_->getSessionIdsMap().end()) allSids = it->second;
-                    }
-                    server_->getSessionCache()->saveSessionList(static_cast<int>(userId), allSids);
                 }
             }
             AIHelperPtr = us[sessionId];
@@ -217,50 +200,10 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                 conn->send(sseHeader);
             });
 
-#ifdef HAS_AMQPCPP
-        // v3.2.0: 图片异步削峰 — 当请求包含图像时，HTTP 线程不做重型推理，直接投递到 RabbitMQ。
-        if (!imageBase64.empty() && server_->getTaskProducer() && server_->getTaskProducer()->isConnected())
-        {
-            AISessionIdGenerator gen;
-            std::string taskId = gen.generate();
-
-            infra::mq::TaskMessage taskMsg;
-            taskMsg.taskId = taskId;
-            taskMsg.type = "vision";
-            taskMsg.payload["userId"] = userId;
-            taskMsg.payload["sessionId"] = sessionId;
-            taskMsg.payload["question"] = userQuestion;
-            taskMsg.payload["imageBase64"] = imageBase64;
-            taskMsg.payload["provider"] = provider;
-            taskMsg.payload["modelType"] = modelType;
-            taskMsg.payload["apiKey"] = apiKey;
-
-            server_->getTaskProducer()->publish("vision_tasks", taskMsg);
-            SPDLOG_INFO_TAG("AI") << "Vision task offloaded to MQ: taskId=" << taskId;
-
-            auto loop = conn->getLoop();
-            loop->runInLoop(
-                [conn, sessionId, taskId, isNewSession]()
-                {
-                    if (!conn->connected()) return;
-                    json ack;
-                    if (isNewSession) ack["sessionId"] = sessionId;
-                    ack["status"] = "accepted";
-                    ack["taskId"] = taskId;
-                    std::string data = "data: " + ack.dump() + "\n\n";
-                    conn->send(data);
-                    conn->send("data: [DONE]\n\n");
-                    conn->shutdown();
-                });
-            return;
-        }
-#endif
-
-        auto requestStart = std::chrono::steady_clock::now();
         // 提交流式 AI 调用到线程池
         server_->getAiThreadPool().submit(
             [this, conn, AIHelperPtr, userId, username, sessionId, userQuestion, modelType, apiKey, ragId, provider,
-             isNewSession, imageBase64, requestStart]()
+             isNewSession, imageBase64]()
             {
                 try
                 {
@@ -320,8 +263,7 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                                 std::vector<unsigned char> imgData(decoded.begin(), decoded.end());
                                 std::string className = ImageRecognizerPtr->PredictFromBuffer(imgData);
                                 SPDLOG_INFO_TAG("AI") << "ONNX inference result: " << className;
-                                std::string visionPrompt = std::string("用户上传了一张图片，AI 识别结果为 ") +
-                                                           className + "，请根据识别结果来回答用户的问题";
+                                std::string visionPrompt = std::string("识别结果为 \"") + className + "\"";
                                 AIHelperPtr->injectVisionContext(visionPrompt);
 
                                 // SP 10.3: Base64 不入库，落地为文件
@@ -390,13 +332,6 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                         },
                         "", isNewSession);
                     sendSseDone(conn);
-                    conn->shutdown();
-                    auto requestEnd = std::chrono::steady_clock::now();
-                    auto durationMs =
-                        std::chrono::duration_cast<std::chrono::milliseconds>(requestEnd - requestStart).count();
-                    SPDLOG_INFO_TAG("AI")
-                        << "Chat request completed: userId=" << userId << " sessionId=" << sessionId
-                        << " isNewSession=" << (isNewSession ? "true" : "false") << " durationMs=" << durationMs;
                 }
                 catch (const std::exception& e)
                 {
@@ -404,13 +339,6 @@ void ChatSseHandler::handle(const http::HttpRequest& req, http::HttpResponse* re
                     err["error"] = e.what();
                     sendSseChunk(conn, err.dump());
                     sendSseDone(conn);
-                    conn->shutdown();
-                    auto requestEnd = std::chrono::steady_clock::now();
-                    auto durationMs =
-                        std::chrono::duration_cast<std::chrono::milliseconds>(requestEnd - requestStart).count();
-                    SPDLOG_ERROR_TAG("AI") << "Chat request failed: userId=" << userId << " sessionId=" << sessionId
-                                           << " isNewSession=" << (isNewSession ? "true" : "false")
-                                           << " durationMs=" << durationMs << " error=" << e.what();
                 }
             });
     }

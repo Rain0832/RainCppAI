@@ -17,7 +17,6 @@ public:
     {
         kUnknown,
         k200Ok = 200,
-        k202Accepted = 202,
         k204NoContent = 204,
         k301MovedPermanently = 301,
         k400BadRequest = 400,

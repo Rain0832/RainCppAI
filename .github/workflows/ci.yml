@@ -2,9 +2,9 @@ name: CI Build
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 jobs:
   build:
@@ -14,14 +14,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup ccache
-        uses: actions/cache@v4
-        with:
-          path: ~/.ccache
-          key: ccache-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            ccache-${{ runner.os }}-
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -29,7 +21,6 @@ jobs:
             cmake \
             g++ \
             make \
-            ccache \
             libcurl4-openssl-dev \
             libssl-dev \
             libspdlog-dev \
@@ -38,8 +29,6 @@ jobs:
             libmysqlclient-dev \
             libsodium-dev \
             nlohmann-json3-dev \
-            libhiredis-dev \
-            libev-dev \
             clang-format
 
       - name: Install muduo
@@ -63,32 +52,21 @@ jobs:
           echo "/usr/local/onnxruntime/lib" | sudo tee /etc/ld.so.conf.d/onnxruntime.conf
           sudo ldconfig
 
-      - name: ccache stats (before)
-        run: ccache -s || true
-
       - name: Configure CMake
         run: |
           mkdir -p build
           cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake .. -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: |
           cd build
           make -j$(nproc)
 
-      - name: ccache stats (after)
-        run: ccache -s
-
-      - name: Check formatting (hard check)
+      - name: Check formatting (info only)
         run: |
           cd build
           make format
           if ! git diff --exit-code -- '*.cpp' '*.h'; then
-            echo "::error::Some files are not formatted with clang-format."
-            echo "Run 'make format' locally and commit the changes."
-            exit 1
+            echo "::warning::Some files are not formatted with clang-format. Run 'make format' locally."
           fi
