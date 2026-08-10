@@ -50,6 +50,7 @@ public:
         int max_rounds = 5;            ///< 最大工具调用轮次（熔断阈值）
         int tool_timeout_ms = 30000;   ///< 单次工具执行超时
         int total_timeout_ms = 120000; ///< 整个 ReAct 循环总超时
+        std::string model_name;        ///< 前端传入的模型名（空时使用策略默认模型）
     };
 
     /// 事件回调（前端 SSE 协议 / 业务日志）

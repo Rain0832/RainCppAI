@@ -7,6 +7,7 @@
 #include "Common/Logging/Logger.h"
 #include "Common/Utf8.h"
 #include "Infralib/Cache/SessionCache.h"
+#include "llm/ReActLoop.h"
 
 AIHelper::AIHelper(storage::MysqlUtil* mysqlUtil,
                    common::ThreadPool* threadPool,
@@ -175,210 +176,145 @@ std::string AIHelper::chatStream(int userId,
         }
     }
 
-    // 最大流式工具调用轮次
+    // v3.3.0: ReAct 状态机闭环 — 替代硬编码 for 循环（Issue #12）
     const int MAX_TOOL_ROUNDS = 5;
 
-    // 最终累积的 assistant 回复（不含 tool_calls 部分，仅纯文本）
-    std::string finalAnswer;
-
-    for (int round = 0; round < MAX_TOOL_ROUNDS; ++round)
+    // Dr.Rain System Prompt 注入（SP 5.5）
+    // 策略：先判断第一条消息是否为 vision 视觉上下文，若是则保留在其后插入人设
+    const std::string drRainSystemPrompt =
+        "你是 Dr.Rain，一位专业的 AI 医疗健康助手。你基于医学知识提供健康咨询、"
+        "症状分析、用药参考和生活方式建议。请注意：\n"
+        "1. 你的回答仅供参考，不能替代专业医生的诊断和治疗\n"
+        "2. 遇到紧急情况，请建议用户立即就医\n"
+        "3. 你不提供具体处方，只提供通用医学知识\n"
+        "4. 回答时保持专业、温暖、易懂的风格";
+    std::vector<Message> context_messages;
     {
-        std::vector<Message> snapshot;
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        context_messages = messages_;
+    }
+    {
+        bool hasVisionCtx = !context_messages.empty() && context_messages[0].role == "system" &&
+                            context_messages[0].content.rfind("[系统提示：", 0) == 0;
+        if (hasVisionCtx)
         {
-            std::lock_guard<std::mutex> lock(msgMutex_);
-            snapshot = messages_;
+            // 第一条是 vision 上下文 → 在它前面插入 Dr.Rain 人设
+            context_messages.insert(context_messages.begin(), {"system", drRainSystemPrompt, "", ""});
         }
-
-        // Dr.Rain System Prompt 注入（SP 5.5）
-        // 策略：先判断第一条消息是否为 vision 视觉上下文，若是则保留在其后插入人设
-        const std::string drRainSystemPrompt =
-            "你是 Dr.Rain，一位专业的 AI 医疗健康助手。你基于医学知识提供健康咨询、"
-            "症状分析、用药参考和生活方式建议。请注意：\n"
-            "1. 你的回答仅供参考，不能替代专业医生的诊断和治疗\n"
-            "2. 遇到紧急情况，请建议用户立即就医\n"
-            "3. 你不提供具体处方，只提供通用医学知识\n"
-            "4. 回答时保持专业、温暖、易懂的风格";
+        else
         {
-            bool hasVisionCtx =
-                !snapshot.empty() && snapshot[0].role == "system" && snapshot[0].content.rfind("[系统提示：", 0) == 0;
-            if (hasVisionCtx)
-            {
-                // 第一条是 vision 上下文 → 在它前面插入 Dr.Rain 人设
-                snapshot.insert(snapshot.begin(), {"system", drRainSystemPrompt, "", ""});
-            }
+            bool hasSystem = !context_messages.empty() && context_messages[0].role == "system";
+            if (hasSystem)
+                context_messages[0] = {"system", drRainSystemPrompt, "", ""};
             else
-            {
-                bool hasSystem = !snapshot.empty() && snapshot[0].role == "system";
-                if (hasSystem)
-                    snapshot[0] = {"system", drRainSystemPrompt, "", ""};
-                else
-                    snapshot.insert(snapshot.begin(), {"system", drRainSystemPrompt, "", ""});
-            }
-        }
-
-        // 每次构建 payload，传 stream=true（使用前端传入的 modelId）
-        json payload = strategy->buildRequest(snapshot, toolsSchema, effectiveModel);
-        payload["stream"] = true;
-
-        // 审计日志：记录发起 LLM 请求前的关键信息
-        SPDLOG_INFO_TAG("AI") << "[LLM Request] userId: " << userId << " | sessionId: " << sessionId
-                              << " | provider: " << provider << " | model: " << effectiveModel
-                              << " | payload: " << payload.dump();
-
-        // 流式请求：累积完整响应 + SSE 回调给前端
-        auto roundStreamCb = onChunk;  // 复用前端回调
-        std::string roundResponse = executeCurlStream(payload, roundStreamCb);
-
-        // 检查是否包含 tool_calls（从累积的完整响应中解析）
-        try
-        {
-            json fullResp = json::parse(roundResponse);
-            auto toolCalls = strategy->parseToolCalls(fullResp);
-
-            if (toolCalls.empty())
-            {
-                // 纯文本回复：roundResponse 中只有 content
-                auto& msg = fullResp["choices"][0]["message"];
-                std::string textContent;
-                if (msg.contains("content") && !msg["content"].is_null())
-                    textContent = msg["content"].get<std::string>();
-
-                // 将完整的助理回复加入历史
-                auto tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                 std::chrono::system_clock::now().time_since_epoch())
-                                 .count();
-                {
-                    std::lock_guard<std::mutex> lock(msgMutex_);
-                    messages_.push_back({"assistant", textContent, strategy->getModel(), "", tsNow});
-                }
-                pushMessageToMysql(userId, userName, "assistant", textContent, tsNow, sessionId, strategy->getModel());
-
-                // Redis 保存对话上下文（v3.2.0）
-                if (sessionCache_)
-                {
-                    // 将当前消息历史快照保存到 Redis，以便后续会话快速恢复。
-                    json snapshot = json::array();
-                    {
-                        std::lock_guard<std::mutex> lock(msgMutex_);
-                        for (auto& m : messages_)
-                        {
-                            json jm;
-                            jm["role"] = m.role;
-                            jm["content"] = m.content;
-                            jm["model"] = m.model;
-                            jm["tool_call_id"] = m.tool_call_id;
-                            jm["ts"] = m.ts;
-                            snapshot.push_back(jm);
-                        }
-                    }
-                    sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
-                }
-
-                // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
-                if (isNewSession && !apiKey.empty())
-                {
-                    startTitleSummarization(sessionId, userQuestion, apiKey, provider, effectiveModel);
-                }
-
-                _logCall("success");
-                return textContent;
-            }
-
-            // ── 有工具调用：保存 assistant 消息（含 tool_calls 结构） ──
-            {
-                std::lock_guard<std::mutex> lock(msgMutex_);
-                json tcArr = json::array();
-                for (auto& tc : toolCalls)
-                {
-                    json obj;
-                    obj["id"] = tc.id;
-                    obj["type"] = "function";
-                    obj["function"]["name"] = tc.name;
-                    obj["function"]["arguments"] = tc.arguments.dump();
-                    tcArr.push_back(std::move(obj));
-                }
-                messages_.push_back({"assistant", tcArr.dump(), strategy->getModel(), "tool_calls", 0});
-                // 持久化 assistant 的 tool_calls 消息到 MySQL（解决重启后上下文断裂）
-                auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                 std::chrono::system_clock::now().time_since_epoch())
-                                 .count();
-                pushMessageToMysql(userId, userName, "assistant", "", nowMs, sessionId, strategy->getModel(),
-                                   tcArr.dump());
-            }
-
-            // ── 执行所有工具并加入历史 ──
-            for (auto& tc : toolCalls)
-            {
-                auto toolStart = std::chrono::steady_clock::now();
-                SPDLOG_INFO_TAG("AI") << "MCP tool call start: " << tc.name << " args=" << tc.arguments.dump();
-                json toolResult;
-                try
-                {
-                    toolResult = registry.invoke(tc.name, tc.arguments);
-                }
-                catch (const std::exception& e)
-                {
-                    toolResult = json{{"error", std::string(e.what())}};
-                }
-                auto toolEnd = std::chrono::steady_clock::now();
-                auto toolDurationMs =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(toolEnd - toolStart).count();
-                SPDLOG_INFO_TAG("AI") << "MCP tool call completed: " << tc.name << " durationMs=" << toolDurationMs
-                                      << " result="
-                                      << (toolResult.contains("error") ? toolResult["error"].get<std::string>() : "ok");
-
-                {
-                    std::lock_guard<std::mutex> lock(msgMutex_);
-                    messages_.push_back({"tool", toolResult.dump(), "", tc.id, 0});
-                    // 持久化 tool 执行结果到 MySQL（解决重启后上下文断裂）
-                    pushMessageToMysql(userId, userName, "tool", toolResult.dump(), 0, sessionId, "", "", tc.id);
-                }
-            }
-
-            // 继续循环，第二次流式请求（带工具结果）
-        }
-        catch (const std::exception&)
-        {
-            SPDLOG_ERROR_TAG("AI") << "[LLM Response] parse/stream failed, treating as plain text";
-            auto tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
-                             std::chrono::system_clock::now().time_since_epoch())
-                             .count();
-            {
-                std::lock_guard<std::mutex> lock(msgMutex_);
-                messages_.push_back({"assistant", roundResponse, strategy->getModel(), "", tsNow});
-            }
-            pushMessageToMysql(userId, userName, "assistant", roundResponse, tsNow, sessionId, strategy->getModel());
-
-            // Redis 保存对话上下文（v3.2.0）
-            if (sessionCache_)
-            {
-                json snapshot = json::array();
-                {
-                    std::lock_guard<std::mutex> lock(msgMutex_);
-                    for (auto& m : messages_)
-                    {
-                        json jm;
-                        jm["role"] = m.role;
-                        jm["content"] = m.content;
-                        jm["model"] = m.model;
-                        jm["tool_call_id"] = m.tool_call_id;
-                        jm["ts"] = m.ts;
-                        snapshot.push_back(jm);
-                    }
-                }
-                sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
-            }
-
-            _logCall("success");
-            return roundResponse;
+                context_messages.insert(context_messages.begin(), {"system", drRainSystemPrompt, "", ""});
         }
     }
 
-    // 超出最大轮次
-    std::string msg = "[提示] 工具调用次数过多，请简化您的请求";
-    onChunk(msg);
-    addMessage(userId, userName, "assistant", msg, sessionId);
-    return msg;
+    // ReActLoop 配置：三重熔断（最大轮次 / 单次工具超时 / 总超时）
+    ai::ReActLoop::Options loop_options;
+    loop_options.max_rounds = MAX_TOOL_ROUNDS;
+    loop_options.tool_timeout_ms = 30000;
+    loop_options.total_timeout_ms = 120000;
+    loop_options.model_name = effectiveModel;
+
+    ai::ReActLoop react_loop(strategy, toolsSchema, loop_options);
+
+    ai::ReActLoop::EventCallbacks loop_cbs;
+    loop_cbs.on_text = onChunk;  // 文本 token 直接复用前端回调
+    loop_cbs.on_tool_call = [](const std::string& name, const json& args)
+    {
+        SPDLOG_INFO_TAG("AI") << "MCP tool call start: " << name << " args=" << args.dump();
+    };
+    loop_cbs.on_tool_result = [](const std::string& name, const json& result)
+    {
+        SPDLOG_INFO_TAG("AI") << "MCP tool call completed: " << name << " result="
+                              << (result.contains("error") ? result["error"].get<std::string>() : "ok");
+    };
+    loop_cbs.on_notice = [&onChunk](const std::string& message) { onChunk(message); };
+
+    auto loop_result = react_loop.run(
+        context_messages,
+        [this, userId, sessionId, provider, effectiveModel](const json& payload,
+                                                            const ai::ReActLoop::StreamCallback& cb) -> std::string
+        {
+            // 审计日志：记录发起 LLM 请求前的关键信息
+            SPDLOG_INFO_TAG("AI") << "[LLM Request] userId: " << userId << " | sessionId: " << sessionId
+                                  << " | provider: " << provider << " | model: " << effectiveModel
+                                  << " | payload: " << payload.dump();
+            return executeCurlStream(payload, cb);
+        },
+        [&registry](const std::string& name, const json& args) { return registry.invoke(name, args); }, loop_cbs);
+
+    // 将 ReActLoop 新增消息写入内存历史（assistant tool_calls / tool / 最终回复）
+    {
+        std::lock_guard<std::mutex> lock(msgMutex_);
+        for (const auto& m : loop_result.new_messages)
+        {
+            messages_.push_back(m);
+        }
+    }
+
+    // 同步持久化到 MySQL（解决重启后上下文断裂）
+    for (const auto& m : loop_result.new_messages)
+    {
+        if (m.role == "assistant" && !m.tool_call_id.empty())
+        {
+            // assistant tool_calls：tool_calls JSON 存 payload 列，content 置空
+            pushMessageToMysql(userId, userName, m.role, "", m.ts, sessionId, strategy->getModel(), m.content, "");
+        }
+        else if (m.role == "tool")
+        {
+            pushMessageToMysql(userId, userName, m.role, m.content, m.ts, sessionId, "", "", m.tool_call_id);
+        }
+        else
+        {
+            pushMessageToMysql(userId, userName, m.role, m.content, m.ts, sessionId, strategy->getModel());
+        }
+    }
+
+    // 熔断提示（工具循环超限 / 总超时）：持久化为 assistant 消息，保持上下文完整
+    if (loop_result.max_rounds_exceeded || loop_result.timed_out)
+    {
+        addMessage(userId, userName, "assistant", loop_result.content, sessionId);
+    }
+
+    // Redis 保存对话上下文（v3.2.0）
+    if (sessionCache_)
+    {
+        // 将当前消息历史快照保存到 Redis，以便后续会话快速恢复。
+        json snapshot = json::array();
+        {
+            std::lock_guard<std::mutex> lock(msgMutex_);
+            for (auto& m : messages_)
+            {
+                json jm;
+                jm["role"] = m.role;
+                jm["content"] = m.content;
+                jm["model"] = m.model;
+                jm["tool_call_id"] = m.tool_call_id;
+                jm["ts"] = m.ts;
+                snapshot.push_back(jm);
+            }
+        }
+        sessionCache_->saveChatContext(userId, sessionId, snapshot.dump());
+    }
+
+    // 新会话首条对话完成 → 异步 LLM 标题生成（复用当前策略与模型名）
+    if (isNewSession && !apiKey.empty())
+    {
+        startTitleSummarization(sessionId, userQuestion, apiKey, provider, effectiveModel);
+    }
+
+    if (loop_result.llm_failed)
+    {
+        _logCall("error", loop_result.content);
+    }
+    else
+    {
+        _logCall("success");
+    }
+    return loop_result.content;
 }
 
 // ─── 流式 curl 请求 ────────────────────────────────────────────────

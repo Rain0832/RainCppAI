@@ -72,7 +72,9 @@ ReActLoop::FinalAnswer ReActLoop::run(const std::vector<Message>& messages,
         sm.advanceRound();
         answer.total_rounds = sm.roundCount();
 
-        json payload = strategy_->buildRequest(working, tools_schema_, strategy_->getModel());
+        json payload = strategy_->buildRequest(
+            working, tools_schema_,
+            options_.model_name.empty() ? strategy_->getModel() : options_.model_name);
         payload["stream"] = true;
 
         std::string raw_response;
