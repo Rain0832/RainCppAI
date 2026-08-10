@@ -220,4 +220,3 @@ std::vector<ToolCallInfo> AliyunRAGStrategy::parseToolCalls(const json& response
 static StrategyRegister<AliyunStrategy> regAliyun("aliyun");
 static StrategyRegister<DouBaoStrategy> regDoubao("volcengine");
 static StrategyRegister<AliyunRAGStrategy> regAliyunRag("aliyun-rag");
-static StrategyRegister<AliyunStrategy> regAliyunMcp("aliyun-mcp");  // 合并：MCP 也走 AliyunStrategy

@@ -53,6 +53,9 @@ DbConnection::~DbConnection()
 
 bool DbConnection::ping()
 {
+    // 加锁：防止 checkConnections 线程与 getConnection 使用方并发执行 SELECT 1
+    // 同一连接句柄并发查询会导致 MySQL "Commands out of sync" 错误。
+    std::lock_guard<std::mutex> lock(mutex_);
     try
     {
         std::unique_ptr<sql::Statement> stmt(conn_->createStatement());
@@ -84,6 +87,8 @@ int DbConnection::executeRawSql(const std::string& sql)
 
 bool DbConnection::isValid()
 {
+    // 加锁：conn_ 可能被其他线程 reconnect() 重置，且并发 SELECT 1 会破坏连接状态
+    std::lock_guard<std::mutex> lock(mutex_);
     try
     {
         if (!conn_) return false;

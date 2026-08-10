@@ -37,7 +37,9 @@ jobs:
             libmysqlcppconn-dev \
             libmysqlclient-dev \
             libsodium-dev \
-            nlohmann-json3-dev
+            nlohmann-json3-dev \
+            libhiredis-dev \
+            libev-dev
 
       - name: Install muduo
         run: |

@@ -17,6 +17,14 @@
 #include "mcp/AIToolRegistry.h"
 #include "storage/MysqlUtil.h"
 
+namespace infra
+{
+namespace cache
+{
+class SessionCache;
+}
+}  // namespace infra
+
 /**
  * @brief AI助手类，封装curl访问各模型的接口。
  *
@@ -30,7 +38,9 @@ public:
     /// SSE 流式回调类型：每收到一个数据块调用一次，返回 false 表示中止
     using StreamCallback = std::function<bool(const std::string& chunk)>;
 
-    AIHelper(storage::MysqlUtil* mysqlUtil = nullptr, common::ThreadPool* threadPool = nullptr);
+    AIHelper(storage::MysqlUtil* mysqlUtil = nullptr,
+             common::ThreadPool* threadPool = nullptr,
+             infra::cache::SessionCache* sessionCache = nullptr);
 
     void setStrategy(std::shared_ptr<AIStrategy> strat);
 
@@ -140,7 +150,8 @@ private:
     std::atomic<bool> processing_;
     storage::MysqlUtil* mysqlUtil_ = nullptr;
     common::ThreadPool* threadPool_ = nullptr;
-    std::string pendingUserPayload_;  ///< 待入库的 user 消息 payload（一次性消费）
+    infra::cache::SessionCache* sessionCache_ = nullptr;  ///< 可选的 Redis 对话上下文缓存
+    std::string pendingUserPayload_;                      ///< 待入库的 user 消息 payload（一次性消费）
 
     /// 异步 LLM 标题生成（新会话首条对话完成后调用，复用当前策略与模型名）
     void startTitleSummarization(const std::string& sessionId,

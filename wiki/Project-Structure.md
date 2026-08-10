@@ -31,6 +31,9 @@ RainCppAI/
 │   ├── Metrics/         # Prometheus 指标
 │   ├── RateLimit/       # Token Bucket 限流
 │   └── Threading/       # 线程池
+├── Infralib/            # 基础设施库
+│   ├── Cache/           # Redis 客户端 + SessionCache (v3.2.0)
+│   └── Mq/              # RabbitMQ 生产者/消费者 + TaskMessage (v3.2.0)
 ├── web/                 # 前端 (HTML + Vanilla JS ES modules)
 ├── mcp_servers/         # Python MCP 微服务
 ├── Tests/               # GoogleTest 单元测试
@@ -53,6 +56,9 @@ RainCppAI/
 | libsodium | 1.0.18 | argon2id | ✅ 核心 |
 | spdlog | 1.x | Logging | ✅ 核心 |
 | nlohmann/json | 3.x | JSON | ✅ 核心 |
+| hiredis | 1.x | Redis client | 🆕 v3.2.0 |
+| AMQP-CPP | 4.x | RabbitMQ producer/consumer | 🆕 v3.2.0 |
+| libev | 4.x | Event loop for AMQP-CPP | 🆕 v3.2.0 |
 | GoogleTest | 1.15.2 | Unit tests | ⚠️ 仅测试 |
 
 ## 编译系统
